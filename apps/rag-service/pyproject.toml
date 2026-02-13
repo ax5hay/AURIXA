@@ -13,6 +13,7 @@ dependencies = [
     "sentence-transformers>=3.3.0",
     "rank-bm25>=0.2.0",
     "numpy>=2.0.0",
+    "aurixa-llm-clients @ file:///${PROJECT_ROOT}/packages/llm-clients"
 ]
 
 [tool.uv]

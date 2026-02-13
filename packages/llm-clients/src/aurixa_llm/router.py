@@ -34,6 +34,14 @@ class LLMRouter:
 
     def _initialize_clients(self) -> None:
         """Auto-detect available providers from environment variables."""
+        # Prioritize local provider if available
+        lm_studio_url = os.getenv("LM_STUDIO_BASE_URL")
+        if lm_studio_url:
+            self._clients[LLMProvider.LOCAL] = OpenAIClient(
+                base_url=lm_studio_url, api_key="not-needed"
+            )
+            self._fallback_order.insert(0, LLMProvider.LOCAL)
+
         if os.getenv("OPENAI_API_KEY"):
             self._clients[LLMProvider.OPENAI] = OpenAIClient()
             self._fallback_order.append(LLMProvider.OPENAI)
@@ -45,13 +53,6 @@ class LLMRouter:
         if os.getenv("GOOGLE_AI_API_KEY"):
             self._clients[LLMProvider.GEMINI] = GeminiClient()
             self._fallback_order.append(LLMProvider.GEMINI)
-
-        lm_studio_url = os.getenv("LM_STUDIO_BASE_URL")
-        if lm_studio_url:
-            self._clients[LLMProvider.LOCAL] = OpenAIClient(
-                base_url=lm_studio_url, api_key="not-needed"
-            )
-            self._fallback_order.append(LLMProvider.LOCAL)
 
         logger.info(
             "LLM Router initialized with providers: {}",

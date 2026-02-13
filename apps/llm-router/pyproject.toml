@@ -12,7 +12,9 @@ dependencies = [
     "faiss-cpu>=1.9.0",
     "sentence-transformers>=3.3.0",
     "numpy>=2.0.0",
+    "aurixa-llm-clients @ file:///${PROJECT_ROOT}/packages/llm-clients"
 ]
+
 
 [tool.uv]
 dev-dependencies = [

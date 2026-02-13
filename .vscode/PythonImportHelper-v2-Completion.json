@@ -1,0 +1,2161 @@
+[
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "BaseSettings",
+        "importPath": "pydantic_settings",
+        "description": "pydantic_settings",
+        "isExtraImport": true,
+        "detail": "pydantic_settings",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "asynccontextmanager",
+        "importPath": "contextlib",
+        "description": "contextlib",
+        "isExtraImport": true,
+        "detail": "contextlib",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Security",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Security",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Security",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Security",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Callable",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Literal",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Literal",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Literal",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Callable",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Callable",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Callable",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "ToolDefinition",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMProvider",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMRequest",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMProvider",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMMessage",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "ToolDefinition",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMResponse",
+        "importPath": "aurixa_llm.types",
+        "description": "aurixa_llm.types",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "jwt",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "jwt",
+        "description": "jwt",
+        "detail": "jwt",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPAuthorizationCredentials",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPBearer",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPAuthorizationCredentials",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPBearer",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPAuthorizationCredentials",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPBearer",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPAuthorizationCredentials",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPBearer",
+        "importPath": "fastapi.security",
+        "description": "fastapi.security",
+        "isExtraImport": true,
+        "detail": "fastapi.security",
+        "documentation": {}
+    },
+    {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
+        "label": "uuid",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "uuid",
+        "description": "uuid",
+        "detail": "uuid",
+        "documentation": {}
+    },
+    {
+        "label": "time",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "time",
+        "description": "time",
+        "detail": "time",
+        "documentation": {}
+    },
+    {
+        "label": "LLMRouter",
+        "importPath": "aurixa_llm.router",
+        "description": "aurixa_llm.router",
+        "isExtraImport": true,
+        "detail": "aurixa_llm.router",
+        "documentation": {}
+    },
+    {
+        "label": "numpy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "numpy",
+        "description": "numpy",
+        "detail": "numpy",
+        "documentation": {}
+    },
+    {
+        "label": "random",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "random",
+        "description": "random",
+        "detail": "random",
+        "documentation": {}
+    },
+    {
+        "label": "httpx",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "httpx",
+        "description": "httpx",
+        "detail": "httpx",
+        "documentation": {}
+    },
+    {
+        "label": "AsyncSession",
+        "importPath": "sqlalchemy.ext.asyncio",
+        "description": "sqlalchemy.ext.asyncio",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.ext.asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "create_async_engine",
+        "importPath": "sqlalchemy.ext.asyncio",
+        "description": "sqlalchemy.ext.asyncio",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.ext.asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "async_sessionmaker",
+        "importPath": "sqlalchemy.ext.asyncio",
+        "description": "sqlalchemy.ext.asyncio",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.ext.asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "select",
+        "importPath": "sqlalchemy.future",
+        "description": "sqlalchemy.future",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.future",
+        "documentation": {}
+    },
+    {
+        "label": "get_db_session",
+        "importPath": "aurixa_db",
+        "description": "aurixa_db",
+        "isExtraImport": true,
+        "detail": "aurixa_db",
+        "documentation": {}
+    },
+    {
+        "label": "engine",
+        "importPath": "aurixa_db",
+        "description": "aurixa_db",
+        "isExtraImport": true,
+        "detail": "aurixa_db",
+        "documentation": {}
+    },
+    {
+        "label": "Base",
+        "importPath": "aurixa_db",
+        "description": "aurixa_db",
+        "isExtraImport": true,
+        "detail": "aurixa_db",
+        "documentation": {}
+    },
+    {
+        "label": "models",
+        "importPath": "aurixa_db",
+        "description": "aurixa_db",
+        "isExtraImport": true,
+        "detail": "aurixa_db",
+        "documentation": {}
+    },
+    {
+        "label": "SentenceTransformer",
+        "importPath": "sentence_transformers",
+        "description": "sentence_transformers",
+        "isExtraImport": true,
+        "detail": "sentence_transformers",
+        "documentation": {}
+    },
+    {
+        "label": "faiss",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "faiss",
+        "description": "faiss",
+        "detail": "faiss",
+        "documentation": {}
+    },
+    {
+        "label": "DeclarativeBase",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "Mapped",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "mapped_column",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "Mapped",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "mapped_column",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "relationship",
+        "importPath": "sqlalchemy.orm",
+        "description": "sqlalchemy.orm",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.orm",
+        "documentation": {}
+    },
+    {
+        "label": "text",
+        "importPath": "sqlalchemy",
+        "description": "sqlalchemy",
+        "isExtraImport": true,
+        "detail": "sqlalchemy",
+        "documentation": {}
+    },
+    {
+        "label": "String",
+        "importPath": "sqlalchemy",
+        "description": "sqlalchemy",
+        "isExtraImport": true,
+        "detail": "sqlalchemy",
+        "documentation": {}
+    },
+    {
+        "label": "JSON",
+        "importPath": "sqlalchemy",
+        "description": "sqlalchemy",
+        "isExtraImport": true,
+        "detail": "sqlalchemy",
+        "documentation": {}
+    },
+    {
+        "label": "ForeignKey",
+        "importPath": "sqlalchemy",
+        "description": "sqlalchemy",
+        "isExtraImport": true,
+        "detail": "sqlalchemy",
+        "documentation": {}
+    },
+    {
+        "label": "Text",
+        "importPath": "sqlalchemy",
+        "description": "sqlalchemy",
+        "isExtraImport": true,
+        "detail": "sqlalchemy",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "datetime",
+        "description": "datetime",
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "ABC",
+        "importPath": "abc",
+        "description": "abc",
+        "isExtraImport": true,
+        "detail": "abc",
+        "documentation": {}
+    },
+    {
+        "label": "abstractmethod",
+        "importPath": "abc",
+        "description": "abc",
+        "isExtraImport": true,
+        "detail": "abc",
+        "documentation": {}
+    },
+    {
+        "label": "AsyncOpenAI",
+        "importPath": "openai",
+        "description": "openai",
+        "isExtraImport": true,
+        "detail": "openai",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.agent-runtime.src.agent_runtime.config",
+        "description": "apps.agent-runtime.src.agent_runtime.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"AGENT_RUNTIME_\"}\n    port: int = 8003\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.agent-runtime.src.agent_runtime.config",
+        "documentation": {}
+    },
+    {
+        "label": "MOCK_TOOLS",
+        "kind": 5,
+        "importPath": "apps.agent-runtime.src.agent_runtime.main",
+        "description": "apps.agent-runtime.src.agent_runtime.main",
+        "peekOfCode": "MOCK_TOOLS = {\n    \"get_weather\": lambda location: f\"The weather in {location} is sunny.\",\n    \"search_knowledge_base\": lambda query: f\"Searching for '{query}' found 3 documents.\",\n}\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Log service startup and shutdown.\"\"\"\n    logger.info(\"Agent Runtime service starting up\")\n    yield\n    logger.info(\"Agent Runtime service shutting down\")",
+        "detail": "apps.agent-runtime.src.agent_runtime.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.agent-runtime.src.agent_runtime.main",
+        "description": "apps.agent-runtime.src.agent_runtime.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA Agent Runtime\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for executing autonomous agent tasks with tool-calling capabilities.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status if the service is healthy.\"\"\"\n    return {\"service\": \"agent-runtime\", \"status\": \"healthy\"}",
+        "detail": "apps.agent-runtime.src.agent_runtime.main",
+        "documentation": {}
+    },
+    {
+        "label": "AgentTask",
+        "kind": 6,
+        "importPath": "apps.agent-runtime.src.agent_runtime.models",
+        "description": "apps.agent-runtime.src.agent_runtime.models",
+        "peekOfCode": "class AgentTask(BaseModel):\n    \"\"\"Represents a single task for an agent to execute.\"\"\"\n    prompt: str\n    session_id: str | None = None\n    tools: List[ToolDefinition] | None = None\n    metadata: Dict[str, Any] = Field(default_factory=dict)\nclass AgentResult(BaseModel):\n    \"\"\"The result of an agent task execution.\"\"\"\n    output: str = Field(description=\"The final output from the agent.\")\n    tool_calls: List[Dict[str, Any]] = Field(description=\"A list of tool calls made by the agent.\", default_factory=list)",
+        "detail": "apps.agent-runtime.src.agent_runtime.models",
+        "documentation": {}
+    },
+    {
+        "label": "AgentResult",
+        "kind": 6,
+        "importPath": "apps.agent-runtime.src.agent_runtime.models",
+        "description": "apps.agent-runtime.src.agent_runtime.models",
+        "peekOfCode": "class AgentResult(BaseModel):\n    \"\"\"The result of an agent task execution.\"\"\"\n    output: str = Field(description=\"The final output from the agent.\")\n    tool_calls: List[Dict[str, Any]] = Field(description=\"A list of tool calls made by the agent.\", default_factory=list)\n    cost: float = Field(description=\"Estimated cost of the agent execution.\", default=0.0)\n    steps: List[Dict[str, Any]] = Field(description=\"A list of the agent's reasoning steps.\", default_factory=list)\nclass RunTaskRequest(BaseModel):\n    \"\"\"Request to run an agent task.\"\"\"\n    task: AgentTask\nclass RunTaskResponse(BaseModel):",
+        "detail": "apps.agent-runtime.src.agent_runtime.models",
+        "documentation": {}
+    },
+    {
+        "label": "RunTaskRequest",
+        "kind": 6,
+        "importPath": "apps.agent-runtime.src.agent_runtime.models",
+        "description": "apps.agent-runtime.src.agent_runtime.models",
+        "peekOfCode": "class RunTaskRequest(BaseModel):\n    \"\"\"Request to run an agent task.\"\"\"\n    task: AgentTask\nclass RunTaskResponse(BaseModel):\n    \"\"\"Response from running an agent task.\"\"\"\n    result: AgentResult",
+        "detail": "apps.agent-runtime.src.agent_runtime.models",
+        "documentation": {}
+    },
+    {
+        "label": "RunTaskResponse",
+        "kind": 6,
+        "importPath": "apps.agent-runtime.src.agent_runtime.models",
+        "description": "apps.agent-runtime.src.agent_runtime.models",
+        "peekOfCode": "class RunTaskResponse(BaseModel):\n    \"\"\"Response from running an agent task.\"\"\"\n    result: AgentResult",
+        "detail": "apps.agent-runtime.src.agent_runtime.models",
+        "documentation": {}
+    },
+    {
+        "label": "require_roles",
+        "kind": 2,
+        "importPath": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "description": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "def require_roles(required_roles: List[str]) -> Callable:\n    \"\"\"Return a FastAPI dependency that enforces role-based access.\n    The user must possess **at least one** of the listed roles.\n    Usage::\n        @router.get(\"/admin\")\n        async def admin_only(user=Depends(require_roles([\"admin\"]))):\n            ...\n    \"\"\"\n    async def _dependency(\n        user: dict = Depends(require_auth),",
+        "detail": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "security",
+        "kind": 5,
+        "importPath": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "description": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "security = HTTPBearer()\n# ---------------------------------------------------------------------------\n# Configuration (mirrors @aurixa/config AuthConfigSchema)\n# ---------------------------------------------------------------------------\nJWT_SECRET: str = os.getenv(\"JWT_SECRET\", \"change-me\")\nJWT_ALGORITHMS: list[str] = [\"HS256\"]\nJWT_ISSUER: str = os.getenv(\"JWT_ISSUER\", \"aurixa\")\n# ---------------------------------------------------------------------------\n# Core dependency – validates Bearer token and returns the payload dict\n# ---------------------------------------------------------------------------",
+        "detail": "apps.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "create_logger",
+        "kind": 2,
+        "importPath": "apps.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "description": "apps.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "peekOfCode": "def create_logger(service: str):\n    \"\"\"Create a configured Loguru logger for a service.\n    Parameters\n    ----------\n    service:\n        Logical service name, included in every log entry.\n    Environment variables\n    ---------------------\n    LOG_LEVEL   : Minimum log level (default ``DEBUG``).\n    LOG_DIR     : Directory for rotating file logs (default ``logs``).",
+        "detail": "apps.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.execution-engine.src.execution_engine.config",
+        "description": "apps.execution-engine.src.execution_engine.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"EXECUTION_ENGINE_\"}\n    port: int = 8007\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.execution-engine.src.execution_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "MOCK_ACTION_REGISTRY",
+        "kind": 5,
+        "importPath": "apps.execution-engine.src.execution_engine.main",
+        "description": "apps.execution-engine.src.execution_engine.main",
+        "peekOfCode": "MOCK_ACTION_REGISTRY = {\n    \"send_email\": lambda params: f\"Email sent to {params.get('recipient')} with subject '{params.get('subject')}'.\"\n}\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Log service startup and shutdown.\"\"\"\n    logger.info(\"Execution Engine service starting up\")\n    yield\n    logger.info(\"Execution Engine service shutting down\")\napp = FastAPI(",
+        "detail": "apps.execution-engine.src.execution_engine.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.execution-engine.src.execution_engine.main",
+        "description": "apps.execution-engine.src.execution_engine.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA Execution Engine\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for executing external actions like API calls, database writes, and sending messages.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status if the service is healthy.\"\"\"\n    return {\"service\": \"execution-engine\", \"status\": \"healthy\"}",
+        "detail": "apps.execution-engine.src.execution_engine.main",
+        "documentation": {}
+    },
+    {
+        "label": "ExecutionRequest",
+        "kind": 6,
+        "importPath": "apps.execution-engine.src.execution_engine.models",
+        "description": "apps.execution-engine.src.execution_engine.models",
+        "peekOfCode": "class ExecutionRequest(BaseModel):\n    \"\"\"Request to the execution engine to perform an action.\"\"\"\n    action_name: str = Field(description=\"The name of the action to execute (e.g., 'send_email', 'write_to_db').\")\n    params: Dict[str, Any] = Field(description=\"The parameters for the action.\", default_factory=dict)\n    idempotency_key: str = Field(description=\"A unique key to prevent duplicate executions.\", default_factory=lambda: str(uuid.uuid4()))\nclass ExecutionResponse(BaseModel):\n    \"\"\"Response from the execution engine.\"\"\"\n    status: Literal[\"success\", \"error\"] = Field(description=\"The status of the execution.\")\n    result: Dict[str, Any] = Field(description=\"The result of the execution.\", default_factory=dict)\n    error_message: str | None = Field(description=\"An error message if the execution failed.\", default=None)",
+        "detail": "apps.execution-engine.src.execution_engine.models",
+        "documentation": {}
+    },
+    {
+        "label": "ExecutionResponse",
+        "kind": 6,
+        "importPath": "apps.execution-engine.src.execution_engine.models",
+        "description": "apps.execution-engine.src.execution_engine.models",
+        "peekOfCode": "class ExecutionResponse(BaseModel):\n    \"\"\"Response from the execution engine.\"\"\"\n    status: Literal[\"success\", \"error\"] = Field(description=\"The status of the execution.\")\n    result: Dict[str, Any] = Field(description=\"The result of the execution.\", default_factory=dict)\n    error_message: str | None = Field(description=\"An error message if the execution failed.\", default=None)",
+        "detail": "apps.execution-engine.src.execution_engine.models",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.llm-router.src.llm_router.config",
+        "description": "apps.llm-router.src.llm_router.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"LLM_ROUTER_\"}\n    port: int = 8002\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.llm-router.src.llm_router.config",
+        "documentation": {}
+    },
+    {
+        "label": "ROUTING_RULES",
+        "kind": 5,
+        "importPath": "apps.llm-router.src.llm_router.main",
+        "description": "apps.llm-router.src.llm_router.main",
+        "peekOfCode": "ROUTING_RULES = {\n    \"haiku\": {\"keywords\": [\"fast\", \"quick\", \"summary\"], \"provider\": LLMProvider.ANTHROPIC, \"model\": \"claude-3-haiku-20240307\"},\n    \"opus\": {\"keywords\": [\"deep\", \"research\", \"analysis\"], \"provider\": LLMProvider.ANTHROPIC, \"model\": \"claude-3-opus-20240229\"},\n    \"gemini\": {\"keywords\": [\"google\", \"gemini\"], \"provider\": LLMProvider.GEMINI, \"model\": \"gemini-1.5-pro\"},\n}\nDEFAULT_MODEL = \"gpt-4o\"\nDEFAULT_PROVIDER = LLMProvider.OPENAI\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Initialize the LLM router and log service startup.\"\"\"",
+        "detail": "apps.llm-router.src.llm_router.main",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_MODEL",
+        "kind": 5,
+        "importPath": "apps.llm-router.src.llm_router.main",
+        "description": "apps.llm-router.src.llm_router.main",
+        "peekOfCode": "DEFAULT_MODEL = \"gpt-4o\"\nDEFAULT_PROVIDER = LLMProvider.OPENAI\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Initialize the LLM router and log service startup.\"\"\"\n    app.state.llm_router = LLMRouter()\n    logger.info(\"LLM Router initialized with providers: {}\", app.state.llm_router.providers)\n    logger.info(\"LLM Router starting up\")\n    yield\n    logger.info(\"LLM Router shutting down\")",
+        "detail": "apps.llm-router.src.llm_router.main",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_PROVIDER",
+        "kind": 5,
+        "importPath": "apps.llm-router.src.llm_router.main",
+        "description": "apps.llm-router.src.llm_router.main",
+        "peekOfCode": "DEFAULT_PROVIDER = LLMProvider.OPENAI\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Initialize the LLM router and log service startup.\"\"\"\n    app.state.llm_router = LLMRouter()\n    logger.info(\"LLM Router initialized with providers: {}\", app.state.llm_router.providers)\n    logger.info(\"LLM Router starting up\")\n    yield\n    logger.info(\"LLM Router shutting down\")\napp = FastAPI(",
+        "detail": "apps.llm-router.src.llm_router.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.llm-router.src.llm_router.main",
+        "description": "apps.llm-router.src.llm_router.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA LLM Router\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for intelligent, cost-aware routing of LLM requests.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status and provider health.\"\"\"\n    provider_health = await app.state.llm_router.health()",
+        "detail": "apps.llm-router.src.llm_router.main",
+        "documentation": {}
+    },
+    {
+        "label": "RouteRequest",
+        "kind": 6,
+        "importPath": "apps.llm-router.src.llm_router.models",
+        "description": "apps.llm-router.src.llm_router.models",
+        "peekOfCode": "class RouteRequest(BaseModel):\n    \"\"\"Request to the LLM Router to get a model assignment.\"\"\"\n    prompt: str\n    session_id: str | None = None\n    user_id: str | None = None\n    tenant_id: str | None = None\nclass RouteResponse(BaseModel):\n    \"\"\"Response from the LLM Router.\"\"\"\n    model: str = Field(description=\"The suggested model to use for this request.\")\n    provider: LLMProvider = Field(description=\"The provider for the suggested model.\")",
+        "detail": "apps.llm-router.src.llm_router.models",
+        "documentation": {}
+    },
+    {
+        "label": "RouteResponse",
+        "kind": 6,
+        "importPath": "apps.llm-router.src.llm_router.models",
+        "description": "apps.llm-router.src.llm_router.models",
+        "peekOfCode": "class RouteResponse(BaseModel):\n    \"\"\"Response from the LLM Router.\"\"\"\n    model: str = Field(description=\"The suggested model to use for this request.\")\n    provider: LLMProvider = Field(description=\"The provider for the suggested model.\")\n    confidence: float = Field(description=\"Confidence score for the routing decision.\", default=1.0)\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata about the routing decision.\", default_factory=dict)\nclass GenerateRequest(BaseModel):\n    \"\"\"Request to generate text using a specific model.\"\"\"\n    messages: List[LLMMessage]\n    model: str | None = None",
+        "detail": "apps.llm-router.src.llm_router.models",
+        "documentation": {}
+    },
+    {
+        "label": "GenerateRequest",
+        "kind": 6,
+        "importPath": "apps.llm-router.src.llm_router.models",
+        "description": "apps.llm-router.src.llm_router.models",
+        "peekOfCode": "class GenerateRequest(BaseModel):\n    \"\"\"Request to generate text using a specific model.\"\"\"\n    messages: List[LLMMessage]\n    model: str | None = None\n    provider: LLMProvider | None = None\n    temperature: float = 0.7\n    max_tokens: int = 1024\n    tools: List[ToolDefinition] | None = None\n# The response from the generate endpoint is the same as the one from the client\nGenerateResponse = LLMResponse",
+        "detail": "apps.llm-router.src.llm_router.models",
+        "documentation": {}
+    },
+    {
+        "label": "GenerateResponse",
+        "kind": 5,
+        "importPath": "apps.llm-router.src.llm_router.models",
+        "description": "apps.llm-router.src.llm_router.models",
+        "peekOfCode": "GenerateResponse = LLMResponse",
+        "detail": "apps.llm-router.src.llm_router.models",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.observability-core.src.observability_core.config",
+        "description": "apps.observability-core.src.observability_core.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"OBSERVABILITY_CORE_\"}\n    port: int = 8008\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.observability-core.src.observability_core.config",
+        "documentation": {}
+    },
+    {
+        "label": "generate_mock_data",
+        "kind": 2,
+        "importPath": "apps.observability-core.src.observability_core.main",
+        "description": "apps.observability-core.src.observability_core.main",
+        "peekOfCode": "def generate_mock_data():\n    \"\"\"Create some fake telemetry data for demonstration.\"\"\"\n    services = [\"orchestration-engine\", \"llm-router\", \"rag-service\"]\n    for _ in range(100):\n        service = random.choice(services)\n        event_type = \"llm_call\" if service == \"llm-router\" else \"pipeline_step\"\n        cost = random.uniform(0.001, 0.01) if event_type == \"llm_call\" else None\n        latency = random.gauss(150, 50)\n        event = TelemetryEvent(\n            service_name=service,",
+        "detail": "apps.observability-core.src.observability_core.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.observability-core.src.observability_core.main",
+        "description": "apps.observability-core.src.observability_core.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA Observability Core\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for aggregating and reporting on platform-wide telemetry.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status if the service is healthy.\"\"\"\n    return {\"service\": \"observability-core\", \"status\": \"healthy\", \"event_count\": len(TELEMETRY_EVENTS)}",
+        "detail": "apps.observability-core.src.observability_core.main",
+        "documentation": {}
+    },
+    {
+        "label": "TelemetryEvent",
+        "kind": 6,
+        "importPath": "apps.observability-core.src.observability_core.models",
+        "description": "apps.observability-core.src.observability_core.models",
+        "peekOfCode": "class TelemetryEvent(BaseModel):\n    \"\"\"Represents a single telemetry event from a downstream service.\"\"\"\n    service_name: str = Field(description=\"The name of the service that generated the event.\")\n    event_type: Literal[\"llm_call\", \"api_call\", \"pipeline_step\"] = Field(description=\"The type of event.\")\n    timestamp: float = Field(description=\"The timestamp of the event.\", default_factory=time.time)\n    data: Dict[str, Any] = Field(description=\"The data associated with the event.\", default_factory=dict)\nclass PerformanceMetrics(BaseModel):\n    \"\"\"Metrics for a specific service or event type.\"\"\"\n    count: int = Field(description=\"The number of events.\")\n    avg_latency_ms: float = Field(description=\"Average latency in milliseconds.\")",
+        "detail": "apps.observability-core.src.observability_core.models",
+        "documentation": {}
+    },
+    {
+        "label": "PerformanceMetrics",
+        "kind": 6,
+        "importPath": "apps.observability-core.src.observability_core.models",
+        "description": "apps.observability-core.src.observability_core.models",
+        "peekOfCode": "class PerformanceMetrics(BaseModel):\n    \"\"\"Metrics for a specific service or event type.\"\"\"\n    count: int = Field(description=\"The number of events.\")\n    avg_latency_ms: float = Field(description=\"Average latency in milliseconds.\")\n    p95_latency_ms: float = Field(description=\"95th percentile latency in milliseconds.\")\n    total_cost_usd: float | None = Field(description=\"Total estimated cost in USD (for LLM calls).\", default=None)\nclass PerformanceReport(BaseModel):\n    \"\"\"A summary of platform performance.\"\"\"\n    generated_at: float = Field(description=\"The timestamp when the report was generated.\", default_factory=time.time)\n    overall_metrics: Dict[str, PerformanceMetrics] = Field(description=\"Overall metrics by event type.\")",
+        "detail": "apps.observability-core.src.observability_core.models",
+        "documentation": {}
+    },
+    {
+        "label": "PerformanceReport",
+        "kind": 6,
+        "importPath": "apps.observability-core.src.observability_core.models",
+        "description": "apps.observability-core.src.observability_core.models",
+        "peekOfCode": "class PerformanceReport(BaseModel):\n    \"\"\"A summary of platform performance.\"\"\"\n    generated_at: float = Field(description=\"The timestamp when the report was generated.\", default_factory=time.time)\n    overall_metrics: Dict[str, PerformanceMetrics] = Field(description=\"Overall metrics by event type.\")\n    service_metrics: Dict[str, Dict[str, PerformanceMetrics]] = Field(description=\"Metrics broken down by service.\")",
+        "detail": "apps.observability-core.src.observability_core.models",
+        "documentation": {}
+    },
+    {
+        "label": "_async_client",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.clients",
+        "description": "apps.orchestration-engine.src.orchestration_engine.clients",
+        "peekOfCode": "_async_client = httpx.AsyncClient(timeout=30.0)\nasync def call_llm_router(prompt: str) -> dict:\n    \"\"\"Call the LLM Router to classify intent and select a model.\"\"\"\n    if not LLM_ROUTER_URL:\n        logger.warning(\"LLM_ROUTER_URL not set, skipping call.\")\n        return {\"mock\": \"llm_router_response\"}\n    try:\n        response = await _async_client.post(\n            f\"{LLM_ROUTER_URL}/api/v1/route\",\n            json={\"prompt\": prompt},",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.clients",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.config",
+        "description": "apps.orchestration-engine.src.orchestration_engine.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    \"\"\"Configuration for the orchestration engine service.\"\"\"\n    model_config = {\"env_prefix\": \"ORCHESTRATION_ENGINE_\"}\n    port: int = 8001\n    log_level: str = \"debug\"\n    environment: str = \"development\"\n    # URLs for downstream services\n    llm_router_host: str = os.getenv(\"LLM_ROUTER_HOST\", \"http://localhost:8002\")\n    rag_service_host: str = os.getenv(\"RAG_SERVICE_HOST\", \"http://localhost:8004\")\n    safety_guardrails_host: str = os.getenv(\"SAFETY_GUARDRAILS_HOST\", \"http://localhost:8005\")",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "config",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.config",
+        "description": "apps.orchestration-engine.src.orchestration_engine.config",
+        "peekOfCode": "config = ServiceConfig()\n# Export the URLs for easy access from other modules\nLLM_ROUTER_URL = config.llm_router_host\nRAG_SERVICE_URL = config.rag_service_host\nSAFETY_GUARDRAILS_URL = config.safety_guardrails_host",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "LLM_ROUTER_URL",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.config",
+        "description": "apps.orchestration-engine.src.orchestration_engine.config",
+        "peekOfCode": "LLM_ROUTER_URL = config.llm_router_host\nRAG_SERVICE_URL = config.rag_service_host\nSAFETY_GUARDRAILS_URL = config.safety_guardrails_host",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "RAG_SERVICE_URL",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.config",
+        "description": "apps.orchestration-engine.src.orchestration_engine.config",
+        "peekOfCode": "RAG_SERVICE_URL = config.rag_service_host\nSAFETY_GUARDRAILS_URL = config.safety_guardrails_host",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "SAFETY_GUARDRAILS_URL",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.config",
+        "description": "apps.orchestration-engine.src.orchestration_engine.config",
+        "peekOfCode": "SAFETY_GUARDRAILS_URL = config.safety_guardrails_host",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.config",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.main",
+        "description": "apps.orchestration-engine.src.orchestration_engine.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA Orchestration Engine\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for orchestrating complex conversational AI pipelines.\",\n)\nasync def execute_step(\n    db: AsyncSession, conversation: db_models.Conversation, name: str, input_data: dict, coro\n) -> (dict, db_models.PipelineStep):\n    \"\"\"Execute a pipeline step, record it, and update its state.\"\"\"",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.main",
+        "documentation": {}
+    },
+    {
+        "label": "PipelineRequest",
+        "kind": 6,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.models",
+        "description": "apps.orchestration-engine.src.orchestration_engine.models",
+        "peekOfCode": "class PipelineRequest(BaseModel):\n    \"\"\"Request to initiate a new orchestration pipeline.\"\"\"\n    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))\n    prompt: str\n    tenant_id: str | None = None\n    user_id: str | None = None\nclass PipelineStep(BaseModel):\n    \"\"\"Represents a single step in an orchestration pipeline.\"\"\"\n    name: str\n    status: Literal[\"pending\", \"in_progress\", \"success\", \"error\"] = \"pending\"",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.models",
+        "documentation": {}
+    },
+    {
+        "label": "PipelineStep",
+        "kind": 6,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.models",
+        "description": "apps.orchestration-engine.src.orchestration_engine.models",
+        "peekOfCode": "class PipelineStep(BaseModel):\n    \"\"\"Represents a single step in an orchestration pipeline.\"\"\"\n    name: str\n    status: Literal[\"pending\", \"in_progress\", \"success\", \"error\"] = \"pending\"\n    input: Dict[str, Any] | None = None\n    output: Dict[str, Any] | None = None\n    error_message: str | None = None\n    start_time: float | None = None\n    end_time: float | None = None\n    @property",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.models",
+        "documentation": {}
+    },
+    {
+        "label": "ConversationState",
+        "kind": 6,
+        "importPath": "apps.orchestration-engine.src.orchestration_engine.models",
+        "description": "apps.orchestration-engine.src.orchestration_engine.models",
+        "peekOfCode": "class ConversationState(BaseModel):\n    \"\"\"Tracks the full state of a conversation pipeline.\"\"\"\n    session_id: str\n    request: PipelineRequest\n    steps: list[PipelineStep] = []\n    final_response: str | None = None\n    created_at: float = Field(default_factory=time.time)\n    updated_at: float = Field(default_factory=time.time)\n    def add_step(self, name: str, input: Dict[str, Any] | None = None) -> PipelineStep:\n        step = PipelineStep(name=name, input=input)",
+        "detail": "apps.orchestration-engine.src.orchestration_engine.models",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.rag-service.src.rag_service.config",
+        "description": "apps.rag-service.src.rag_service.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"RAG_SERVICE_\"}\n    port: int = 8004\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.rag-service.src.rag_service.config",
+        "documentation": {}
+    },
+    {
+        "label": "MODEL_NAME",
+        "kind": 5,
+        "importPath": "apps.rag-service.src.rag_service.main",
+        "description": "apps.rag-service.src.rag_service.main",
+        "peekOfCode": "MODEL_NAME = \"all-MiniLM-L6-v2\"\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Load ML models and build the search index on startup.\"\"\"\n    logger.info(\"RAG service starting up\")\n    # 1. Load the sentence-transformer model\n    logger.info(\"Loading sentence-transformer model: {}\", MODEL_NAME)\n    model = SentenceTransformer(MODEL_NAME)\n    app.state.model = model\n    # 2. Create a mock document store",
+        "detail": "apps.rag-service.src.rag_service.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.rag-service.src.rag_service.main",
+        "description": "apps.rag-service.src.rag_service.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA RAG Service\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for hybrid retrieval of knowledge from vector and text indexes.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status if the service is healthy.\"\"\"\n    return {\"service\": \"rag-service\", \"status\": \"healthy\", \"model\": MODEL_NAME, \"indexed_docs\": app.state.index.ntotal}",
+        "detail": "apps.rag-service.src.rag_service.main",
+        "documentation": {}
+    },
+    {
+        "label": "DocumentSnippet",
+        "kind": 6,
+        "importPath": "apps.rag-service.src.rag_service.models",
+        "description": "apps.rag-service.src.rag_service.models",
+        "peekOfCode": "class DocumentSnippet(BaseModel):\n    \"\"\"Represents a snippet of a retrieved document.\"\"\"\n    source: str = Field(description=\"The source of the document (e.g., file name, URL).\")\n    content: str = Field(description=\"The actual text content of the snippet.\")\n    score: float = Field(description=\"The relevance score of the snippet.\", default=0.0)\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata about the snippet.\", default_factory=dict)\nclass RetrieveRequest(BaseModel):\n    \"\"\"Request to the RAG service to retrieve context.\"\"\"\n    prompt: str\n    intent: Dict[str, Any] = Field(description=\"The intent classification from the LLM Router.\", default_factory=dict)",
+        "detail": "apps.rag-service.src.rag_service.models",
+        "documentation": {}
+    },
+    {
+        "label": "RetrieveRequest",
+        "kind": 6,
+        "importPath": "apps.rag-service.src.rag_service.models",
+        "description": "apps.rag-service.src.rag_service.models",
+        "peekOfCode": "class RetrieveRequest(BaseModel):\n    \"\"\"Request to the RAG service to retrieve context.\"\"\"\n    prompt: str\n    intent: Dict[str, Any] = Field(description=\"The intent classification from the LLM Router.\", default_factory=dict)\n    top_k: int = Field(description=\"The number of snippets to retrieve.\", default=5)\nclass RetrieveResponse(BaseModel):\n    \"\"\"Response from the RAG service.\"\"\"\n    snippets: List[DocumentSnippet] = Field(description=\"The list of retrieved document snippets.\")\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata about the retrieval process.\", default_factory=dict)",
+        "detail": "apps.rag-service.src.rag_service.models",
+        "documentation": {}
+    },
+    {
+        "label": "RetrieveResponse",
+        "kind": 6,
+        "importPath": "apps.rag-service.src.rag_service.models",
+        "description": "apps.rag-service.src.rag_service.models",
+        "peekOfCode": "class RetrieveResponse(BaseModel):\n    \"\"\"Response from the RAG service.\"\"\"\n    snippets: List[DocumentSnippet] = Field(description=\"The list of retrieved document snippets.\")\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata about the retrieval process.\", default_factory=dict)",
+        "detail": "apps.rag-service.src.rag_service.models",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.config",
+        "description": "apps.safety-guardrails.src.safety_guardrails.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"SAFETY_GUARDRAILS_\"}\n    port: int = 8005\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.config",
+        "documentation": {}
+    },
+    {
+        "label": "BANNED_WORDS",
+        "kind": 5,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.main",
+        "description": "apps.safety-guardrails.src.safety_guardrails.main",
+        "peekOfCode": "BANNED_WORDS = {\"unsafe\", \"exploit\", \"vulnerability\"}\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    \"\"\"Log service startup and shutdown.\"\"\"\n    logger.info(\"Safety Guardrails service starting up\")\n    yield\n    logger.info(\"Safety Guardrails service shutting down\")\napp = FastAPI(\n    title=\"AURIXA Safety Guardrails\",\n    version=\"0.1.0\",",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.main",
+        "description": "apps.safety-guardrails.src.safety_guardrails.main",
+        "peekOfCode": "app = FastAPI(\n    title=\"AURIXA Safety Guardrails\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n    description=\"Service for enforcing safety policies on LLM inputs and outputs.\",\n)\n@app.get(\"/health\", summary=\"Health check endpoint\")\nasync def health():\n    \"\"\"Return a 200 OK status if the service is healthy.\"\"\"\n    return {\"service\": \"safety-guardrails\", \"status\": \"healthy\"}",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.main",
+        "documentation": {}
+    },
+    {
+        "label": "ValidationIssue",
+        "kind": 6,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.models",
+        "description": "apps.safety-guardrails.src.safety_guardrails.models",
+        "peekOfCode": "class ValidationIssue(BaseModel):\n    \"\"\"Represents a single issue found during validation.\"\"\"\n    policy_name: str = Field(description=\"The name of the policy that was violated.\")\n    risk_category: str = Field(description=\"The category of the risk (e.g., 'profanity', 'pii').\")\n    severity: float = Field(description=\"The severity of the issue (0.0 to 1.0).\")\n    details: str = Field(description=\"Details about the validation issue.\")\nclass ValidateRequest(BaseModel):\n    \"\"\"Request to the safety guardrails service to validate text.\"\"\"\n    text: str\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata for context.\", default_factory=dict)",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.models",
+        "documentation": {}
+    },
+    {
+        "label": "ValidateRequest",
+        "kind": 6,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.models",
+        "description": "apps.safety-guardrails.src.safety_guardrails.models",
+        "peekOfCode": "class ValidateRequest(BaseModel):\n    \"\"\"Request to the safety guardrails service to validate text.\"\"\"\n    text: str\n    metadata: Dict[str, Any] = Field(description=\"Additional metadata for context.\", default_factory=dict)\nclass ValidateResponse(BaseModel):\n    \"\"\"Response from the safety guardrails service.\"\"\"\n    is_safe: bool = Field(description=\"Whether the text is considered safe.\")\n    validated_text: str = Field(description=\"The original or a sanitized version of the text.\")\n    issues: List[ValidationIssue] = Field(description=\"A list of issues found, if any.\", default_factory=list)",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.models",
+        "documentation": {}
+    },
+    {
+        "label": "ValidateResponse",
+        "kind": 6,
+        "importPath": "apps.safety-guardrails.src.safety_guardrails.models",
+        "description": "apps.safety-guardrails.src.safety_guardrails.models",
+        "peekOfCode": "class ValidateResponse(BaseModel):\n    \"\"\"Response from the safety guardrails service.\"\"\"\n    is_safe: bool = Field(description=\"Whether the text is considered safe.\")\n    validated_text: str = Field(description=\"The original or a sanitized version of the text.\")\n    issues: List[ValidationIssue] = Field(description=\"A list of issues found, if any.\", default_factory=list)",
+        "detail": "apps.safety-guardrails.src.safety_guardrails.models",
+        "documentation": {}
+    },
+    {
+        "label": "ServiceConfig",
+        "kind": 6,
+        "importPath": "apps.streaming-voice.src.streaming_voice.config",
+        "description": "apps.streaming-voice.src.streaming_voice.config",
+        "peekOfCode": "class ServiceConfig(BaseSettings):\n    model_config = {\"env_prefix\": \"STREAMING_VOICE_\"}\n    port: int = 8006\n    log_level: str = \"debug\"\n    environment: str = \"development\"",
+        "detail": "apps.streaming-voice.src.streaming_voice.config",
+        "documentation": {}
+    },
+    {
+        "label": "SERVICE_NAME",
+        "kind": 5,
+        "importPath": "apps.streaming-voice.src.streaming_voice.main",
+        "description": "apps.streaming-voice.src.streaming_voice.main",
+        "peekOfCode": "SERVICE_NAME = \"streaming-voice\"\nPORT = 8006\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    start = time.monotonic()\n    logger.info(f\"{SERVICE_NAME} starting on port {PORT}\")\n    yield\n    logger.info(f\"{SERVICE_NAME} shutting down\")\napp = FastAPI(\n    title=f\"AURIXA {SERVICE_NAME}\",",
+        "detail": "apps.streaming-voice.src.streaming_voice.main",
+        "documentation": {}
+    },
+    {
+        "label": "PORT",
+        "kind": 5,
+        "importPath": "apps.streaming-voice.src.streaming_voice.main",
+        "description": "apps.streaming-voice.src.streaming_voice.main",
+        "peekOfCode": "PORT = 8006\n@asynccontextmanager\nasync def lifespan(app: FastAPI):\n    start = time.monotonic()\n    logger.info(f\"{SERVICE_NAME} starting on port {PORT}\")\n    yield\n    logger.info(f\"{SERVICE_NAME} shutting down\")\napp = FastAPI(\n    title=f\"AURIXA {SERVICE_NAME}\",\n    version=\"0.1.0\",",
+        "detail": "apps.streaming-voice.src.streaming_voice.main",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": "apps.streaming-voice.src.streaming_voice.main",
+        "description": "apps.streaming-voice.src.streaming_voice.main",
+        "peekOfCode": "app = FastAPI(\n    title=f\"AURIXA {SERVICE_NAME}\",\n    version=\"0.1.0\",\n    lifespan=lifespan,\n)\n@app.get(\"/health\")\nasync def health():\n    return {\"service\": SERVICE_NAME, \"status\": \"healthy\"}",
+        "detail": "apps.streaming-voice.src.streaming_voice.main",
+        "documentation": {}
+    },
+    {
+        "label": "require_roles",
+        "kind": 2,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "description": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "def require_roles(required_roles: List[str]) -> Callable:\n    \"\"\"Return a FastAPI dependency that enforces role-based access.\n    The user must possess **at least one** of the listed roles.\n    Usage::\n        @router.get(\"/admin\")\n        async def admin_only(user=Depends(require_roles([\"admin\"]))):\n            ...\n    \"\"\"\n    async def _dependency(\n        user: dict = Depends(require_auth),",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "security",
+        "kind": 5,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "description": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "security = HTTPBearer()\n# ---------------------------------------------------------------------------\n# Configuration (mirrors @aurixa/config AuthConfigSchema)\n# ---------------------------------------------------------------------------\nJWT_SECRET: str = os.getenv(\"JWT_SECRET\", \"change-me\")\nJWT_ALGORITHMS: list[str] = [\"HS256\"]\nJWT_ISSUER: str = os.getenv(\"JWT_ISSUER\", \"aurixa\")\n# ---------------------------------------------------------------------------\n# Core dependency – validates Bearer token and returns the payload dict\n# ---------------------------------------------------------------------------",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "create_logger",
+        "kind": 2,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "description": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "peekOfCode": "def create_logger(service: str):\n    \"\"\"Create a configured Loguru logger for a service.\n    Parameters\n    ----------\n    service:\n        Logical service name, included in every log entry.\n    Environment variables\n    ---------------------\n    LOG_LEVEL   : Minimum log level (default ``DEBUG``).\n    LOG_DIR     : Directory for rotating file logs (default ``logs``).",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.api-gateway.node_modules.@aurixa.logging.python_logger",
+        "documentation": {}
+    },
+    {
+        "label": "require_roles",
+        "kind": 2,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "description": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "def require_roles(required_roles: List[str]) -> Callable:\n    \"\"\"Return a FastAPI dependency that enforces role-based access.\n    The user must possess **at least one** of the listed roles.\n    Usage::\n        @router.get(\"/admin\")\n        async def admin_only(user=Depends(require_roles([\"admin\"]))):\n            ...\n    \"\"\"\n    async def _dependency(\n        user: dict = Depends(require_auth),",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "security",
+        "kind": 5,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "description": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "peekOfCode": "security = HTTPBearer()\n# ---------------------------------------------------------------------------\n# Configuration (mirrors @aurixa/config AuthConfigSchema)\n# ---------------------------------------------------------------------------\nJWT_SECRET: str = os.getenv(\"JWT_SECRET\", \"change-me\")\nJWT_ALGORITHMS: list[str] = [\"HS256\"]\nJWT_ISSUER: str = os.getenv(\"JWT_ISSUER\", \"aurixa\")\n# ---------------------------------------------------------------------------\n# Core dependency – validates Bearer token and returns the payload dict\n# ---------------------------------------------------------------------------",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "create_logger",
+        "kind": 2,
+        "importPath": "node_modules..pnpm.node_modules.@aurixa.logging.python_logger",
+        "description": "node_modules..pnpm.node_modules.@aurixa.logging.python_logger",
+        "peekOfCode": "def create_logger(service: str):\n    \"\"\"Create a configured Loguru logger for a service.\n    Parameters\n    ----------\n    service:\n        Logical service name, included in every log entry.\n    Environment variables\n    ---------------------\n    LOG_LEVEL   : Minimum log level (default ``DEBUG``).\n    LOG_DIR     : Directory for rotating file logs (default ``logs``).",
+        "detail": "node_modules..pnpm.node_modules.@aurixa.logging.python_logger",
+        "documentation": {}
+    },
+    {
+        "label": "require_roles",
+        "kind": 2,
+        "importPath": "packages.auth.src.python_auth",
+        "description": "packages.auth.src.python_auth",
+        "peekOfCode": "def require_roles(required_roles: List[str]) -> Callable:\n    \"\"\"Return a FastAPI dependency that enforces role-based access.\n    The user must possess **at least one** of the listed roles.\n    Usage::\n        @router.get(\"/admin\")\n        async def admin_only(user=Depends(require_roles([\"admin\"]))):\n            ...\n    \"\"\"\n    async def _dependency(\n        user: dict = Depends(require_auth),",
+        "detail": "packages.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "security",
+        "kind": 5,
+        "importPath": "packages.auth.src.python_auth",
+        "description": "packages.auth.src.python_auth",
+        "peekOfCode": "security = HTTPBearer()\n# ---------------------------------------------------------------------------\n# Configuration (mirrors @aurixa/config AuthConfigSchema)\n# ---------------------------------------------------------------------------\nJWT_SECRET: str = os.getenv(\"JWT_SECRET\", \"change-me\")\nJWT_ALGORITHMS: list[str] = [\"HS256\"]\nJWT_ISSUER: str = os.getenv(\"JWT_ISSUER\", \"aurixa\")\n# ---------------------------------------------------------------------------\n# Core dependency – validates Bearer token and returns the payload dict\n# ---------------------------------------------------------------------------",
+        "detail": "packages.auth.src.python_auth",
+        "documentation": {}
+    },
+    {
+        "label": "Base",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.base",
+        "description": "packages.db.src.aurixa_db.base",
+        "peekOfCode": "class Base(DeclarativeBase):\n    \"\"\"Base for all models, includes primary key and audit columns.\"\"\"\n    id: Mapped[int] = mapped_column(primary_key=True, index=True)\n    created_at: Mapped[datetime.datetime] = mapped_column(\n        server_default=text(\"TIMEZONE('utc', now())\")\n    )\n    updated_at: Mapped[datetime.datetime] = mapped_column(\n        server_default=text(\"TIMEZONE('utc', now())\"),\n        onupdate=datetime.datetime.utcnow,\n    )",
+        "detail": "packages.db.src.aurixa_db.base",
+        "documentation": {}
+    },
+    {
+        "label": "DATABASE_URL",
+        "kind": 5,
+        "importPath": "packages.db.src.aurixa_db.database",
+        "description": "packages.db.src.aurixa_db.database",
+        "peekOfCode": "DATABASE_URL = os.getenv(\"DATABASE_URL\", \"postgresql+asyncpg://aurixa:aurixa@localhost:5432/aurixa\")\ntry:\n    engine = create_async_engine(DATABASE_URL, echo=False, future=True)\n    AsyncSessionLocal = async_sessionmaker(\n        autocommit=False, \n        autoflush=False, \n        bind=engine\n    )\n    logger.info(\"Database engine created successfully for URL: {}\", DATABASE_URL)\nexcept Exception as e:",
+        "detail": "packages.db.src.aurixa_db.database",
+        "documentation": {}
+    },
+    {
+        "label": "Conversation",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class Conversation(Base):\n    \"\"\"Represents a single conversation or session.\"\"\"\n    __tablename__ = \"conversations\"\n    session_id: Mapped[str] = mapped_column(String, unique=True, index=True)\n    metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    pipeline_steps: Mapped[List[\"PipelineStep\"]] = relationship(back_populates=\"conversation\")\nclass PipelineStep(Base):\n    \"\"\"Represents a single step within a conversation pipeline.\"\"\"\n    __tablename__ = \"pipeline_steps\"\n    conversation_id: Mapped[int] = mapped_column(ForeignKey(\"conversations.id\"))",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "PipelineStep",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class PipelineStep(Base):\n    \"\"\"Represents a single step within a conversation pipeline.\"\"\"\n    __tablename__ = \"pipeline_steps\"\n    conversation_id: Mapped[int] = mapped_column(ForeignKey(\"conversations.id\"))\n    step_name: Mapped[str] = mapped_column(String)\n    status: Mapped[str] = mapped_column(String)\n    input: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    output: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    error_message: Mapped[str] = mapped_column(Text, nullable=True)\n    start_time: Mapped[float] = mapped_column(nullable=True)",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "AnthropicClient",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "description": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "peekOfCode": "class AnthropicClient(LLMClient):\n    \"\"\"Async client for the Anthropic Messages API.\n    Args:\n        api_key: API key.  Falls back to ``ANTHROPIC_API_KEY`` env var.\n        default_model: Model to use when the request does not specify one.\n        timeout: HTTP request timeout in seconds.\n        max_retries: Maximum number of automatic retries on transient errors.\n    \"\"\"\n    def __init__(\n        self,",
+        "detail": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_MODEL",
+        "kind": 5,
+        "importPath": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "description": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "peekOfCode": "DEFAULT_MODEL = \"claude-sonnet-4-20250514\"\nclass AnthropicClient(LLMClient):\n    \"\"\"Async client for the Anthropic Messages API.\n    Args:\n        api_key: API key.  Falls back to ``ANTHROPIC_API_KEY`` env var.\n        default_model: Model to use when the request does not specify one.\n        timeout: HTTP request timeout in seconds.\n        max_retries: Maximum number of automatic retries on transient errors.\n    \"\"\"\n    def __init__(",
+        "detail": "packages.llm-clients.src.aurixa_llm.anthropic_client",
+        "documentation": {}
+    },
+    {
+        "label": "LLMClient",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.base",
+        "description": "packages.llm-clients.src.aurixa_llm.base",
+        "peekOfCode": "class LLMClient(ABC):\n    \"\"\"Abstract base class for all LLM provider clients.\n    Every concrete provider implementation must supply ``generate``,\n    ``health_check``, and ``estimate_cost``.\n    \"\"\"\n    @abstractmethod\n    async def generate(self, request: LLMRequest) -> LLMResponse:\n        \"\"\"Generate a completion from the LLM.\n        Args:\n            request: The fully-formed generation request.",
+        "detail": "packages.llm-clients.src.aurixa_llm.base",
+        "documentation": {}
+    },
+    {
+        "label": "GeminiClient",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "description": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "peekOfCode": "class GeminiClient(LLMClient):\n    \"\"\"Async client for the Google Generative AI (Gemini) API.\n    Args:\n        api_key: API key.  Falls back to ``GOOGLE_AI_API_KEY`` env var.\n        default_model: Model to use when the request does not specify one.\n    \"\"\"\n    def __init__(\n        self,\n        api_key: str | None = None,\n        default_model: str = DEFAULT_MODEL,",
+        "detail": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_MODEL",
+        "kind": 5,
+        "importPath": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "description": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "peekOfCode": "DEFAULT_MODEL = \"gemini-2.0-flash\"\nclass GeminiClient(LLMClient):\n    \"\"\"Async client for the Google Generative AI (Gemini) API.\n    Args:\n        api_key: API key.  Falls back to ``GOOGLE_AI_API_KEY`` env var.\n        default_model: Model to use when the request does not specify one.\n    \"\"\"\n    def __init__(\n        self,\n        api_key: str | None = None,",
+        "detail": "packages.llm-clients.src.aurixa_llm.gemini_client",
+        "documentation": {}
+    },
+    {
+        "label": "OpenAIClient",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "description": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "peekOfCode": "class OpenAIClient(LLMClient):\n    \"\"\"Async client for OpenAI and any OpenAI-compatible endpoint (e.g. LM Studio).\n    Args:\n        api_key: API key.  Falls back to ``OPENAI_API_KEY`` env var.\n        base_url: Override the API base URL (useful for LM Studio or Azure).\n        default_model: Model to use when the request does not specify one.\n        timeout: HTTP request timeout in seconds.\n    \"\"\"\n    def __init__(\n        self,",
+        "detail": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "documentation": {}
+    },
+    {
+        "label": "DEFAULT_MODEL",
+        "kind": 5,
+        "importPath": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "description": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "peekOfCode": "DEFAULT_MODEL = \"gpt-4o\"\nclass OpenAIClient(LLMClient):\n    \"\"\"Async client for OpenAI and any OpenAI-compatible endpoint (e.g. LM Studio).\n    Args:\n        api_key: API key.  Falls back to ``OPENAI_API_KEY`` env var.\n        base_url: Override the API base URL (useful for LM Studio or Azure).\n        default_model: Model to use when the request does not specify one.\n        timeout: HTTP request timeout in seconds.\n    \"\"\"\n    def __init__(",
+        "detail": "packages.llm-clients.src.aurixa_llm.openai_client",
+        "documentation": {}
+    },
+    {
+        "label": "LLMRouter",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.router",
+        "description": "packages.llm-clients.src.aurixa_llm.router",
+        "peekOfCode": "class LLMRouter:\n    \"\"\"Routes LLM requests to configured providers with fallback support.\n    On initialisation the router inspects environment variables to discover\n    which provider API keys are available and builds an ordered fallback\n    chain automatically.  Providers can also be registered (or hot-swapped)\n    at runtime via :meth:`register`.\n    \"\"\"\n    def __init__(self) -> None:\n        self._clients: dict[LLMProvider, LLMClient] = {}\n        self._fallback_order: list[LLMProvider] = []",
+        "detail": "packages.llm-clients.src.aurixa_llm.router",
+        "documentation": {}
+    },
+    {
+        "label": "LLMProvider",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class LLMProvider(str, Enum):\n    \"\"\"Supported LLM provider backends.\"\"\"\n    OPENAI = \"openai\"\n    ANTHROPIC = \"anthropic\"\n    GEMINI = \"gemini\"\n    LOCAL = \"local\"  # LM Studio / OpenAI-compatible\nclass ToolDefinition(BaseModel):\n    \"\"\"Schema definition for a tool that can be invoked by the LLM.\"\"\"\n    name: str\n    description: str",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "ToolDefinition",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class ToolDefinition(BaseModel):\n    \"\"\"Schema definition for a tool that can be invoked by the LLM.\"\"\"\n    name: str\n    description: str\n    parameters: dict[str, Any]\nclass ToolCall(BaseModel):\n    \"\"\"A tool invocation requested by the LLM.\"\"\"\n    id: str\n    name: str\n    arguments: dict[str, Any]",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "ToolCall",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class ToolCall(BaseModel):\n    \"\"\"A tool invocation requested by the LLM.\"\"\"\n    id: str\n    name: str\n    arguments: dict[str, Any]\nclass LLMMessage(BaseModel):\n    \"\"\"A single message in a conversation.\"\"\"\n    role: str  # system, user, assistant, tool\n    content: str\n    tool_calls: list[ToolCall] | None = None",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMMessage",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class LLMMessage(BaseModel):\n    \"\"\"A single message in a conversation.\"\"\"\n    role: str  # system, user, assistant, tool\n    content: str\n    tool_calls: list[ToolCall] | None = None\n    tool_call_id: str | None = None\nclass TokenUsage(BaseModel):\n    \"\"\"Token consumption and estimated cost for a single request.\"\"\"\n    prompt_tokens: int\n    completion_tokens: int",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "TokenUsage",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class TokenUsage(BaseModel):\n    \"\"\"Token consumption and estimated cost for a single request.\"\"\"\n    prompt_tokens: int\n    completion_tokens: int\n    total_tokens: int\n    estimated_cost_usd: float | None = None\nclass LLMRequest(BaseModel):\n    \"\"\"Parameters for an LLM generation request.\"\"\"\n    messages: list[LLMMessage]\n    model: str | None = None",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMRequest",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class LLMRequest(BaseModel):\n    \"\"\"Parameters for an LLM generation request.\"\"\"\n    messages: list[LLMMessage]\n    model: str | None = None\n    temperature: float = 0.7\n    max_tokens: int = 4096\n    tools: list[ToolDefinition] | None = None\n    stream: bool = False\n    metadata: dict[str, Any] = Field(default_factory=dict)\nclass LLMResponse(BaseModel):",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "LLMResponse",
+        "kind": 6,
+        "importPath": "packages.llm-clients.src.aurixa_llm.types",
+        "description": "packages.llm-clients.src.aurixa_llm.types",
+        "peekOfCode": "class LLMResponse(BaseModel):\n    \"\"\"Result returned by an LLM provider after generation.\"\"\"\n    content: str\n    model: str\n    provider: LLMProvider\n    tool_calls: list[ToolCall] | None = None\n    usage: TokenUsage\n    latency_ms: float\n    metadata: dict[str, Any] = Field(default_factory=dict)",
+        "detail": "packages.llm-clients.src.aurixa_llm.types",
+        "documentation": {}
+    },
+    {
+        "label": "create_logger",
+        "kind": 2,
+        "importPath": "packages.logging.python_logger",
+        "description": "packages.logging.python_logger",
+        "peekOfCode": "def create_logger(service: str):\n    \"\"\"Create a configured Loguru logger for a service.\n    Parameters\n    ----------\n    service:\n        Logical service name, included in every log entry.\n    Environment variables\n    ---------------------\n    LOG_LEVEL   : Minimum log level (default ``DEBUG``).\n    LOG_DIR     : Directory for rotating file logs (default ``logs``).",
+        "detail": "packages.logging.python_logger",
+        "documentation": {}
+    }
+]

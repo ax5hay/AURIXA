@@ -2,6 +2,15 @@ import { FastifyInstance } from "fastify";
 import { SERVICE_REGISTRY, getServiceUrl } from "../config.js";
 
 export async function healthRoutes(app: FastifyInstance) {
+  // Root welcome message
+  app.get("/", async () => {
+    return {
+      message: "Welcome to the AURIXA API Gateway.",
+      documentation: "See /README.md for details.",
+      version: "0.1.0",
+    };
+  });
+  
   // Gateway health
   app.get("/health", async () => {
     return {
