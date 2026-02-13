@@ -1,49 +1,97 @@
 # AURIXA
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python)](https://www.python.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js)](https://nodejs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Fastify](https://img.shields.io/badge/Fastify-4.x-000000?logo=fastify)](https://www.fastify.io/)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-000000?logo=next.js)](https://nextjs.org/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?logo=kubernetes)](https://kubernetes.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Fastify](https://img.shields.io/badge/Fastify-5.x-000000?logo=fastify&logoColor=white)](https://www.fastify.io/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![turborepo](https://img.shields.io/badge/monorepo-turborepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-> **Real-time conversational AI orchestration platform** — Multi-tenant, modular, horizontally scalable infrastructure for building sophisticated conversational experiences.
+> **Enterprise-grade conversational AI orchestration platform** — Multi-tenant, modular, horizontally scalable microservices infrastructure for building sophisticated real-time conversational experiences with cost-aware LLM routing and integrated safety guardrails.
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#services">Services</a> •
+  <a href="#development">Development</a> •
+  <a href="#deployment">Deployment</a>
+</p>
 
 ---
 
 ## Architecture
 
+The AURIXA platform follows a **microservices-first** architecture with clear separation of concerns. All services are **stateless** and communicate asynchronously through the API Gateway, enabling independent scaling and deployment.
+
 <details open>
-<summary><b>System Diagram</b></summary>
+<summary><b>System Architecture Diagram</b></summary>
 
 ```
-                    ┌─────────────────┐
-                    │   API Gateway   │ ← Fastify, rate limiting, auth, WS proxy
-                    │     :3000       │
-                    └────────┬────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-    ┌─────────▼──┐  ┌───────▼───┐  ┌───────▼──────┐
-    │Orchestration│  │ Streaming │  │ Observability│
-    │  Engine    │  │   Voice   │  │    Core      │
-    │   :8001    │  │   :8006   │  │    :8008     │
-    └─────┬──────┘  └───────────┘  └──────────────┘
-          │
-    ┌─────┼──────────────┬──────────────┐
-    │     │              │              │
-┌───▼──┐ ┌▼────────┐ ┌──▼───┐ ┌───────▼──┐
-│ LLM  │ │  Agent  │ │ RAG  │ │  Safety  │
-│Router│ │ Runtime │ │Svc   │ │Guardrails│
-│:8002 │ │  :8003  │ │:8004 │ │  :8005   │
-└──────┘ └─────────┘ └──────┘ └──────────┘
-                                    │
-                          ┌─────────▼─────────┐
-                          │ Execution Engine   │
-                          │      :8007         │
-                          └────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                            CLIENT APPLICATIONS                              │
+│                                                                              │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐   │
+│  │     Dashboard      │  │  Admin Console     │  │  Patient Portal    │   │
+│  │   (Next.js 15)     │  │   (Next.js 15)     │  │   (Next.js 15)     │   │
+│  │     Port 3100      │  │     Port 3101      │  │     Port 3102      │   │
+│  └────────────────────┘  └────────────────────┘  └────────────────────┘   │
+│                                  ▲                                           │
+└──────────────────────────────────┼───────────────────────────────────────────┘
+                                   │ HTTPS / WebSocket
+┌──────────────────────────────────┼───────────────────────────────────────────┐
+│                                  │                                           │
+│                    ┌─────────────▼─────────────┐                            │
+│                    │    API GATEWAY            │                            │
+│                    │  Fastify 5 + Plugins      │                            │
+│                    │  • Rate Limiting          │                            │
+│                    │  • CORS & Security        │                            │
+│                    │  • WebSocket Proxy        │                            │
+│                    │  • Request Logging        │                            │
+│                    │     Port 3000             │                            │
+│                    └────────────┬──────────────┘                            │
+│                                 │                                           │
+│     ┌───────────────────────────┼───────────────────────────────┐          │
+│     │                           │                               │          │
+│ ┌───▼────────────┐   ┌──────────▼──────────┐   ┌───────────────▼────┐     │
+│ │    REQUEST     │   │   ORCHESTRATION     │   │   OBSERVABILITY    │     │
+│ │   ROUTING      │   │      ENGINE         │   │       CORE         │     │
+│ │   & PROXYING   │   │   (FastAPI)         │   │    (FastAPI)       │     │
+│ │                │   │   • State Mgmt      │   │   • Metrics        │     │
+│ │                │   │   • Pipeline Exec   │   │   • Analytics      │     │
+│ │                │   │   Port 8001         │   │   Port 8008        │     │
+│ └────────────────┘   └──────────┬──────────┘   └────────────────────┘     │
+│                                  │                                          │
+│     ┌────────────────────────────┼────────────────────────────┐           │
+│     │                            │                            │           │
+│ ┌───▼──────┐  ┌──────────┐ ┌────▼─────┐ ┌──────────┐ ┌──────▼───┐       │
+│ │ LLM      │  │  AGENT   │ │   RAG    │ │ SAFETY   │ │STREAMING │       │
+│ │ ROUTER   │  │ RUNTIME  │ │ SERVICE  │ │GUARDRAILS│ │  VOICE   │       │
+│ │(FastAPI) │  │(FastAPI) │ │(FastAPI) │ │(FastAPI) │ │(FastAPI) │       │
+│ │• Routing │  │• Tools   │ │• Retrieval           │ │• Audio   │       │
+│ │• Cost-Aware • Planning  │ │• Reranking           │ │• ASR     │       │
+│ │Port 8002 │  │Port 8003 │ │Port 8004 │ │Port 8005 │ │Port 8006 │       │
+│ └──────────┘  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+│                      │                                                     │
+│                 ┌────▼─────────┐                                           │
+│                 │   EXECUTION  │                                           │
+│                 │   ENGINE     │                                           │
+│                 │  (FastAPI)   │                                           │
+│                 │  Port 8007   │                                           │
+│                 └──────────────┘                                           │
+└───────────────────────────────────────────────────────────────────────────┘
+                         │
+        ┌────────────────┴────────────────┐
+        │                                 │
+    ┌───▼───────┐               ┌────────▼────┐
+    │PostgreSQL │               │    Redis    │
+    │ Database  │               │    Cache    │
+    │ Port 5432 │               │ Port 6379   │
+    └───────────┘               └─────────────┘
 ```
 
 </details>
@@ -52,91 +100,205 @@
 
 ## Monorepo Structure
 
+AURIXA uses **Turborepo** with **pnpm workspaces** for efficient dependency management and parallel task execution across all packages and services.
+
 <details open>
-<summary><b>Directory Layout</b></summary>
+<summary><b>Complete Directory Layout</b></summary>
 
 ```
 aurixa/
-├── apps/                          Independently deployable services
-│   ├── api-gateway/               TS/Fastify — routing, auth, rate limiting, WS proxy
-│   ├── orchestration-engine/      Python/FastAPI — conversation state machine, pipeline execution
-│   ├── llm-router/                Python/FastAPI — intent classification, cost-aware LLM routing
-│   ├── agent-runtime/             Python/FastAPI — tool calling, multi-step planning, state memory
-│   ├── rag-service/               Python/FastAPI — hybrid retrieval, reranking, context compression
-│   ├── safety-guardrails/         Python/FastAPI — risk classification, policy filters, escalation
-│   ├── streaming-voice/           Python/FastAPI — duplex audio, ASR, partial transcripts
-│   ├── execution-engine/          Python/FastAPI — external API execution, retry, idempotency
-│   └── observability-core/        Python/FastAPI — metrics aggregation, latency, cost tracking
+├── apps/                          Independently deployable microservices
+│   ├── api-gateway/               TypeScript/Fastify (Port 3000)
+│   │   ├── src/
+│   │   │   ├── index.ts           App initialization & service registry
+│   │   │   ├── config.ts          Service endpoints configuration
+│   │   │   ├── middleware/        Request logging, error handling
+│   │   │   ├── routes/
+│   │   │   │   ├── health.ts      Health check endpoints
+│   │   │   │   ├── proxy.ts       Service routing & proxying
+│   │   │   │   ├── websocket.ts   WebSocket connections
+│   │   │   │   └── admin.ts       Admin endpoints
+│   │   │   └── plugins/           Fastify plugin integrations
+│   │   └── package.json
+│   │
+│   ├── orchestration-engine/      Python/FastAPI (Port 8001)
+│   │   ├── src/orchestration_engine/
+│   │   │   ├── main.py            Server initialization & lifecycle
+│   │   │   ├── models.py          Pydantic request/response schemas
+│   │   │   ├── config.py          Environment configuration
+│   │   │   └── clients.py         Client service calls
+│   │   └── pyproject.toml
+│   │
+│   ├── llm-router/                Python/FastAPI (Port 8002)
+│   │   ├── src/llm_router/
+│   │   │   ├── main.py            Routing logic & provider selection
+│   │   │   ├── models.py          Pydantic schemas
+│   │   │   └── config.py          Configuration & routing rules
+│   │   └── pyproject.toml
+│   │
+│   ├── agent-runtime/             Python/FastAPI (Port 8003)
+│   ├── rag-service/               Python/FastAPI (Port 8004)
+│   ├── safety-guardrails/         Python/FastAPI (Port 8005)
+│   ├── streaming-voice/           Python/FastAPI (Port 8006)
+│   ├── execution-engine/          Python/FastAPI (Port 8007)
+│   └── observability-core/        Python/FastAPI (Port 8008)
 │
-├── packages/                      Shared libraries
-│   ├── config/                    Environment loading, Zod validation, service registry
-│   ├── logging/                   Pino (TS) + Loguru (Python), structured JSON, correlation IDs
-│   ├── auth/                      JWT validation, API key auth, tenant context, RBAC
-│   ├── telemetry/                 OpenTelemetry tracing, span helpers, OTLP export
-│   ├── llm-clients/               Pluggable LLM abstraction (OpenAI, Claude, Gemini, local)
-│   └── ui-kit/                    React components, Tailwind preset, Framer Motion animations
+├── packages/                      Shared libraries & utilities
+│   ├── llm-clients/               AI provider abstraction layer
+│   │   ├── src/aurixa_llm/
+│   │   │   ├── base.py            Abstract LLM client interface
+│   │   │   ├── types.py           Shared type definitions
+│   │   │   ├── router.py          Multi-provider router
+│   │   │   ├── openai_client.py   OpenAI integration
+│   │   │   ├── anthropic_client.py Anthropic integration
+│   │   │   └── gemini_client.py   Google Gemini integration
+│   │   └── pyproject.toml
+│   │
+│   ├── db/                        Database layer
+│   │   ├── src/aurixa_db/
+│   │   │   ├── models.py          SQLAlchemy ORM models
+│   │   │   └── core.py            Database engine & session
+│   │   ├── seed.py                Database seeding script
+│   │   └── pyproject.toml
+│   │
+│   ├── auth/                      Authentication & authorization
+│   │   ├── src/
+│   │   │   ├── index.ts           JWT & API key validation
+│   │   │   └── python_auth.py     Python auth utilities
+│   │   └── package.json
+│   │
+│   ├── config/                    Configuration management
+│   │   ├── src/
+│   │   │   └── index.ts           Env loading, validation, secrets
+│   │   └── package.json
+│   │
+│   ├── logging/                   Structured logging
+│   │   ├── src/
+│   │   │   └── index.ts           Pino logger setup (TS)
+│   │   ├── python_logger.py       Loguru logger setup (Python)
+│   │   └── package.json
+│   │
+│   ├── telemetry/                 Observability & tracing
+│   │   ├── src/
+│   │   │   └── index.ts           OpenTelemetry setup
+│   │   └── package.json
+│   │
+│   └── ui-kit/                    React components & styles
+│       ├── src/
+│       │   └── components/        Reusable React components
+│       ├── tailwind.preset.js     Shared Tailwind config
+│       └── package.json
 │
-├── frontend/                      User-facing interfaces
-│   ├── dashboard/                 Next.js — conversation playground, analytics, pipeline viz
-│   └── admin-console/             Next.js — tenant management, service health, audit logs
+├── frontend/                      User-facing applications
+│   ├── dashboard/                 Analytics & playground (Next.js 15, Port 3100)
+│   ├── admin-console/             Tenant & system management (Next.js 15, Port 3101)
+│   └── patient-portal/            Patient interface (Next.js 15, Port 3102)
 │
-└── infra/                         Infrastructure as Code
-    ├── docker/                    docker-compose for local dev
-    ├── k8s/                       Kubernetes manifests
-    └── terraform/                 AWS infrastructure (VPC, EKS, RDS, ElastiCache)
+├── infra/                         Infrastructure as Code
+│   ├── docker/                    Docker Compose (local development)
+│   │   └── docker-compose.yml     Full stack orchestration
+│   ├── k8s/                       Kubernetes manifests
+│   │   ├── namespace.yaml
+│   │   ├── api-gateway.yaml
+│   │   └── python-service-template.yaml
+│   └── terraform/                 AWS infrastructure
+│       ├── main.tf                VPC, EKS, RDS, ElastiCache
+│       ├── variables.tf
+│       └── outputs.tf
+│
+├── .env.example                   Example environment configuration
+├── package.json                   Root workspace configuration
+├── pnpm-workspace.yaml            Workspace definitions
+├── pnpm-lock.yaml                 Locked dependency versions
+├── tsconfig.base.json             Root TypeScript configuration
+├── turbo.json                     Turborepo configuration
+└── README.md                      This file
 ```
 
 </details>
 
 ---
 
-## Service Responsibilities
+## Service Architecture & Responsibilities
 
-| Service | Port | Language | Purpose |
-|---------|:----:|:--------:|---------|
-| **api-gateway** | `3000` | TypeScript | Ingress routing, auth, rate limiting, WebSocket proxy |
-| **orchestration-engine** | `8001` | Python | Conversation pipeline execution, state management |
-| **llm-router** | `8002` | Python | Intent classification, BERT + FAISS, cost-aware routing |
-| **agent-runtime** | `8003` | Python | Tool calling, multi-step planning, async execution |
-| **rag-service** | `8004` | Python | BM25 + vector retrieval, reranking, source attribution |
-| **safety-guardrails** | `8005` | Python | Risk classification, policy filters, response validation |
-| **streaming-voice** | `8006` | Python | Duplex audio streaming, ASR hooks, barge-in detection |
-| **execution-engine** | `8007` | Python | External API calls, retry logic, idempotency, scheduling |
-| **observability-core** | `8008` | Python | Metrics aggregation, cost analysis, performance reports |
+| Service | Port | Language | Key Features |
+|---------|:----:|:--------:|----------|
+| **API Gateway** | `3000` | TypeScript | Request routing, WebSocket proxy, Rate limiting, CORS, Security headers |
+| **Orchestration Engine** | `8001` | Python | Conversation state management, Pipeline orchestration, Database persistence |
+| **LLM Router** | `8002` | Python | Cost-aware provider routing, FAISS embeddings, Intelligent model selection |
+| **Agent Runtime** | `8003` | Python | Tool invocation, Multi-step planning, Function calling, Async execution |
+| **RAG Service** | `8004` | Python | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking |
+| **Safety Guardrails** | `8005` | Python | Risk classification, Policy enforcement, Response filtering, Escalation logic |
+| **Streaming Voice** | `8006` | Python | Duplex audio, ASR integration, Partial transcripts, Barge-in detection |
+| **Execution Engine** | `8007` | Python | External API calls, Retry logic, Idempotency, Task scheduling |
+| **Observability Core** | `8008` | Python | Metrics aggregation, Cost analysis, Latency tracking, Performance reports |
 
 ---
 
-## LLM Plugin System
+## LLM Provider Abstraction Layer
 
-Pluggable provider abstraction at `packages/llm-clients/`. Every provider implements the standard interface:
+The AURIXA platform provides a **pluggable, provider-agnostic LLM abstraction** through the `llm-clients` package. This enables seamless switching between providers without code changes and intelligent cost-aware routing.
 
-```python
-class LLMClient(ABC):
-    async def generate(self, request: LLMRequest) -> LLMResponse: ...
-    async def health_check(self) -> bool: ...
-    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float: ...
-```
+<details open>
+<summary><b>Provider Integration</b></summary>
 
 ### Supported Providers
 
-| Provider | Models |
-|----------|--------|
-| **OpenAI** | GPT-4o, GPT-4 Turbo, o1, o3-mini |
-| **Anthropic** | Claude Opus, Sonnet, Haiku |
-| **Google Gemini** | 2.0 Flash, 1.5 Pro, 1.5 Flash |
-| **Local** | Any OpenAI-compatible endpoint (LM Studio, Ollama, vLLM) |
+| Provider | Models | Status | Features |
+|----------|--------|:------:|----------|
+| **OpenAI** | GPT-4o, GPT-4 Turbo, o1, o3-mini | Active | Tool calling, Vision, Streaming |
+| **Anthropic** | Claude 3 Opus, Sonnet, Haiku | Active | Extended context (200K), Native tools |
+| **Google Gemini** | 2.0 Flash, 1.5 Pro, 1.5 Flash | Active | Multimodal, Real-time streaming |
+| **Local** | Any OpenAI-compatible | Active | LM Studio, Ollama, vLLM |
 
-> The `LLMRouter` auto-detects configured providers from environment variables and builds a fallback chain. **Providers are hot-swappable at runtime.**
+### Standard LLM Client Interface
+
+```python
+from aurixa_llm import LLMClient, LLMRequest, LLMResponse, LLMProvider
+
+# Every provider implements this interface
+class LLMClient(ABC):
+    async def generate(request: LLMRequest) -> LLMResponse:
+        """Generate text with optional tool calling."""
+        ...
+    
+    async def health_check() -> bool:
+        """Check provider availability."""
+        ...
+    
+    def estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
+        """Calculate estimated cost for a request."""
+        ...
+```
+
+### Dynamic Provider Discovery
+
+The LLM Router auto-detects configured providers from environment variables and builds an intelligent fallback chain:
+
+```bash
+# .env configuration
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIzaSy...
+LOCAL_LLM_URL=http://localhost:1234/v1/  # LM Studio
+```
+
+**Automatic Provider Selection:**
+- Detects available providers at startup
+- Health checks run continuously
+- Cost-aware routing prefers cheaper models for simple queries
+- Automatic fallback if primary provider fails
+- Hot-swappable at runtime (no restart needed)
+
+</details>
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- **Node.js** 20+
-- **pnpm** 9+
-- **Python** 3.11+
-- **uv** (recommended)
+
+**Node.js** 20+ | **pnpm** 9+ | **Python** 3.11+ | **Docker & Docker Compose**
 
 ### Installation
 
@@ -144,130 +306,540 @@ class LLMClient(ABC):
 # Clone repository
 git clone <repo-url> aurixa && cd aurixa
 
-# Setup environment
-cp .env.example .env
-
 # Install dependencies
 pnpm install
-```
 
-### Running Services
+# Setup environment variables
+cp .env.example .env
 
-**TypeScript service:**
-```bash
-cd apps/api-gateway && pnpm dev
-```
-
-**Python service:**
-```bash
-cd apps/rag-service && uvicorn rag_service.main:app --reload
-```
-
-**Full stack (Docker):**
-```bash
+# Start all services with Docker Compose
 cd infra/docker && docker-compose up -d
+
+# Or run individual services locally
+# TypeScript service
+cd apps/api-gateway && pnpm dev
+
+# Python service
+cd apps/orchestration-engine && uvicorn orchestration_engine.main:app --reload
+```
+
+### Verify Installation
+
+```bash
+# Check API Gateway health
+curl http://localhost:3000/health
+
+# Check Orchestration Engine
+curl http://localhost:8001/health
+
+# Check LLM Router
+curl http://localhost:8002/health
+
+# View logs
+docker-compose logs -f api-gateway
+docker-compose logs -f orchestration-engine
 ```
 
 ---
 
-## Observability
+## Development Workflow
+
+### Project Commands
+
+```bash
+# Install all dependencies across workspace
+pnpm install
+
+# Development mode for all services
+pnpm dev
+
+# Build all TypeScript services
+pnpm build
+
+# Run linting across workspace
+pnpm lint
+
+# Type checking
+pnpm typecheck
+
+# Run tests
+pnpm test
+
+# Clean all build artifacts
+pnpm clean
+```
+
+### Service-Specific Development
+
+**API Gateway (TypeScript):**
+```bash
+cd apps/api-gateway
+pnpm dev            # Hot-reload with tsx
+pnpm build          # Compile to JavaScript
+pnpm test           # Run tests with Vitest
+```
+
+**Orchestration Engine (Python):**
+```bash
+cd apps/orchestration-engine
+uvicorn orchestration_engine.main:app --reload --port 8001
+pytest tests/       # Run pytest
+```
+
+**LLM Router (Python):**
+```bash
+cd apps/llm-router
+uvicorn llm_router.main:app --reload --port 8002
+```
+
+### Database Management
+
+```bash
+# Run database migrations (from packages/db)
+cd packages/db
+python seed.py      # Seed initial data
+
+# Connect to PostgreSQL
+psql -h localhost -U aurixa -d aurixa
+```
+
+---
+
+## Observability & Monitoring
 
 ### Structured Logging
 
-Every service emits **structured JSON logs** with:
-- Request correlation IDs (`x-request-id` header propagation)
-- Service-level tags
-- Latency measurements
-- Error stack capture
+Every service emits **JSON-formatted logs** with automatic correlation:
 
-Configuration: `packages/telemetry/`
+```json
+{
+  "timestamp": "2026-02-14T10:30:45.123Z",
+  "level": "info",
+  "service": "llm-router",
+  "correlationId": "req_abc123xyz",
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "LLM call completed",
+  "duration_ms": 245,
+  "tokens_used": { "prompt": 150, "completion": 45 },
+  "cost_usd": 0.0075,
+  "model": "gpt-4o",
+  "provider": "openai"
+}
+```
 
-### Distributed Tracing
+**Log Levels:** `debug` | `info` | `warning` | `error` | `critical`
 
-OpenTelemetry tracing with span propagation across service boundaries via HTTP headers. All services report:
+**Access logs with correlation:**
+```bash
+# Filter logs by request ID
+docker-compose logs | grep "550e8400-e29b-41d4-a716-446655440000"
 
-- **Per-service latency** (p50, p95, p99)
-- **LLM cost** per provider and model
-- **Token consumption** rates
-- **Intent classification** accuracy
-- **Error rate** heatmaps
+# Follow service logs
+docker-compose logs -f orchestration-engine
+```
 
-> Aggregated in the **observability-core** service.
+### Performance Metrics
+
+The **observability-core** service collects and aggregates metrics:
+
+- **Latency percentiles:** p50, p95, p99 (per service)
+- **LLM costs:** Breakdown by provider and model
+- **Token consumption:** Prompt & completion tokens over time
+- **Error rates:** Percentage of failed requests
+- **System health:** Memory, CPU, uptime
+
+### Health Check Endpoints
+
+All services expose `/health` endpoints:
+
+```bash
+curl http://localhost:8001/health
+
+# Response:
+{
+  "service": "orchestration-engine",
+  "status": "healthy",
+  "database": "connected",
+  "redis": "connected",
+  "uptime_seconds": 3600,
+  "memory_mb": 124.5
+}
+```
+
+
 
 ---
 
 ## Deployment
 
-### Local Development
-Docker Compose boots the full stack including Postgres and Redis.
+### Local Development (Docker Compose)
+
+Full-stack deployment with all services, databases, and caches:
+
 ```bash
-cd infra/docker && docker-compose up
+cd infra/docker
+docker-compose up -d
+
+# Verify all services
+docker-compose ps
+
+# Check service logs
+docker-compose logs -f api-gateway
+
+# Stop all services
+docker-compose down
 ```
 
-### Kubernetes
-Manifests in `infra/k8s/` with:
-- Health checks (liveness & readiness probes on `/health`)
-- Resource limits and requests
-- Ingress configuration
+**Services started:**
+- PostgreSQL 16 (localhost:5432)
+- Redis 7 (localhost:6379)
+- API Gateway (localhost:3000)
+- All 8 Python microservices (ports 8001-8008)
 
-### Cloud (AWS)
-Terraform modules in `infra/terraform/` provision:
-- **VPC** with public/private subnets
-- **EKS** cluster
-- **RDS** PostgreSQL
-- **ElastiCache** Redis
+### Docker Images
+
+Each service has a `Dockerfile` in its root directory:
+
+```dockerfile
+# Example: apps/api-gateway/Dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY . .
+RUN pnpm install --prod
+CMD ["pnpm", "start"]
+```
+
+**Build images:**
+```bash
+# Build single service
+docker build -t aurixa/api-gateway:latest apps/api-gateway/
+
+# Build all services
+docker-compose -f infra/docker/docker-compose.yml build
+```
+
+### Kubernetes Deployment
+
+Manifests available in `infra/k8s/`:
+
+```bash
+# Create namespace
+kubectl apply -f infra/k8s/namespace.yaml
+
+# Deploy services
+kubectl apply -f infra/k8s/api-gateway.yaml
+kubectl apply -f infra/k8s/python-service-template.yaml
+
+# Check deployment status
+kubectl get pods -n aurixa
+kubectl logs -n aurixa deployment/api-gateway
+
+# View service endpoint
+kubectl get svc -n aurixa
+```
+
+**Kubernetes features:**
+- Health check probes (liveness & readiness)
+- Auto-scaling policies
+- Service discovery
+- Network policies
+- Persistent volumes for PostgreSQL
+
+### Cloud Deployment (AWS/Terraform)
+
+Infrastructure as Code templates in `infra/terraform/`:
+
+```bash
+# Initialize Terraform
+cd infra/terraform
+terraform init
+
+# Review planned changes
+terraform plan
+
+# Apply infrastructure
+terraform apply
+
+# Outputs include RDS endpoint, EKS cluster, etc.
+terraform output
+```
+
+**Provisions:**
+- VPC with public/private subnets
+- EKS Kubernetes cluster (3 nodes)
+- RDS PostgreSQL 16 database
+- ElastiCache Redis cluster
+- Application Load Balancer
+- Auto-scaling groups
 
 ---
 
-## Scaling Philosophy
+## Architecture Principles
 
-### Horizontal First
-Every service is **stateless** and independently scalable. State lives in Postgres, Redis, or vector stores.
+### 1. **Stateless Services**
+All microservices are **stateless** and horizontally scalable. Persistent state is stored in PostgreSQL or Redis.
 
-### Async Everywhere
-- All Python services use **async FastAPI**
-- All TypeScript services use **async Fastify**
-- No blocking I/O in the request path
+```python
+# Good: State in database
+conversation = await db.get_conversation(id)
+conversation.status = "completed"
+await db.save(conversation)
 
-### Cost-Aware Routing
-The LLM router considers:
-- Model pricing
-- Latency
-- Availability
+# Bad: State in memory
+conversation_cache = {}  # Lost on restart!
+```
 
-Simple queries → cheaper models. Complex reasoning → premium models.
+### 2. **Asynchronous Processing**
+Every service uses async/await patterns to handle concurrent requests without blocking:
 
-### Graceful Degradation
-- RAG service slow? → Fall back to direct LLM generation
-- Provider down? → Fail over to the next one
-- Service unhealthy? → Shed load and retry
+```typescript
+// API Gateway uses async Fastify
+app.get('/api/v1/*', async (request, reply) => {
+  const response = await httpClient.get(url);
+  return response;
+});
 
-### Observability-Driven
-Every service reports:
-- Boot time
-- Memory footprint
-- Connection status
+# Python services use async FastAPI
+@app.post('/api/v1/generate')
+async def generate(request: GenerateRequest):
+    result = await llm_router.generate(request)
+    return result
+```
 
-Runtime metrics drive scaling decisions.
+### 3. **Cost-Aware Routing**
+The LLM Router intelligently selects providers based on:
+- **Cost** - Prefers cheaper models when possible
+- **Latency** - Considers response time SLAs
+- **Availability** - Falls back to alternative providers
+- **Complexity** - Routes complex tasks to capable models
+
+### 4. **Graceful Degradation**
+Services fail gracefully with sensible fallbacks:
+
+```python
+# RAG Service fallback
+try:
+    results = await vector_search(query)
+except TimeoutError:
+    results = await bm25_fallback(query)
+
+# LLM Router fallback
+try:
+    response = await openai_client.generate(request)
+except Exception:
+    response = await anthropic_client.generate(request)  # Next in chain
+```
+
+### 5. **Observability-Driven Operations**
+Every service reports metrics that drive scaling and optimization:
+
+```python
+# Telemetry example
+@app.post('/api/v1/pipeline/execute')
+async def execute_pipeline(request: PipelineRequest):
+    start = time.time()
+    
+    result = await orchestration.execute(request)
+    
+    # Report metrics
+    duration_ms = (time.time() - start) * 1000
+    observability.record_metric(
+        name='pipeline_execution',
+        duration_ms=duration_ms,
+        status='success',
+        steps=len(request.steps)
+    )
+    
+    return result
+```
+
+---
+
+## Security
+
+### Authentication & Authorization
+
+**API Gateway:**
+- JWT token validation
+- API key authentication
+- Tenant isolation via headers
+- Rate limiting (200 req/min per tenant)
+
+**Services:**
+- Inter-service communication with service accounts
+- Request signing for critical operations
+- CORS policies enforced
+
+### Data Protection
+
+- **In Transit:** TLS 1.3 for all network communication
+- **At Rest:** PostgreSQL encryption, Redis password protection
+- **Secrets:** Environment variables for sensitive data
+- **Audit:** All API calls logged with correlation IDs
+
+### Compliance
+
+- Multi-tenant isolation
+- Full request/response logging
+- Audit trail for all data access
+- Safety guardrails service for compliance checking
+
+---
+
+## API Examples
+
+### Generate LLM Response
+
+```bash
+curl -X POST http://localhost:3000/api/v1/generate \
+  -H "Content-Type: application/json" \
+  -H "x-tenant-id: tenant-123" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "What is AURIXA?"}
+    ],
+    "model": "gpt-4o",
+    "temperature": 0.7,
+    "max_tokens": 500
+  }'
+```
+
+### Execute Orchestration Pipeline
+
+```bash
+curl -X POST http://localhost:3000/api/v1/orchestration/execute \
+  -H "Content-Type: application/json" \
+  -H "x-tenant-id: tenant-123" \
+  -d '{
+    "conversation_id": "conv-456",
+    "steps": [
+      {
+        "name": "retrieve_context",
+        "service": "rag",
+        "input": {"query": "patient info"}
+      },
+      {
+        "name": "generate_response",
+        "service": "llm-router",
+        "input": {"prompt": "Generate summary"}
+      }
+    ]
+  }'
+```
+
+### WebSocket Connection
+
+```javascript
+const ws = new WebSocket('ws://localhost:3000/ws/conversations/conv-456');
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Received:', message);
+};
+
+ws.send(JSON.stringify({
+  type: 'message',
+  content: 'Hello, assistant!'
+}));
+```
+
+---
+
+## Testing
+
+### Run All Tests
+
+```bash
+# TypeScript services (Vitest)
+pnpm test
+
+# Python services (pytest)
+cd apps/orchestration-engine && pytest
+cd apps/llm-router && pytest
+```
+
+### Coverage Reports
+
+```bash
+# Generate coverage for entire workspace
+pnpm test -- --coverage
+
+# View HTML report
+open coverage/index.html
+```
+
+---
+
+## Documentation
+
+Currently maintaining these resources:
+
+- [Performance Report](./performance_report.md) - System metrics and benchmarks
+- [Architecture Decision Records](./docs/adr/) - Design decisions
+- [API Reference](./docs/api/) - Endpoint documentation
+- [Deployment Guide](./docs/deployment.md) - Production setup
+
+---
+
+## Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feat/amazing-feature`
+3. **Commit** changes: `git commit -m 'feat: add amazing feature'`
+4. **Push** to branch: `git push origin feat/amazing-feature`
+5. **Open** a Pull Request
+
+### Code Style
+
+- **TypeScript:** ESLint + Prettier
+- **Python:** Black formatter, isort imports
+- **Commits:** Conventional Commits format
+
+```bash
+# Run linting
+pnpm lint
+
+# Format code
+pnpm prettier --write .
+```
+
+---
+
+## Performance
+
+Current performance metrics (simulated, 24-hour period):
+
+| Metric | Value |
+|--------|-------|
+| **Overall Pipeline Latency (p95)** | 240ms |
+| **Average LLM Response Time** | 145ms |
+| **Total LLM Cost** | $0.15 |
+| **System Uptime** | 99.9% |
+| **Requests/sec** | 150+ |
+
+See [performance_report.md](./performance_report.md) for detailed metrics.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|----------|
-| **Monorepo** | Turborepo + pnpm workspaces |
-| **API Gateway** | Fastify 5, Pino |
-| **Microservices** | FastAPI, Loguru, Pydantic |
-| **LLM SDKs** | OpenAI, Anthropic, Google AI |
-| **Vector Search** | FAISS (swappable to Pinecone/Qdrant) |
-| **Frontend** | Next.js 15, Tailwind, Framer Motion |
-| **Infrastructure** | Docker, Kubernetes, Terraform |
-| **Observability** | OpenTelemetry, OTLP |
-| **Databases** | PostgreSQL 16, Redis 7 |
+| Category | Technology |
+|----------|-----------|
+| **Orchestration** | Turborepo, pnpm workspaces |
+| **API Gateway** | Fastify 5, TypeScript 5.7 |
+| **Services** | FastAPI 0.115, Python 3.11 |
+| **Database** | PostgreSQL 16, SQLAlchemy async |
+| **Cache** | Redis 7 |
+| **Frontend** | Next.js 15, React 19, Tailwind CSS |
+| **LLM Providers** | OpenAI, Anthropic, Google Gemini |
+| **Observability** | OpenTelemetry, Loguru, Pino |
+| **Containers** | Docker, Docker Compose |
+| **Orchestration** | Kubernetes, Helm |
+| **IaC** | Terraform |
+
 
 ---
 
-## License
-
-MIT License — See [LICENSE](LICENSE) for details
+<p align="center">
+  Built for Performance
+</p>
