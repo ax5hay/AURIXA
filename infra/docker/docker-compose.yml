@@ -1,0 +1,194 @@
+version: "3.9"
+
+x-python-service: &python-service
+  build:
+    context: ../../
+  restart: unless-stopped
+  env_file: ../../.env
+  networks:
+    - aurixa
+
+services:
+  # ---------- Infrastructure ----------
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - aurixa
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aurixa
+      POSTGRES_PASSWORD: aurixa
+      POSTGRES_DB: aurixa
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - aurixa
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurixa"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ---------- TypeScript Services ----------
+  api-gateway:
+    build:
+      context: ../../apps/api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: ../../.env
+    environment:
+      API_GATEWAY_PORT: 3000
+      ORCHESTRATION_HOST: orchestration-engine
+      LLM_ROUTER_HOST: llm-router
+      AGENT_RUNTIME_HOST: agent-runtime
+      RAG_SERVICE_HOST: rag-service
+      SAFETY_HOST: safety-guardrails
+      VOICE_HOST: streaming-voice
+      EXECUTION_HOST: execution-engine
+      OBSERVABILITY_HOST: observability-core
+    depends_on:
+      - orchestration-engine
+      - llm-router
+    networks:
+      - aurixa
+
+  # ---------- Python Services ----------
+  orchestration-engine:
+    build:
+      context: ../../apps/orchestration-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    env_file: ../../.env
+    environment:
+      ORCHESTRATION_ENGINE_PORT: 8001
+    networks:
+      - aurixa
+
+  llm-router:
+    build:
+      context: ../../apps/llm-router
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    env_file: ../../.env
+    environment:
+      LLM_ROUTER_PORT: 8002
+    networks:
+      - aurixa
+
+  agent-runtime:
+    build:
+      context: ../../apps/agent-runtime
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    env_file: ../../.env
+    environment:
+      AGENT_RUNTIME_PORT: 8003
+    networks:
+      - aurixa
+
+  rag-service:
+    build:
+      context: ../../apps/rag-service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    env_file: ../../.env
+    environment:
+      RAG_SERVICE_PORT: 8004
+    networks:
+      - aurixa
+
+  safety-guardrails:
+    build:
+      context: ../../apps/safety-guardrails
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    env_file: ../../.env
+    environment:
+      SAFETY_GUARDRAILS_PORT: 8005
+    networks:
+      - aurixa
+
+  streaming-voice:
+    build:
+      context: ../../apps/streaming-voice
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8006"
+    env_file: ../../.env
+    environment:
+      STREAMING_VOICE_PORT: 8006
+    networks:
+      - aurixa
+
+  execution-engine:
+    build:
+      context: ../../apps/execution-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8007:8007"
+    env_file: ../../.env
+    environment:
+      EXECUTION_ENGINE_PORT: 8007
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - aurixa
+
+  observability-core:
+    build:
+      context: ../../apps/observability-core
+      dockerfile: Dockerfile
+    ports:
+      - "8008:8008"
+    env_file: ../../.env
+    environment:
+      OBSERVABILITY_CORE_PORT: 8008
+    networks:
+      - aurixa
+
+  # ---------- Frontend ----------
+  dashboard:
+    build:
+      context: ../../frontend/dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3100:3100"
+    networks:
+      - aurixa
+
+  admin-console:
+    build:
+      context: ../../frontend/admin-console
+      dockerfile: Dockerfile
+    ports:
+      - "3200:3200"
+    networks:
+      - aurixa
+
+volumes:
+  redis-data:
+  pg-data:
+
+networks:
+  aurixa:
+    driver: bridge

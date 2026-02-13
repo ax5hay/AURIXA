@@ -1,0 +1,66 @@
+# Template for Python service deployments.
+# Copy and customize for each service: orchestration-engine, llm-router,
+# agent-runtime, rag-service, safety-guardrails, streaming-voice,
+# execution-engine, observability-core.
+#
+# Replace: SERVICE_NAME, SERVICE_PORT, IMAGE_NAME
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: SERVICE_NAME
+  namespace: aurixa
+  labels:
+    app: SERVICE_NAME
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: SERVICE_NAME
+  template:
+    metadata:
+      labels:
+        app: SERVICE_NAME
+    spec:
+      containers:
+        - name: SERVICE_NAME
+          image: aurixa/SERVICE_NAME:latest
+          ports:
+            - containerPort: SERVICE_PORT
+          envFrom:
+            - configMapRef:
+                name: aurixa-config
+            - secretRef:
+                name: aurixa-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: SERVICE_PORT
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: SERVICE_PORT
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: SERVICE_NAME
+  namespace: aurixa
+spec:
+  selector:
+    app: SERVICE_NAME
+  ports:
+    - port: SERVICE_PORT
+      targetPort: SERVICE_PORT
+  type: ClusterIP
