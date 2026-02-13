@@ -6,6 +6,7 @@ import websocket from "@fastify/websocket";
 import { healthRoutes } from "./routes/health.js";
 import { proxyRoutes } from "./routes/proxy.js";
 import { wsRoutes } from "./routes/websocket.js";
+import { adminRoutes } from "./routes/admin.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { SERVICE_REGISTRY } from "./config.js";
 
@@ -53,6 +54,7 @@ async function main() {
   await app.register(healthRoutes, { prefix: "/" });
   await app.register(proxyRoutes, { prefix: "/api/v1" });
   await app.register(wsRoutes, { prefix: "/ws" });
+  await app.register(adminRoutes, { prefix: "/api/v1/admin" });
 
   // Graceful shutdown
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];

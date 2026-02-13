@@ -79,7 +79,7 @@ async def run_pipeline(
     # Create a new conversation record in the database
     conversation = db_models.Conversation(
         session_id=request.session_id,
-        metadata={"user_id": request.user_id, "tenant_id": request.tenant_id}
+        meta_data={"user_id": request.user_id, "tenant_id": request.tenant_id}
     )
     db.add(conversation)
     await db.commit()

@@ -1,5 +1,129 @@
 [
     {
+        "label": "runpy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "runpy",
+        "description": "runpy",
+        "detail": "runpy",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "annotations",
+        "importPath": "__future__",
+        "description": "__future__",
+        "isExtraImport": true,
+        "detail": "__future__",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "site",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "site",
+        "description": "site",
+        "detail": "site",
+        "documentation": {}
+    },
+    {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
         "label": "BaseSettings",
         "importPath": "pydantic_settings",
         "description": "pydantic_settings",
@@ -317,6 +441,14 @@
         "description": "fastapi",
         "isExtraImport": true,
         "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "logger",
+        "importPath": "loguru",
+        "description": "loguru",
+        "isExtraImport": true,
+        "detail": "loguru",
         "documentation": {}
     },
     {
@@ -960,95 +1092,6 @@
         "documentation": {}
     },
     {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "annotations",
-        "importPath": "__future__",
-        "description": "__future__",
-        "isExtraImport": true,
-        "detail": "__future__",
-        "documentation": {}
-    },
-    {
-        "label": "os",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "os",
-        "description": "os",
-        "detail": "os",
-        "documentation": {}
-    },
-    {
         "label": "jwt",
         "kind": 6,
         "isExtraImport": true,
@@ -1122,15 +1165,6 @@
         "documentation": {}
     },
     {
-        "label": "sys",
-        "kind": 6,
-        "isExtraImport": true,
-        "importPath": "sys",
-        "description": "sys",
-        "detail": "sys",
-        "documentation": {}
-    },
-    {
         "label": "uuid",
         "kind": 6,
         "isExtraImport": true,
@@ -1201,6 +1235,14 @@
     },
     {
         "label": "async_sessionmaker",
+        "importPath": "sqlalchemy.ext.asyncio",
+        "description": "sqlalchemy.ext.asyncio",
+        "isExtraImport": true,
+        "detail": "sqlalchemy.ext.asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "AsyncSession",
         "importPath": "sqlalchemy.ext.asyncio",
         "description": "sqlalchemy.ext.asyncio",
         "isExtraImport": true,
@@ -1362,6 +1404,79 @@
         "documentation": {}
     },
     {
+        "label": "asyncio",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "asyncio",
+        "description": "asyncio",
+        "detail": "asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "AsyncSessionLocal",
+        "importPath": "aurixa_db.database",
+        "description": "aurixa_db.database",
+        "isExtraImport": true,
+        "detail": "aurixa_db.database",
+        "documentation": {}
+    },
+    {
+        "label": "engine",
+        "importPath": "aurixa_db.database",
+        "description": "aurixa_db.database",
+        "isExtraImport": true,
+        "detail": "aurixa_db.database",
+        "documentation": {}
+    },
+    {
+        "label": "Tenant",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Patient",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Appointment",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "KnowledgeBaseArticle",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Base",
+        "importPath": "aurixa_db.models",
+        "description": "aurixa_db.models",
+        "isExtraImport": true,
+        "detail": "aurixa_db.models",
+        "documentation": {}
+    },
+    {
         "label": "json",
         "kind": 6,
         "isExtraImport": true,
@@ -1400,6 +1515,87 @@
         "description": "enum",
         "isExtraImport": true,
         "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "bin_dir",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "bin_dir = os.path.dirname(abs_file)\nbase = bin_dir[: -len(\"bin\") - 1]  # strip away the bin part from the __file__, plus the path separator\n# prepend bin to PATH (this file is inside the bin directory)\nos.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"AURIXA\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "base",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "base = bin_dir[: -len(\"bin\") - 1]  # strip away the bin part from the __file__, plus the path separator\n# prepend bin to PATH (this file is inside the bin directory)\nos.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"AURIXA\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"PATH\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"PATH\"] = os.pathsep.join([bin_dir, *os.environ.get(\"PATH\", \"\").split(os.pathsep)])\nos.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"AURIXA\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"VIRTUAL_ENV\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"VIRTUAL_ENV\"] = base  # virtual env is right above bin directory\nos.environ[\"VIRTUAL_ENV_PROMPT\"] = \"AURIXA\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "os.environ[\"VIRTUAL_ENV_PROMPT\"]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "os.environ[\"VIRTUAL_ENV_PROMPT\"] = \"AURIXA\" or os.path.basename(base)  # noqa: SIM222\n# add the virtual environments libraries to the host python import mechanism\nprev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "prev_length",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "prev_length = len(sys.path)\nfor lib in \"../lib/python3.11/site-packages\".split(os.pathsep):\n    path = os.path.realpath(os.path.join(bin_dir, lib))\n    site.addsitedir(path)\nsys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.path[:]",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.path[:] = sys.path[prev_length:] + sys.path[0:prev_length]\nsys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.real_prefix",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.real_prefix = sys.prefix\nsys.prefix = base",
+        "detail": ".venv.bin.activate_this",
+        "documentation": {}
+    },
+    {
+        "label": "sys.prefix",
+        "kind": 5,
+        "importPath": ".venv.bin.activate_this",
+        "description": ".venv.bin.activate_this",
+        "peekOfCode": "sys.prefix = base",
+        "detail": ".venv.bin.activate_this",
         "documentation": {}
     },
     {
@@ -2001,7 +2197,7 @@
         "kind": 6,
         "importPath": "packages.db.src.aurixa_db.models",
         "description": "packages.db.src.aurixa_db.models",
-        "peekOfCode": "class Conversation(Base):\n    \"\"\"Represents a single conversation or session.\"\"\"\n    __tablename__ = \"conversations\"\n    session_id: Mapped[str] = mapped_column(String, unique=True, index=True)\n    metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    pipeline_steps: Mapped[List[\"PipelineStep\"]] = relationship(back_populates=\"conversation\")\nclass PipelineStep(Base):\n    \"\"\"Represents a single step within a conversation pipeline.\"\"\"\n    __tablename__ = \"pipeline_steps\"\n    conversation_id: Mapped[int] = mapped_column(ForeignKey(\"conversations.id\"))",
+        "peekOfCode": "class Conversation(Base):\n    \"\"\"Represents a single conversation or session.\"\"\"\n    __tablename__ = \"conversations\"\n    session_id: Mapped[str] = mapped_column(String, unique=True, index=True)\n    meta_data: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    pipeline_steps: Mapped[List[\"PipelineStep\"]] = relationship(back_populates=\"conversation\")\nclass PipelineStep(Base):\n    \"\"\"Represents a single step within a conversation pipeline.\"\"\"\n    __tablename__ = \"pipeline_steps\"\n    conversation_id: Mapped[int] = mapped_column(ForeignKey(\"conversations.id\"))",
         "detail": "packages.db.src.aurixa_db.models",
         "documentation": {}
     },
@@ -2011,6 +2207,51 @@
         "importPath": "packages.db.src.aurixa_db.models",
         "description": "packages.db.src.aurixa_db.models",
         "peekOfCode": "class PipelineStep(Base):\n    \"\"\"Represents a single step within a conversation pipeline.\"\"\"\n    __tablename__ = \"pipeline_steps\"\n    conversation_id: Mapped[int] = mapped_column(ForeignKey(\"conversations.id\"))\n    step_name: Mapped[str] = mapped_column(String)\n    status: Mapped[str] = mapped_column(String)\n    input: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    output: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    error_message: Mapped[str] = mapped_column(Text, nullable=True)\n    start_time: Mapped[float] = mapped_column(nullable=True)",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Tenant",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class Tenant(Base):\n    \"\"\"Represents a single tenant organization (e.g., a hospital or clinic).\"\"\"\n    __tablename__ = \"tenants\"\n    name: Mapped[str] = mapped_column(String, unique=True)\n    domain: Mapped[str] = mapped_column(String, unique=True, nullable=True)\n    users: Mapped[List[\"User\"]] = relationship(back_populates=\"tenant\")\n    appointments: Mapped[List[\"Appointment\"]] = relationship(back_populates=\"tenant\")\n    knowledge_articles: Mapped[List[\"KnowledgeBaseArticle\"]] = relationship(back_populates=\"tenant\")\nclass User(Base):\n    \"\"\"Represents a user of the AURIXA admin console or dashboard.\"\"\"",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class User(Base):\n    \"\"\"Represents a user of the AURIXA admin console or dashboard.\"\"\"\n    __tablename__ = \"users\"\n    email: Mapped[str] = mapped_column(String, unique=True, index=True)\n    hashed_password: Mapped[str] = mapped_column(String)\n    full_name: Mapped[str] = mapped_column(String, nullable=True)\n    is_active: Mapped[bool] = mapped_column(default=True)\n    tenant_id: Mapped[int] = mapped_column(ForeignKey(\"tenants.id\"))\n    tenant: Mapped[\"Tenant\"] = relationship(back_populates=\"users\")\nclass Patient(Base):",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Patient",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class Patient(Base):\n    \"\"\"Represents an end-user of a tenant (e.g., a patient).\"\"\"\n    __tablename__ = \"patients\"\n    full_name: Mapped[str] = mapped_column(String)\n    email: Mapped[str] = mapped_column(String, nullable=True)\n    phone_number: Mapped[str] = mapped_column(String, nullable=True)\n    appointments: Mapped[List[\"Appointment\"]] = relationship(back_populates=\"patient\")\nclass Appointment(Base):\n    \"\"\"Represents a single appointment.\"\"\"\n    __tablename__ = \"appointments\"",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "Appointment",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class Appointment(Base):\n    \"\"\"Represents a single appointment.\"\"\"\n    __tablename__ = \"appointments\"\n    start_time: Mapped[datetime.datetime] = mapped_column()\n    end_time: Mapped[datetime.datetime] = mapped_column()\n    provider_name: Mapped[str] = mapped_column(String) # e.g., Dr. Smith\n    status: Mapped[str] = mapped_column(String, default=\"confirmed\") # confirmed, cancelled, completed\n    tenant_id: Mapped[int] = mapped_column(ForeignKey(\"tenants.id\"))\n    tenant: Mapped[\"Tenant\"] = relationship(back_populates=\"appointments\")\n    patient_id: Mapped[int] = mapped_column(ForeignKey(\"patients.id\"))",
+        "detail": "packages.db.src.aurixa_db.models",
+        "documentation": {}
+    },
+    {
+        "label": "KnowledgeBaseArticle",
+        "kind": 6,
+        "importPath": "packages.db.src.aurixa_db.models",
+        "description": "packages.db.src.aurixa_db.models",
+        "peekOfCode": "class KnowledgeBaseArticle(Base):\n    \"\"\"Represents an article in the RAG knowledge base.\"\"\"\n    __tablename__ = \"knowledge_base_articles\"\n    title: Mapped[str] = mapped_column(String)\n    content: Mapped[str] = mapped_column(Text)\n    meta_data: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=True)\n    tenant_id: Mapped[int] = mapped_column(ForeignKey(\"tenants.id\"))\n    tenant: Mapped[\"Tenant\"] = relationship(back_populates=\"knowledge_articles\")",
         "detail": "packages.db.src.aurixa_db.models",
         "documentation": {}
     },

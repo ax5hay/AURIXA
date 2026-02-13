@@ -11,7 +11,7 @@ dependencies = [
 
 [build-system]
 requires = ["hatchling"]
-build-backend = "hatchling.backends.core"
+build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/aurixa_db"]
