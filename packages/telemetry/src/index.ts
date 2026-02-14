@@ -7,9 +7,9 @@ import {
 } from "@opentelemetry/sdk-trace-node";
 import { Resource } from "@opentelemetry/resources";
 import {
-  ATTR_SERVICE_NAME,
-  ATTR_SERVICE_VERSION,
-  ATTR_DEPLOYMENT_ENVIRONMENT_NAME,
+  SEMRESATTRS_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_VERSION,
+  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
 } from "@opentelemetry/semantic-conventions";
 import {
   trace,
@@ -77,9 +77,9 @@ export function initTelemetry(options: TelemetryOptions): NodeSDK {
 
   // Build resource attributes
   const resource = new Resource({
-    [ATTR_SERVICE_NAME]: serviceName,
-    [ATTR_SERVICE_VERSION]: serviceVersion,
-    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: environment,
+    [SEMRESATTRS_SERVICE_NAME]: serviceName,
+    [SEMRESATTRS_SERVICE_VERSION]: serviceVersion,
+    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: environment,
   });
 
   // OTLP exporter (sends spans over HTTP to the collector)

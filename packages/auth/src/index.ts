@@ -1,10 +1,11 @@
 import jwt, {
+  NotBeforeError,
+  type SignOptions,
   JsonWebTokenError,
   TokenExpiredError,
-  NotBeforeError,
 } from "jsonwebtoken";
 import fp from "fastify-plugin";
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";m "fastify";m "fastify";m "fastify";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -125,14 +126,17 @@ export function signJWT(
   const key = resolveSecret(secret);
   const iss = options?.issuer ?? process.env.JWT_ISSUER ?? "aurixa";
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const signOptions: any = {
+    algorithm: "HS256",
+    expiresIn: options?.expiresIn ?? process.env.JWT_EXPIRES_IN ?? "1h",
+    issuer: iss,
+  };
+
   return jwt.sign(
     { sub: payload.sub, tenantId: payload.tenantId, roles: payload.roles },
     key,
-    {
-      algorithm: "HS256",
-      expiresIn: options?.expiresIn ?? process.env.JWT_EXPIRES_IN ?? "1h",
-      issuer: iss,
-    },
+    signOptions,
   );
 }
 
