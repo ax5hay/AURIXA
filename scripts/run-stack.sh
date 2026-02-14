@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Run the minimum AURIXA stack for development.
+# 1. Starts Postgres (and Redis) via Docker if not running
+# 2. Seeds the database
+# 3. Starts API Gateway, Orchestration, Observability
+# 4. Starts frontends (Dashboard unified, Patient Portal)
+# Frontends use --hostname 127.0.0.1 for sandbox/CI compatibility.
+
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+# Raise open-file limit to avoid EMFILE when starting many processes
+ulimit -n 65536 2>/dev/null || true
+
+echo "=== AURIXA Run Stack ==="
+
+# Start infra if docker available
+if command -v docker &> /dev/null; then
+  if ! docker ps | grep -q aurixa.*postgres; then
+    echo "Starting Postgres..."
+    cd infra/docker && docker-compose up -d postgres redis 2>/dev/null || true
+    cd "$ROOT"
+    sleep 3
+  fi
+else
+  echo "Docker not found. Ensure Postgres is running on localhost:5432 (user: aurixa, pass: aurixa, db: aurixa)"
+fi
+
+# Seed DB
+echo "Seeding database..."
+pnpm db:seed 2>/dev/null || (cd packages/db && python seed.py)
+
+# Start backend services in background
+echo "Starting API Gateway..."
+(cd apps/api-gateway && API_GATEWAY_HOST=127.0.0.1 pnpm dev) &
+GATEWAY_PID=$!
+sleep 2
+
+# Python services: use uv run (or pip-installed uvicorn)
+# uv can panic on some macOS; fallback to pip install -e . then uvicorn
+run_python_app() {
+  local dir=$1 mod=$2 port=$3
+  (cd "$dir" && (uv run uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port" 2>/dev/null || python -m uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port")) &
+}
+
+# Python apps: try uv run first; if uv panics (e.g. macOS), ensure deps are installed:
+#   pip install -e packages/db packages/llm-clients
+#   pip install -e apps/orchestration-engine apps/observability-core apps/llm-router apps/agent-runtime apps/rag-service apps/safety-guardrails apps/streaming-voice apps/execution-engine
+
+echo "Starting Orchestration Engine..."
+run_python_app apps/orchestration-engine orchestration_engine 8001
+sleep 2
+
+echo "Starting Observability Core..."
+run_python_app apps/observability-core observability_core 8008
+sleep 1
+
+echo "Starting RAG Service (model load ~30s)..."
+run_python_app apps/rag-service rag_service 8004
+sleep 2
+
+echo "Starting LLM Router..."
+run_python_app apps/llm-router llm_router 8002
+sleep 1
+
+echo "Starting Agent Runtime..."
+run_python_app apps/agent-runtime agent_runtime 8003
+sleep 1
+
+echo "Starting Safety Guardrails..."
+run_python_app apps/safety-guardrails safety_guardrails 8005
+sleep 1
+
+echo "Starting Streaming Voice..."
+run_python_app apps/streaming-voice streaming_voice 8006
+sleep 1
+
+echo "Starting Execution Engine..."
+run_python_app apps/execution-engine execution_engine 8007
+sleep 1
+
+# Start frontends
+echo "Starting frontends..."
+pnpm --filter @aurixa/dashboard dev &
+pnpm --filter @aurixa/patient-portal dev &
+
+echo ""
+echo "Stack running. Endpoints:"
+echo "  Gateway:       http://localhost:3000"
+echo "  Orchestration: http://localhost:8001"
+echo "  LLM Router:   http://localhost:8002"
+echo "  Agent Runtime: http://localhost:8003"
+echo "  RAG Service:  http://localhost:8004"
+echo "  Safety:       http://localhost:8005"
+echo "  Voice:        http://localhost:8006"
+echo "  Execution:    http://localhost:8007"
+echo "  Observability: http://localhost:8008"
+echo "  Dashboard:    http://localhost:3100 (unified)"
+echo "  Patient:      http://localhost:3300"
+echo ""
+echo "Run ./scripts/e2e-check.sh to verify APIs."
+echo "If Python services fail, run ./scripts/bootstrap-python.sh once."
+echo "Press Ctrl+C to stop all."
+
+wait

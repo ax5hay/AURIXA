@@ -11,7 +11,8 @@ try:
     AsyncSessionLocal = async_sessionmaker(
         autocommit=False, 
         autoflush=False, 
-        bind=engine
+        bind=engine,
+        expire_on_commit=False,
     )
     logger.info("Database engine created successfully for URL: {}", DATABASE_URL)
 except Exception as e:

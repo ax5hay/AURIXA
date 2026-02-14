@@ -2,9 +2,21 @@
 
 from .base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, JSON, ForeignKey, Text
+from sqlalchemy import String, JSON, ForeignKey, Text, Integer
 from typing import List, Dict, Any
 import datetime
+
+
+class AuditLog(Base):
+    """Audit trail for system events."""
+    __tablename__ = "audit_logs"
+
+    service: Mapped[str] = mapped_column(String, index=True)
+    action: Mapped[str] = mapped_column(String)
+    user: Mapped[str] = mapped_column(String)
+    details: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String, default="info")  # info, warning, error
+
 
 class Conversation(Base):
     """Represents a single conversation or session."""
@@ -37,6 +49,9 @@ class Tenant(Base):
 
     name: Mapped[str] = mapped_column(String, unique=True)
     domain: Mapped[str] = mapped_column(String, unique=True, nullable=True)
+    plan: Mapped[str] = mapped_column(String, default="starter")  # starter, professional, enterprise
+    status: Mapped[str] = mapped_column(String, default="active")  # active, suspended, pending
+    api_key_count: Mapped[int] = mapped_column(Integer, default=0)
 
     users: Mapped[List["User"]] = relationship(back_populates="tenant")
     appointments: Mapped[List["Appointment"]] = relationship(back_populates="tenant")
@@ -61,7 +76,8 @@ class Patient(Base):
     full_name: Mapped[str] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, nullable=True)
     phone_number: Mapped[str] = mapped_column(String, nullable=True)
-    
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=True)
+
     appointments: Mapped[List["Appointment"]] = relationship(back_populates="patient")
 
 class Appointment(Base):
@@ -89,3 +105,12 @@ class KnowledgeBaseArticle(Base):
 
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
     tenant: Mapped["Tenant"] = relationship(back_populates="knowledge_articles")
+
+
+class PlatformConfig(Base):
+    """Key-value platform configuration (feature flags, rate limits, etc.)."""
+    __tablename__ = "platform_config"
+
+    key: Mapped[str] = mapped_column(String, unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String, default="general")  # general, rate_limit, feature, api

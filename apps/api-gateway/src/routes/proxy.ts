@@ -9,7 +9,6 @@ const ROUTE_MAP: Record<string, string> = {
   rag: "rag",
   safety: "safety",
   execute: "execution",
-  observe: "observability",
 };
 
 export async function proxyRoutes(app: FastifyInstance) {
@@ -20,7 +19,7 @@ export async function proxyRoutes(app: FastifyInstance) {
       async (req: FastifyRequest, reply: FastifyReply) => {
         const upstream = getServiceUrl(serviceName);
         const path = (req.params as Record<string, string>)["*"];
-        const url = `${upstream}/${path}`;
+        const url = `${upstream}/api/v1/${path ?? ""}`;
 
         const start = performance.now();
         try {

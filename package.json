@@ -9,7 +9,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:seed": "cd packages/db && python seed.py"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

@@ -69,13 +69,16 @@ services:
   # ---------- Python Services ----------
   orchestration-engine:
     build:
-      context: ../../apps/orchestration-engine
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/orchestration-engine/Dockerfile
     ports:
       - "8001:8001"
     env_file: ../../.env
     environment:
       ORCHESTRATION_ENGINE_PORT: 8001
+      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+    depends_on:
+      - postgres
     networks:
       - aurixa
 
@@ -173,15 +176,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3100:3100"
-    networks:
-      - aurixa
-
-  admin-console:
-    build:
-      context: ../../frontend/admin-console
-      dockerfile: Dockerfile
-    ports:
-      - "3200:3200"
     networks:
       - aurixa
 

@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy import select, func
+from pydantic import BaseModel
 
 from aurixa_db import get_db_session, engine, Base, models as db_models
 from . import clients
@@ -65,6 +66,206 @@ async def execute_step(
 async def health():
     """Return a 200 OK status if the service is healthy."""
     return {"service": "orchestration-engine", "status": "healthy"}
+
+
+# --- Admin API (tenants, audit, patients) ---
+
+class TenantOut(BaseModel):
+    id: str
+    name: str
+    plan: str
+    status: str
+    api_keys: int
+    created: str
+
+    class Config:
+        from_attributes = True
+
+
+@app.get("/api/v1/tenants", summary="List all tenants")
+async def list_tenants(db: AsyncSession = Depends(get_db_session)):
+    result = await db.execute(select(db_models.Tenant).order_by(db_models.Tenant.id))
+    tenants = result.scalars().all()
+    return [
+        {
+            "id": f"t-{t.id:03d}",
+            "name": t.name,
+            "plan": t.plan,
+            "status": t.status,
+            "apiKeys": t.api_key_count,
+            "created": t.created_at.strftime("%Y-%m-%d") if t.created_at else "",
+        }
+        for t in tenants
+    ]
+
+
+class AuditEntryOut(BaseModel):
+    id: str
+    timestamp: str
+    service: str
+    action: str
+    user: str
+    details: str
+    severity: str
+
+
+@app.get("/api/v1/audit", summary="List audit logs")
+async def list_audit(db: AsyncSession = Depends(get_db_session), limit: int = 50):
+    result = await db.execute(
+        select(db_models.AuditLog).order_by(db_models.AuditLog.id.desc()).limit(limit)
+    )
+    logs = result.scalars().all()
+    return [
+        {
+            "id": f"a-{log.id:03d}",
+            "timestamp": log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else "",
+            "service": log.service,
+            "action": log.action,
+            "user": log.user,
+            "details": log.details,
+            "severity": log.severity,
+        }
+        for log in logs
+    ]
+
+
+@app.get("/api/v1/patients", summary="List patients (optionally by tenant)")
+async def list_patients(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+):
+    q = select(db_models.Patient)
+    if tenant_id:
+        q = q.where(db_models.Patient.tenant_id == tenant_id)
+    result = await db.execute(q.order_by(db_models.Patient.id))
+    patients = result.scalars().all()
+    return [
+        {
+            "id": p.id,
+            "fullName": p.full_name,
+            "email": p.email,
+            "phoneNumber": p.phone_number,
+        }
+        for p in patients
+    ]
+
+
+@app.get("/api/v1/patients/{patient_id}", summary="Get a single patient by ID")
+async def get_patient(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db_session),
+):
+    result = await db.execute(
+        select(db_models.Patient).where(db_models.Patient.id == patient_id)
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    return {
+        "id": p.id,
+        "fullName": p.full_name,
+        "email": p.email or "",
+        "phoneNumber": p.phone_number or "",
+        "tenantId": p.tenant_id,
+    }
+
+
+@app.get("/api/v1/patients/{patient_id}/appointments", summary="List appointments for a patient")
+async def list_patient_appointments(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db_session),
+):
+    result = await db.execute(
+        select(db_models.Appointment)
+        .where(db_models.Appointment.patient_id == patient_id)
+        .order_by(db_models.Appointment.start_time.desc())
+    )
+    appointments = result.scalars().all()
+    return [
+        {
+            "id": a.id,
+            "startTime": a.start_time.isoformat() if a.start_time else None,
+            "endTime": a.end_time.isoformat() if a.end_time else None,
+            "providerName": a.provider_name,
+            "status": a.status,
+        }
+        for a in appointments
+    ]
+
+
+@app.get("/api/v1/analytics/summary", summary="DB-backed analytics summary")
+async def get_analytics_summary(db: AsyncSession = Depends(get_db_session)):
+    """Aggregate counts from DB for dashboards."""
+    conv = await db.execute(select(func.count(db_models.Conversation.id)))
+    tenants = await db.execute(select(func.count(db_models.Tenant.id)))
+    audit = await db.execute(select(func.count(db_models.AuditLog.id)))
+    kb = await db.execute(select(func.count(db_models.KnowledgeBaseArticle.id)))
+    patients = await db.execute(select(func.count(db_models.Patient.id)))
+    appointments = await db.execute(select(func.count(db_models.Appointment.id)))
+    return {
+        "conversations_total": conv.scalar() or 0,
+        "tenants_count": tenants.scalar() or 0,
+        "audit_entries_count": audit.scalar() or 0,
+        "knowledge_articles_count": kb.scalar() or 0,
+        "patients_count": patients.scalar() or 0,
+        "appointments_count": appointments.scalar() or 0,
+    }
+
+
+@app.get("/api/v1/config/summary", summary="Platform configuration summary")
+async def get_config_summary(db: AsyncSession = Depends(get_db_session)):
+    """Platform config for Configuration page."""
+    logger.debug("Fetching config summary")
+    result = await db.execute(select(db_models.Tenant))
+    tenants = result.scalars().all()
+    tenants_by_plan = {"starter": 0, "professional": 0, "enterprise": 0}
+    tenants_by_status = {"active": 0, "suspended": 0, "pending": 0}
+    for t in tenants:
+        if t.plan in tenants_by_plan:
+            tenants_by_plan[t.plan] += 1
+        if t.status in tenants_by_status:
+            tenants_by_status[t.status] += 1
+    return {
+        "tenants_count": len(tenants),
+        "tenants_by_plan": tenants_by_plan,
+        "tenants_by_status": tenants_by_status,
+    }
+
+
+@app.get("/api/v1/config/detail", summary="Full platform configuration from DB")
+async def get_config_detail(db: AsyncSession = Depends(get_db_session)):
+    """Platform config key-value entries for Configuration page."""
+    logger.debug("Fetching config detail")
+    result = await db.execute(select(db_models.PlatformConfig).order_by(db_models.PlatformConfig.category, db_models.PlatformConfig.key))
+    entries = result.scalars().all()
+    by_category: dict[str, list[dict[str, str]]] = {}
+    for e in entries:
+        cat = e.category or "general"
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append({"key": e.key, "value": e.value})
+    return {"categories": by_category}
+
+
+@app.get("/api/v1/knowledge/articles", summary="List knowledge base articles")
+async def list_knowledge_articles(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+):
+    q = select(db_models.KnowledgeBaseArticle)
+    if tenant_id:
+        q = q.where(db_models.KnowledgeBaseArticle.tenant_id == tenant_id)
+    result = await db.execute(q.order_by(db_models.KnowledgeBaseArticle.id))
+    articles = result.scalars().all()
+    return [
+        {
+            "id": a.id,
+            "title": a.title,
+            "content": a.content,
+            "tenantId": a.tenant_id,
+        }
+        for a in articles
+    ]
 
 
 @app.post("/api/v1/pipelines", response_model=ConversationState, summary="Run an orchestration pipeline")
@@ -129,7 +330,18 @@ async def run_pipeline(
 
     # Construct the final Pydantic response model from the DB data
     await db.refresh(conversation, ["pipeline_steps"])
-    pydantic_steps = [PydanticPipelineStep(**step.__dict__) for step in conversation.pipeline_steps]
+    pydantic_steps = [
+        PydanticPipelineStep(
+            name=step.step_name,
+            status=step.status,
+            input=step.input,
+            output=step.output,
+            error_message=step.error_message,
+            start_time=step.start_time,
+            end_time=step.end_time,
+        )
+        for step in conversation.pipeline_steps
+    ]
     
     return ConversationState(
         session_id=conversation.session_id,

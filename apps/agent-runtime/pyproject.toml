@@ -9,7 +9,7 @@ dependencies = [
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "httpx>=0.28.0",
-    "aurixa-llm-clients @ file:///${PROJECT_ROOT}/packages/llm-clients"
+    "aurixa-llm-clients>=0.1.0"
 ]
 
 [tool.uv]

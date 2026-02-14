@@ -35,11 +35,11 @@ The AURIXA platform follows a **microservices-first** architecture with clear se
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            CLIENT APPLICATIONS                              │
 │                                                                              │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐   │
-│  │     Dashboard      │  │  Admin Console     │  │  Patient Portal    │   │
-│  │   (Next.js 15)     │  │   (Next.js 15)     │  │   (Next.js 15)     │   │
-│  │     Port 3100      │  │     Port 3101      │  │     Port 3102      │   │
-│  └────────────────────┘  └────────────────────┘  └────────────────────┘   │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐   │
+│  │     Dashboard (Unified Admin)    │  │  Patient Portal                 │   │
+│  │        (Next.js 15)              │  │     (Next.js 15)                 │   │
+│  │        Port 3100                 │  │     Port 3102                   │   │
+│  └─────────────────────────────────┘  └─────────────────────────────────┘   │
 │                                  ▲                                           │
 └──────────────────────────────────┼───────────────────────────────────────────┘
                                    │ HTTPS / WebSocket
@@ -190,8 +190,7 @@ aurixa/
 │       └── package.json
 │
 ├── frontend/                      User-facing applications
-│   ├── dashboard/                 Analytics & playground (Next.js 15, Port 3100)
-│   ├── admin-console/             Tenant & system management (Next.js 15, Port 3101)
+│   ├── dashboard/                 Unified admin: analytics, playground, tenants, services, audit, configuration (Next.js 15, Port 3100)
 │   └── patient-portal/            Patient interface (Next.js 15, Port 3102)
 │
 ├── infra/                         Infrastructure as Code
@@ -323,6 +322,15 @@ cd apps/api-gateway && pnpm dev
 cd apps/orchestration-engine && uvicorn orchestration_engine.main:app --reload
 ```
 
+### Database Seeding
+
+Seed the database with mock tenants, patients, appointments, and audit logs:
+
+```bash
+# Ensure PostgreSQL is running (via docker-compose or locally)
+pnpm db:seed
+```
+
 ### Verify Installation
 
 ```bash
@@ -339,6 +347,15 @@ curl http://localhost:8002/health
 docker-compose logs -f api-gateway
 docker-compose logs -f orchestration-engine
 ```
+
+### Frontend Applications
+
+| App            | Port | Purpose                                                       |
+|----------------|------|---------------------------------------------------------------|
+| Dashboard      | 3100 | Unified: system status, playground, tenants, services, analytics, knowledge, config, audit, settings |
+| Patient Portal | 3300 | Patient chat & appointments                                   |
+
+All frontends fetch real data from the API gateway. Run with `pnpm dev` from the monorepo root.
 
 ---
 
