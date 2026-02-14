@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { getTenants, createTenant, type Tenant } from "@/app/services/api";
+import { getTenants, createTenant, updateTenant, type Tenant } from "@/app/services/api";
 
 const planColors: Record<string, string> = {
   starter: "bg-white/10 text-white/60",
@@ -30,6 +30,10 @@ export default function TenantsPage() {
   const [creating, setCreating] = useState(false);
   const [addModal, setAddModal] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newPlan, setNewPlan] = useState<"starter" | "professional" | "enterprise">("starter");
+  const [manageModal, setManageModal] = useState<Tenant | null>(null);
+  const [manageForm, setManageForm] = useState<{ name: string; plan: string; status: string }>({ name: "", plan: "starter", status: "active" });
+  const [updating, setUpdating] = useState(false);
 
   const fetchTenants = useCallback(() => {
     getTenants()
@@ -48,14 +52,38 @@ export default function TenantsPage() {
     setCreating(true);
     setError(null);
     try {
-      await createTenant({ name });
+      await createTenant({ name, plan: newPlan });
       setNewName("");
+      setNewPlan("starter");
       setAddModal(false);
       fetchTenants();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create tenant");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openManageModal = (tenant: Tenant) => {
+    setManageModal(tenant);
+    setManageForm({ name: tenant.name, plan: tenant.plan, status: tenant.status });
+    setError(null);
+  };
+
+  const handleUpdateTenant = async () => {
+    if (!manageModal) return;
+    const { name, plan, status } = manageForm;
+    if (!name.trim()) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      await updateTenant(manageModal.id, { name: name.trim(), plan, status });
+      setManageModal(null);
+      fetchTenants();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update tenant");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -100,10 +128,72 @@ export default function TenantsPage() {
               className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white mb-4"
               onKeyDown={(e) => e.key === "Enter" && handleCreateTenant()}
             />
+            <div className="mb-4">
+              <label className="block text-xs text-white/40 mb-1">Plan</label>
+              <select
+                value={newPlan}
+                onChange={(e) => setNewPlan(e.target.value as "starter" | "professional" | "enterprise")}
+                className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white"
+              >
+                <option value="starter">Starter</option>
+                <option value="professional">Professional</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </div>
             <div className="flex gap-2 justify-end">
               <button onClick={() => setAddModal(false)} className="px-4 py-2 text-white/60 hover:text-white">Cancel</button>
               <button onClick={handleCreateTenant} disabled={creating || !newName.trim()} className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white rounded-lg disabled:opacity-50">
                 {creating ? "Creating…" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setManageModal(null)}>
+          <div className="glass rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-white mb-4">Manage Tenant</h2>
+            <p className="text-xs text-white/40 font-mono mb-4">{manageModal.id}</p>
+            <div className="space-y-4 mb-4">
+              <div>
+                <label className="block text-xs text-white/40 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={manageForm.name}
+                  onChange={(e) => setManageForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-white/40 mb-1">Plan</label>
+                <select
+                  value={manageForm.plan}
+                  onChange={(e) => setManageForm((f) => ({ ...f, plan: e.target.value }))}
+                  className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="starter">Starter</option>
+                  <option value="professional">Professional</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-white/40 mb-1">Status</label>
+                <select
+                  value={manageForm.status}
+                  onChange={(e) => setManageForm((f) => ({ ...f, status: e.target.value }))}
+                  className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white"
+                >
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setManageModal(null)} className="px-4 py-2 text-white/60 hover:text-white">Cancel</button>
+              <button onClick={handleUpdateTenant} disabled={updating || !manageForm.name.trim()} className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white rounded-lg disabled:opacity-50">
+                {updating ? "Saving…" : "Save"}
               </button>
             </div>
           </div>
@@ -153,7 +243,7 @@ export default function TenantsPage() {
                   <td className="px-5 py-4 text-sm text-white/60 font-mono">{tenant.apiKeys ?? 0}</td>
                   <td className="px-5 py-4 text-sm text-white/40">{tenant.created}</td>
                   <td className="px-5 py-4 text-right">
-                    <button className="text-xs text-aurixa-400 hover:text-aurixa-300 transition-colors font-medium">Manage</button>
+                    <button onClick={() => openManageModal(tenant)} className="text-xs text-aurixa-400 hover:text-aurixa-300 transition-colors font-medium">Manage</button>
                   </td>
                 </motion.tr>
               ))

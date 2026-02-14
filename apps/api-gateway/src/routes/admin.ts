@@ -30,6 +30,14 @@ async function proxyToOrchestration(path: string, req: any, reply: any) {
 export async function adminRoutes(app: FastifyInstance) {
   app.get("/tenants", async (req, reply) => proxyToOrchestration("tenants", req, reply));
   app.post("/tenants", async (req, reply) => proxyToOrchestration("tenants", req, reply));
+  app.get("/tenants/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`tenants/${id}`, req, reply);
+  });
+  app.patch("/tenants/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`tenants/${id}`, req, reply);
+  });
   app.get("/audit", async (req, reply) => proxyToOrchestration("audit", req, reply));
   app.get("/analytics/summary", async (req, reply) => proxyToOrchestration("analytics/summary", req, reply));
   app.get("/config/summary", async (req, reply) => proxyToOrchestration("config/summary", req, reply));

@@ -50,6 +50,30 @@ export async function createTenant(data: { name: string; plan?: string; status?:
   return res.json();
 }
 
+export async function getTenant(id: string): Promise<Tenant> {
+  const res = await fetchApi(`/api/v1/admin/tenants/${encodeURIComponent(id)}`, FETCH_OPTS);
+  if (!res.ok) throw new Error("Failed to fetch tenant");
+  return res.json();
+}
+
+export async function updateTenant(
+  id: string,
+  data: { name?: string; plan?: string; status?: string }
+): Promise<Tenant> {
+  const res = await fetchApi(`/api/v1/admin/tenants/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update tenant");
+  const updated = await res.json();
+  return {
+    ...updated,
+    apiKeys: (updated as Tenant).apiKeys ?? 0,
+    created: (updated as Tenant).created ?? "",
+  };
+}
+
 export async function createPatient(data: { full_name: string; email?: string; phone_number?: string; tenant_id?: number }): Promise<PatientSummary> {
   const res = await fetchApi("/api/v1/admin/patients", {
     method: "POST",

@@ -186,6 +186,58 @@ async def create_tenant(data: TenantCreateIn, db: AsyncSession = Depends(get_db_
     return {"id": f"t-{t.id:03d}", "name": t.name, "plan": t.plan, "status": t.status}
 
 
+def _parse_tenant_id(tenant_id: str) -> int:
+    """Parse tenant id from 't-001' format to integer."""
+    s = (tenant_id or "").strip()
+    if s.startswith("t-"):
+        s = s[2:].lstrip("0") or "0"
+    try:
+        return int(s)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid tenant id")
+
+
+@app.get("/api/v1/tenants/{tenant_id}", summary="Get a tenant by ID")
+async def get_tenant(tenant_id: str, db: AsyncSession = Depends(get_db_session)):
+    pid = _parse_tenant_id(tenant_id)
+    result = await db.execute(select(db_models.Tenant).where(db_models.Tenant.id == pid))
+    t = result.scalar_one_or_none()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return {
+        "id": f"t-{t.id:03d}",
+        "name": t.name,
+        "plan": t.plan,
+        "status": t.status,
+        "apiKeys": t.api_key_count,
+        "created": t.created_at.strftime("%Y-%m-%d") if t.created_at else "",
+    }
+
+
+class TenantUpdateIn(BaseModel):
+    name: str | None = None
+    plan: str | None = None
+    status: str | None = None
+
+
+@app.patch("/api/v1/tenants/{tenant_id}", summary="Update a tenant")
+async def update_tenant(tenant_id: str, data: TenantUpdateIn, db: AsyncSession = Depends(get_db_session)):
+    pid = _parse_tenant_id(tenant_id)
+    result = await db.execute(select(db_models.Tenant).where(db_models.Tenant.id == pid))
+    t = result.scalar_one_or_none()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if data.name is not None:
+        t.name = data.name
+    if data.plan is not None:
+        t.plan = data.plan
+    if data.status is not None:
+        t.status = data.status
+    await db.commit()
+    await db.refresh(t)
+    return {"id": f"t-{t.id:03d}", "name": t.name, "plan": t.plan, "status": t.status}
+
+
 class AuditEntryOut(BaseModel):
     id: str
     timestamp: str
