@@ -5,19 +5,10 @@ on:
     branches:
       - main
       - develop
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'infra/docker/**'
-      - '.github/workflows/docker-build.yml'
   pull_request:
     branches:
       - main
       - develop
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'infra/docker/**'
 
 concurrency:
   group: docker-build-${{ github.ref }}
@@ -36,6 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - id: set-matrix
+        name: Generate service matrix
         run: |
           services=$(jq -c '.' <<< '[
             {"name": "api-gateway", "path": "apps/api-gateway"},
@@ -91,17 +83,18 @@ jobs:
 
       - name: Build Docker image
         uses: docker/build-push-action@v5
+        id: build
         with:
           context: .
           file: ${{ matrix.service.path }}/Dockerfile
-          push: ${{ github.event_name == 'push' }}
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.GITHUB_OWNER }}/aurixa-${{ matrix.service.name }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.GITHUB_OWNER }}/aurixa-${{ matrix.service.name }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
 
       - name: Image digest
-        run: echo ${{ steps.build.outputs.digest }}
+        run: echo "Built image with digest: ${{ steps.build.outputs.digest }}"
 
   build-status:
     if: always()
