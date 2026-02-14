@@ -33,26 +33,38 @@ class LLMRouter:
     # ------------------------------------------------------------------
 
     def _initialize_clients(self) -> None:
-        """Auto-detect available providers from environment variables."""
-        # Prioritize local provider if available
-        lm_studio_url = os.getenv("LM_STUDIO_BASE_URL")
-        if lm_studio_url:
+        """Auto-detect providers. Local (LM Studio) first for cost savings; cloud as selectable options."""
+        # 1. Local LM Studio - primary for dev (cost-free)
+        # LM Studio serves at http://127.0.0.1:1234; OpenAI-compatible API is at /v1
+        raw = os.getenv("LM_STUDIO_BASE_URL", "http://127.0.0.1:1234").rstrip("/")
+        lm_studio_url = f"{raw}/v1" if "/v1" not in raw else raw
+        try:
             self._clients[LLMProvider.LOCAL] = OpenAIClient(
                 base_url=lm_studio_url, api_key="not-needed"
             )
-            self._fallback_order.insert(0, LLMProvider.LOCAL)
+            self._fallback_order.append(LLMProvider.LOCAL)
+        except Exception as e:
+            logger.warning("LM Studio not available: {}", e)
 
-        if os.getenv("OPENAI_API_KEY"):
-            self._clients[LLMProvider.OPENAI] = OpenAIClient()
+        # 2. Cloud providers - selectable (use placeholder keys if unset; calls fail until real key configured)
+        try:
+            key = os.getenv("OPENAI_API_KEY") or "sk-placeholder"
+            self._clients[LLMProvider.OPENAI] = OpenAIClient(api_key=key)
             self._fallback_order.append(LLMProvider.OPENAI)
-
-        if os.getenv("ANTHROPIC_API_KEY"):
-            self._clients[LLMProvider.ANTHROPIC] = AnthropicClient()
+        except Exception as e:
+            logger.warning("OpenAI provider not available: {}", e)
+        try:
+            key = os.getenv("ANTHROPIC_API_KEY") or "sk-ant-placeholder"
+            self._clients[LLMProvider.ANTHROPIC] = AnthropicClient(api_key=key)
             self._fallback_order.append(LLMProvider.ANTHROPIC)
-
-        if os.getenv("GOOGLE_AI_API_KEY"):
-            self._clients[LLMProvider.GEMINI] = GeminiClient()
+        except Exception as e:
+            logger.warning("Anthropic provider not available: {}", e)
+        try:
+            key = os.getenv("GOOGLE_AI_API_KEY") or "placeholder"
+            self._clients[LLMProvider.GEMINI] = GeminiClient(api_key=key)
             self._fallback_order.append(LLMProvider.GEMINI)
+        except Exception as e:
+            logger.warning("Gemini provider not available: {}", e)
 
         logger.info(
             "LLM Router initialized with providers: {}",

@@ -1,6 +1,9 @@
+import asyncio
+import os
 import time
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+import httpx
+from fastapi import FastAPI, HTTPException, Request
 from loguru import logger
 
 from aurixa_llm.router import LLMRouter
@@ -8,23 +11,54 @@ from aurixa_llm.types import LLMProvider, LLMRequest
 
 from .models import RouteRequest, RouteResponse, GenerateRequest, GenerateResponse
 
-# This would be a more sophisticated routing mechanism in a real scenario
-# For now, we'll use a simple keyword-based approach.
+# Keyword-based routing (cloud providers for specific use cases)
 ROUTING_RULES = {
     "haiku": {"keywords": ["fast", "quick", "summary"], "provider": LLMProvider.ANTHROPIC, "model": "claude-3-haiku-20240307"},
     "opus": {"keywords": ["deep", "research", "analysis"], "provider": LLMProvider.ANTHROPIC, "model": "claude-3-opus-20240229"},
     "gemini": {"keywords": ["google", "gemini"], "provider": LLMProvider.GEMINI, "model": "gemini-1.5-pro"},
 }
-DEFAULT_MODEL = "gpt-4o"
-DEFAULT_PROVIDER = LLMProvider.OPENAI
+
+# LM Studio serves at http://127.0.0.1:1234; API is at /v1/models, /v1/chat/completions
+_raw = os.getenv("LM_STUDIO_BASE_URL", "http://127.0.0.1:1234").rstrip("/")
+LM_STUDIO_URL = f"{_raw}/v1" if "/v1" not in _raw else _raw
+DEFAULT_PROVIDER = LLMProvider.LOCAL
+DEFAULT_MODEL = None  # Resolved from LM Studio /v1/models when LOCAL
+
+
+async def fetch_lm_studio_models() -> list[str]:
+    """Fetch available models from LM Studio (OpenAI-compatible GET /v1/models)."""
+    try:
+        base = LM_STUDIO_URL.rstrip("/").replace("/v1", "") or "http://127.0.0.1:1234"
+        url = f"{base}/v1/models"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url)
+            if r.status_code != 200:
+                return []
+        data = r.json()
+        models = data.get("data", []) if isinstance(data, dict) else []
+        return [m.get("id", "") for m in models if m.get("id")]
+    except Exception as e:
+        logger.warning("Could not fetch LM Studio models: {}", e)
+        return []
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize the LLM router and log service startup."""
-    app.state.llm_router = LLMRouter()
-    logger.info("LLM Router initialized with providers: {}", app.state.llm_router.providers)
-    logger.info("LLM Router starting up")
+    """Initialize the LLM router. Never crash - run with minimal providers if needed."""
+    try:
+        app.state.llm_router = LLMRouter()
+        app.state.lm_studio_models = []
+        if LLMProvider.LOCAL in app.state.llm_router.providers:
+            try:
+                app.state.lm_studio_models = await fetch_lm_studio_models()
+                if app.state.lm_studio_models:
+                    logger.info("LM Studio models: {}", app.state.lm_studio_models[:5])
+            except Exception as e:
+                logger.warning("Could not fetch LM Studio models at startup: {}", e)
+        logger.info("LLM Router initialized with providers: {}", app.state.llm_router.providers)
+    except Exception as e:
+        logger.error("LLM Router init failed: {}", e)
+        raise
     yield
     logger.info("LLM Router shutting down")
 
@@ -39,8 +73,12 @@ app = FastAPI(
 
 @app.get("/health", summary="Health check endpoint")
 async def health():
-    """Return a 200 OK status and provider health."""
-    provider_health = await app.state.llm_router.health()
+    """Return a 200 OK status and provider health. Timeout 5s to avoid blocking."""
+    try:
+        provider_health = await asyncio.wait_for(app.state.llm_router.health(), timeout=5.0)
+    except asyncio.TimeoutError:
+        provider_health = {}
+        logger.warning("Health check timed out")
     return {
         "service": "llm-router",
         "status": "healthy",
@@ -50,12 +88,7 @@ async def health():
 
 @app.post("/api/v1/generate", response_model=GenerateResponse, summary="Generate text using a routed LLM")
 async def generate(request: GenerateRequest):
-    """
-    Generates a response from an LLM.
-
-    If a provider or model is specified, it will be used directly.
-    Otherwise, the router's fallback logic will be used.
-    """
+    """Generates a response with retry on transient failures."""
     llm_request = LLMRequest(
         messages=request.messages,
         model=request.model,
@@ -63,36 +96,76 @@ async def generate(request: GenerateRequest):
         max_tokens=request.max_tokens,
         tools=request.tools,
     )
+    last_err = None
+    for attempt in range(3):
+        try:
+            response = await app.state.llm_router.generate(llm_request, provider=request.provider)
+            return response
+        except Exception as e:
+            last_err = e
+            logger.warning("LLM generate attempt {} failed: {}", attempt + 1, e)
+            if attempt < 2:
+                await asyncio.sleep(0.5 * (attempt + 1))
+    logger.error("LLM generation failed after 3 attempts")
+    raise HTTPException(status_code=500, detail=f"LLM generation failed: {last_err}")
     
-    try:
-        response = await app.state.llm_router.generate(llm_request, provider=request.provider)
-        return response
-    except Exception as e:
-        logger.error("LLM generation failed: {}", e)
-        raise HTTPException(status_code=500, detail="LLM generation failed")
-    
+
+@app.get("/api/v1/providers", summary="List available LLM providers")
+async def list_providers(req: Request):
+    """Return providers with health status for UI selection."""
+    router = req.app.state.llm_router
+    health = await router.health()
+    return {
+        "providers": [
+            {"id": p.value, "name": p.value.replace("_", " ").title(), "healthy": health.get(p.value, False)}
+            for p in router.providers
+        ],
+    }
+
+
+@app.get("/api/v1/models", summary="List available models")
+async def list_models(req: Request):
+    """Fetch models from LM Studio on-demand (live) or return static list for cloud."""
+    models = await fetch_lm_studio_models()
+    if models:
+        req.app.state.lm_studio_models = models  # update cache for route/generate
+        return {"models": models, "source": "lm_studio"}
+    return {
+        "models": ["gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet", "gemini-1.5-pro"],
+        "source": "static",
+    }
+
 
 @app.post("/api/v1/route", response_model=RouteResponse, summary="Get the best model for a prompt")
-async def route_prompt(request: RouteRequest):
-    """
-    Determines the best LLM to handle a given prompt based on
-    pre-defined rules and real-time provider health.
-    """
-    prompt_lower = request.prompt.lower()
+async def route_prompt(body: RouteRequest, req: Request):
+    """Route to LOCAL by default (cost-free); use cloud for keyword matches."""
+    prompt_lower = body.prompt.lower()
+    app = req.app
 
     for route, config in ROUTING_RULES.items():
-        if any(keyword in prompt_lower for keyword in config["keywords"]):
-            logger.info("Routing prompt to {} based on keywords", route)
+        if config["provider"] in app.state.llm_router.providers and any(
+            kw in prompt_lower for kw in config["keywords"]
+        ):
+            logger.info("Routing to {} based on keywords", route)
             return RouteResponse(
                 model=config["model"],
                 provider=config["provider"],
-                metadata={"reason": f"Keyword match: {config['keywords']}"}
+                metadata={"reason": f"Keyword match: {config['keywords']}"},
             )
 
-    # Fallback to default
-    logger.info("No specific route matched, using default model")
-    return RouteResponse(
-        model=DEFAULT_MODEL,
-        provider=DEFAULT_PROVIDER,
-        metadata={"reason": "Default fallback"}
-    )
+    # Default: LOCAL (LM Studio) for cost savings
+    model = DEFAULT_MODEL
+    provider = DEFAULT_PROVIDER
+    if provider not in app.state.llm_router.providers:
+        provider = app.state.llm_router.providers[0] if app.state.llm_router.providers else LLMProvider.OPENAI
+        model = "gpt-4o" if provider == LLMProvider.OPENAI else None
+    lm_models = getattr(app.state, "lm_studio_models", None) or []
+    if not lm_models:
+        lm_models = await fetch_lm_studio_models()
+        app.state.lm_studio_models = lm_models
+    if not model and lm_models:
+        model = lm_models[0]
+    if not model:
+        model = "local-model"
+
+    return RouteResponse(model=model or "local-model", provider=provider, metadata={"reason": "Default (local-first)"})

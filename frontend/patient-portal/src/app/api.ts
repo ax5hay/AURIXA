@@ -1,6 +1,22 @@
-/** API client for AURIXA Patient Portal - all data from backend. */
+/** API client for AURIXA Patient Portal. */
 
-const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
+const API_BASE =
+  typeof window !== "undefined"
+    ? (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000")
+    : (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000");
+
+const FETCH_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url: string, opts: RequestInit = {}): Promise<Response> {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
 
 export interface Appointment {
   id: number;
@@ -26,22 +42,23 @@ export interface KnowledgeArticle {
 }
 
 export async function getPatient(patientId: number): Promise<Patient> {
-  const res = await fetch(`${API_URL}/api/v1/admin/patients/${patientId}`);
+  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/patients/${patientId}`);
   if (!res.ok) throw new Error("Failed to fetch patient");
   return res.json();
 }
 
 export async function getAppointments(patientId: number): Promise<Appointment[]> {
-  const res = await fetch(`${API_URL}/api/v1/admin/patients/${patientId}/appointments`);
+  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/patients/${patientId}/appointments`);
   if (!res.ok) throw new Error("Failed to fetch appointments");
   return res.json();
 }
 
 export async function getKnowledgeArticles(tenantId?: number): Promise<KnowledgeArticle[]> {
-  const url = tenantId != null
-    ? `${API_URL}/api/v1/admin/knowledge/articles?tenant_id=${tenantId}`
-    : `${API_URL}/api/v1/admin/knowledge/articles`;
-  const res = await fetch(url);
+  const url =
+    tenantId != null
+      ? `${API_BASE}/api/v1/admin/knowledge/articles?tenant_id=${tenantId}`
+      : `${API_BASE}/api/v1/admin/knowledge/articles`;
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error("Failed to fetch knowledge articles");
   return res.json();
 }
@@ -52,7 +69,7 @@ export interface PipelineResponse {
 }
 
 export async function sendMessage(prompt: string): Promise<PipelineResponse> {
-  const res = await fetch(`${API_URL}/api/v1/orchestration/pipelines`, {
+  const res = await fetchWithTimeout(`${API_BASE}/api/v1/orchestration/pipelines`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),

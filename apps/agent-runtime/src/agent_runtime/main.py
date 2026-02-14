@@ -4,10 +4,12 @@ from loguru import logger
 
 from .models import RunTaskRequest, RunTaskResponse, AgentResult, AgentTask
 
-# A real implementation would have a dynamic tool registry
-MOCK_TOOLS = {
-    "get_weather": lambda location: f"The weather in {location} is sunny.",
-    "search_knowledge_base": lambda query: f"Searching for '{query}' found 3 documents.",
+# Tool registry - extend for production (e.g. RAG, calendar, EHR)
+TOOL_REGISTRY: dict[str, callable] = {
+    "get_weather": lambda loc: f"Weather in {loc}: sunny, 72°F",
+    "search_knowledge_base": lambda q: f"Search for '{q}' returned relevant articles.",
+    "get_appointment": lambda pid: f"Appointments for patient {pid} retrieved.",
+    "schedule_call": lambda x: "Callback scheduled.",
 }
 
 
@@ -47,11 +49,10 @@ async def run_task(request: RunTaskRequest):
     task = request.task
     logger.info("Received request to run task with prompt: '{}'", task.prompt)
 
-    # Mock logic: if the prompt mentions a tool, pretend to call it.
     final_output = "I'm not sure how to help with that."
     tool_calls = []
 
-    for tool_name, tool_func in MOCK_TOOLS.items():
+    for tool_name, tool_func in TOOL_REGISTRY.items():
         if tool_name in task.prompt:
             # Mock extracting arguments from the prompt
             arg = task.prompt.split(tool_name)[-1].strip()

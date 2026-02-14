@@ -14,10 +14,16 @@ from .models import PipelineRequest, ConversationState, PipelineStep as Pydantic
 async def lifespan(app: FastAPI):
     """Create database tables on startup."""
     logger.info("Orchestration engine starting up")
-    async with engine.begin() as conn:
-        # This will create tables for all models that inherit from Base
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables created.")
+    if engine is not None:
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database tables created.")
+        except Exception as e:
+            logger.error("Could not connect to database: {}", e)
+            logger.warning("Orchestration starting; DB routes will fail until Postgres is available.")
+    else:
+        logger.warning("Database engine not initialized.")
     yield
     logger.info("Orchestration engine shutting down")
 

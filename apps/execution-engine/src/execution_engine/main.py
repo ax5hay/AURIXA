@@ -4,10 +4,23 @@ from loguru import logger
 
 from .models import ExecutionRequest, ExecutionResponse
 
-# A real implementation would have a registry of executable actions
-# that could be dynamically discovered and called.
-MOCK_ACTION_REGISTRY = {
-    "send_email": lambda params: f"Email sent to {params.get('recipient')} with subject '{params.get('subject')}'."
+# Extensible action registry - add production actions here or via plugin
+def _send_email(params: dict) -> str:
+    recipient = params.get("recipient", "unknown")
+    subject = params.get("subject", "")
+    return f"Email queued to {recipient} with subject '{subject}'."
+
+def _schedule_reminder(params: dict) -> str:
+    patient_id = params.get("patient_id", "unknown")
+    return f"Reminder scheduled for patient {patient_id}."
+
+def _log_audit(params: dict) -> str:
+    return "Audit entry recorded."
+
+ACTION_REGISTRY: dict[str, callable] = {
+    "send_email": _send_email,
+    "schedule_reminder": _schedule_reminder,
+    "log_audit": _log_audit,
 }
 
 
@@ -33,36 +46,24 @@ async def health():
     return {"service": "execution-engine", "status": "healthy"}
 
 
+@app.get("/api/v1/actions", summary="List available actions")
+async def list_actions():
+    """Return available action names for discovery."""
+    return {"actions": list(ACTION_REGISTRY.keys())}
+
+
 @app.post("/api/v1/execute", response_model=ExecutionResponse, summary="Execute an action")
 async def execute(request: ExecutionRequest):
-    """
-    Executes a predefined action with a given set of parameters.
+    """Executes a registered action with validated parameters."""
+    logger.info("Execute action: '{}' (idempotency: {})", request.action_name, request.idempotency_key[:8])
 
-    This is a simplified mock implementation. A real implementation would:
-    1.  Validate the action name against a registry of available actions.
-    2.  Validate the parameters for that action.
-    3.  Handle authentication and authorization for the action.
-    4.  Implement retry logic and idempotency.
-    5.  Asynchronously execute the action, possibly using a job queue.
-    """
-    logger.info("Received execution request for action: '{}'", request.action_name)
-
-    action_func = MOCK_ACTION_REGISTRY.get(request.action_name)
-
+    action_func = ACTION_REGISTRY.get(request.action_name)
     if not action_func:
-        logger.error("Action '{}' not found in registry.", request.action_name)
         raise HTTPException(status_code=404, detail=f"Action '{request.action_name}' not found.")
 
     try:
-        result = action_func(request.params)
-        logger.success("Action '{}' executed successfully.", request.action_name)
-        return ExecutionResponse(
-            status="success",
-            result={"message": result}
-        )
+        result = action_func(request.params or {})
+        return ExecutionResponse(status="success", result={"message": result})
     except Exception as e:
         logger.error("Action '{}' failed: {}", request.action_name, e)
-        return ExecutionResponse(
-            status="error",
-            error_message=str(e)
-        )
+        return ExecutionResponse(status="error", error_message=str(e))

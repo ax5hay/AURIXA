@@ -4,7 +4,12 @@ import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from loguru import logger
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://aurixa:aurixa@localhost:5432/aurixa")
+_raw = os.getenv("DATABASE_URL", "postgresql+asyncpg://aurixa:aurixa@localhost:5432/aurixa")
+# Ensure async driver (postgresql:// -> postgresql+asyncpg://)
+if _raw.startswith("postgresql://") and "+asyncpg" not in _raw:
+    DATABASE_URL = _raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = _raw
 
 try:
     engine = create_async_engine(DATABASE_URL, echo=False, future=True)

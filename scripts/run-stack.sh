@@ -10,6 +10,13 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Load .env if present
+if [ -f .env ]; then
+  set -a
+  source .env 2>/dev/null || true
+  set +a
+fi
+
 # Raise open-file limit to avoid EMFILE when starting many processes
 ulimit -n 65536 2>/dev/null || true
 
@@ -27,9 +34,9 @@ else
   echo "Docker not found. Ensure Postgres is running on localhost:5432 (user: aurixa, pass: aurixa, db: aurixa)"
 fi
 
-# Seed DB
+# Seed DB (non-fatal; stack runs anyway)
 echo "Seeding database..."
-pnpm db:seed 2>/dev/null || (cd packages/db && python seed.py)
+pnpm db:seed 2>/dev/null || (cd packages/db && python seed.py) || true
 
 # Start backend services in background
 echo "Starting API Gateway..."
@@ -62,7 +69,7 @@ sleep 2
 
 echo "Starting LLM Router..."
 run_python_app apps/llm-router llm_router 8002
-sleep 1
+sleep 3
 
 echo "Starting Agent Runtime..."
 run_python_app apps/agent-runtime agent_runtime 8003

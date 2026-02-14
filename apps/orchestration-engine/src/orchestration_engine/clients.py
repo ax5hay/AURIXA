@@ -1,5 +1,6 @@
 """HTTP clients for calling downstream AURIXA services."""
 
+import asyncio
 import httpx
 from loguru import logger
 
@@ -9,8 +10,22 @@ from .config import (
     SAFETY_GUARDRAILS_URL,
 )
 
-# Use a single, shared async client for performance
 _async_client = httpx.AsyncClient(timeout=30.0)
+
+
+async def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
+    """Retry on transient failures (up to 2 retries)."""
+    last_err = None
+    for attempt in range(3):
+        try:
+            return await _async_client.request(method, url, **kwargs)
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(0.3 * (attempt + 1))
+            else:
+                raise last_err
+    raise last_err
 
 
 async def call_llm_router(prompt: str) -> dict:
@@ -20,10 +35,7 @@ async def call_llm_router(prompt: str) -> dict:
         return {"mock": "llm_router_response"}
 
     try:
-        response = await _async_client.post(
-            f"{LLM_ROUTER_URL}/api/v1/route",
-            json={"prompt": prompt},
-        )
+        response = await _request_with_retry("POST", f"{LLM_ROUTER_URL}/api/v1/route", json={"prompt": prompt})
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as e:
@@ -38,9 +50,8 @@ async def call_rag_service(prompt: str, intent: dict) -> dict:
         return {"mock": "rag_service_response"}
 
     try:
-        response = await _async_client.post(
-            f"{RAG_SERVICE_URL}/api/v1/retrieve",
-            json={"prompt": prompt, "intent": intent},
+        response = await _request_with_retry(
+            "POST", f"{RAG_SERVICE_URL}/api/v1/retrieve", json={"prompt": prompt, "intent": intent}
         )
         response.raise_for_status()
         return response.json()
@@ -56,15 +67,28 @@ async def call_safety_guardrails(text: str) -> dict:
         return {"mock": "safety_guardrails_response", "is_safe": True, "validated_text": text}
 
     try:
-        response = await _async_client.post(
-            f"{SAFETY_GUARDRAILS_URL}/api/v1/validate",
-            json={"text": text},
+        response = await _request_with_retry(
+            "POST", f"{SAFETY_GUARDRAILS_URL}/api/v1/validate", json={"text": text}
         )
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as e:
         logger.error("HTTP error calling Safety Guardrails: {}", e)
         raise
+
+
+def _format_rag_context(context: dict) -> str:
+    """Format RAG snippets into readable context for the LLM."""
+    snippets = context.get("snippets", [])
+    if not snippets:
+        return "No relevant documents found."
+    parts = []
+    for i, s in enumerate(snippets[:5], 1):
+        source = s.get("source", "unknown")
+        content = s.get("content", "")
+        score = s.get("score", 0)
+        parts.append(f"[{i}] Source: {source}\n{content}")
+    return "\n\n".join(parts)
 
 
 async def call_llm_generate(model: str, provider: str, prompt: str, context: dict) -> dict:
@@ -74,16 +98,24 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
         return {"mock": "llm_generate_response", "content": "mocked response"}
 
     try:
+        formatted_context = _format_rag_context(context)
+        system_content = (
+            "You are a helpful healthcare assistant for AURIXA. "
+            "Use the provided knowledge base context to answer the user's question accurately. "
+            "If the context does not contain relevant information, say so politely."
+        )
+        user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
         messages = [
-            {"role": "system", "content": "You are a helpful assistant. Use the provided context to answer the user's question."},
-            {"role": "user", "content": f"Context: {context}\n\nQuestion: {prompt}"}
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
         ]
-        response = await _async_client.post(
+        response = await _request_with_retry(
+            "POST",
             f"{LLM_ROUTER_URL}/api/v1/generate",
             json={
                 "messages": messages,
-                "model": model,
-                "provider": provider
+                "model": model or None,
+                "provider": provider,
             },
         )
         response.raise_for_status()
