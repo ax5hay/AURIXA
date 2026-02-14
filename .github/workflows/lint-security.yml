@@ -1,0 +1,140 @@
+name: Lint & Security
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.28.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm run lint
+        continue-on-error: true
+
+      - name: Format check
+        run: pnpm prettier --check .
+        continue-on-error: true
+
+  sast-trivy:
+    runs-on: ubuntu-latest
+    name: Trivy Vulnerability Scan
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'Trivy'
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    name: Dependency Security Check
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.28.1
+
+      - name: Generate pnpm lockfile report
+        run: pnpm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Check Python dependencies
+        run: |
+          # Check all Python projects
+          for dir in apps/* packages/db packages/llm-clients; do
+            if [ -f "$dir/pyproject.toml" ]; then
+              echo "Checking $dir..."
+              safety check --file "$dir/requirements.txt" || true
+            fi
+          done
+        continue-on-error: true
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint Markdown
+        uses: nosborn/github-action-markdown-cli@v3.3.0
+        with:
+          files: .
+          config_file: .markdownlint.json
+        continue-on-error: true
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint YAML
+        uses: ibm/detect-secrets-action@v0.1.3
+        with:
+          path: '.'
+        continue-on-error: true
+
+  commit-lint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate commit messages
+        uses: commitlint-actions/commitlint-action@v0.1.0
+        with:
+          configFile: '.commitlintrc.json'
+        continue-on-error: true

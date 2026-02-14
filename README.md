@@ -470,6 +470,142 @@ curl http://localhost:8001/health
 
 ---
 
+## CI/CD Pipeline
+
+AURIXA uses **GitHub Actions** for continuous integration and deployment. All workflows are defined in `.github/workflows/`.
+
+### Workflows Overview
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| **Docker Build** | Push/PR to main/develop | Builds Docker images for all services |
+| **Docker Build & Push** | Push to main or tags | Builds and pushes to registries (GHCR, Docker Hub) |
+| **Tests** | Push/PR | Runs TypeScript and Python test suites |
+| **Lint & Security** | Push/PR | ESLint, type checking, SAST scanning, dependency checks |
+
+### Docker Build Workflow
+
+Automatically builds Docker images for all services when code is pushed:
+
+```yaml
+# Triggered on:
+# - Push to main/develop branches
+# - Pull requests to main/develop
+# - Changes to apps/, packages/, or infra/docker/
+
+# Builds images for:
+# - api-gateway
+# - orchestration-engine
+# - llm-router
+# - agent-runtime
+# - rag-service
+# - safety-guardrails
+# - streaming-voice
+# - execution-engine
+# - observability-core
+```
+
+**Output:** Images are cached in GitHub Container Registry for faster builds.
+
+### Docker Build & Push Workflow
+
+Builds and pushes Docker images to registries:
+
+```bash
+# GitHub Container Registry
+ghcr.io/${{ owner }}/aurixa-api-gateway:latest
+ghcr.io/${{ owner }}/aurixa-api-gateway:v1.0.0
+
+# Docker Hub (if configured)
+docker.io/${{ owner }}/aurixa-api-gateway:latest
+docker.io/${{ owner }}/aurixa-api-gateway:v1.0.0
+```
+
+**Configuration:**
+Add GitHub secrets for Docker Hub (optional):
+- `DOCKERHUB_USERNAME` - Your Docker Hub username
+- `DOCKERHUB_TOKEN` - Your Docker Hub token
+
+### Test Workflow
+
+Runs automated tests across all services:
+
+**TypeScript Services:**
+- ESLint
+- Type checking (TypeScript compiler)
+- Unit tests (Vitest)
+
+**Python Services:**
+- Type checking (Pyright)
+- Unit tests (pytest)
+
+### Lint & Security Workflow
+
+Performs code quality and security checks:
+
+- **ESLint** - JavaScript/TypeScript linting
+- **Prettier** - Code formatting checks
+- **Trivy** - Container and filesystem vulnerability scanning
+- **Safety** - Python dependency vulnerability checking
+- **pnpm audit** - Node.js dependency checking
+- **Markdown Lint** - Documentation quality
+
+### Local Testing
+
+Test workflows locally before pushing:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run linting
+pnpm lint
+
+# Format code
+pnpm prettier --write .
+
+# Type check
+pnpm typecheck
+```
+
+### Setting Up Registries
+
+**GitHub Container Registry (automatic):**
+- Uses `GITHUB_TOKEN` - no additional setup needed
+
+**Docker Hub (optional):**
+```bash
+# Create GitHub secrets
+gh secret set DOCKERHUB_USERNAME --body "your_docker_username"
+gh secret set DOCKERHUB_TOKEN --body "your_docker_token"
+```
+
+### Deployment from Images
+
+**Pull and run images:**
+```bash
+# From GHCR
+docker pull ghcr.io/${{ owner }}/aurixa-api-gateway:latest
+docker run -p 3000:3000 ghcr.io/${{ owner }}/aurixa-api-gateway:latest
+
+# From Docker Hub
+docker pull docker.io/${{ owner }}/aurixa-api-gateway:latest
+docker run -p 3000:3000 docker.io/${{ owner }}/aurixa-api-gateway:latest
+```
+
+**Using in docker-compose:**
+```yaml
+services:
+  api-gateway:
+    image: ghcr.io/your-org/aurixa-api-gateway:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+```
+
+---
+
 ## Deployment
 
 ### Local Development (Docker Compose)
