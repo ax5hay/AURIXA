@@ -10,6 +10,11 @@ class DocumentSnippet(BaseModel):
     score: float = Field(description="The relevance score of the snippet.", default=0.0)
     metadata: Dict[str, Any] = Field(description="Additional metadata about the snippet.", default_factory=dict)
 
+class EmbedRequest(BaseModel):
+    """Request for embedding one or more texts."""
+    text: str = Field(description="Text to embed.", default="")
+
+
 class RetrieveRequest(BaseModel):
     """Request to the RAG service to retrieve context."""
     prompt: str

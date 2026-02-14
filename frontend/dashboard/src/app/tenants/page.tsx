@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { getTenants, type Tenant } from "@/app/services/api";
+import { getTenants, createTenant, type Tenant } from "@/app/services/api";
 
 const planColors: Record<string, string> = {
   starter: "bg-white/10 text-white/60",
@@ -27,13 +27,37 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [addModal, setAddModal] = useState(false);
+  const [newName, setNewName] = useState("");
 
-  useEffect(() => {
+  const fetchTenants = useCallback(() => {
     getTenants()
       .then(setTenants)
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchTenants();
+  }, [fetchTenants]);
+
+  const handleCreateTenant = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await createTenant({ name });
+      setNewName("");
+      setAddModal(false);
+      fetchTenants();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to create tenant");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   if (error) {
     return (
@@ -56,11 +80,35 @@ export default function TenantsPage() {
           <h1 className="text-3xl font-bold text-white">Tenant Management</h1>
           <p className="text-white/50 text-sm mt-1">Manage organizations and their access</p>
         </div>
-        <button className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white text-sm font-medium rounded-lg transition-colors">
+        <button
+          onClick={() => setAddModal(true)}
+          className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
           + Add Tenant
         </button>
       </div>
 
+      {addModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setAddModal(false)}>
+          <div className="glass rounded-xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-white mb-4">Add Tenant</h2>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Organization name"
+              className="w-full bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-2 text-white mb-4"
+              onKeyDown={(e) => e.key === "Enter" && handleCreateTenant()}
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setAddModal(false)} className="px-4 py-2 text-white/60 hover:text-white">Cancel</button>
+              <button onClick={handleCreateTenant} disabled={creating || !newName.trim()} className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white rounded-lg disabled:opacity-50">
+                {creating ? "Creating…" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="glass rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>

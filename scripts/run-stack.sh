@@ -12,7 +12,14 @@ cd "$ROOT"
 
 # Kill any existing stack first (avoid EADDRINUSE)
 "$ROOT/scripts/kill-stack.sh" 2>/dev/null || true
-sleep 8
+# Ensure ports are free before starting (kill-stack has internal wait)
+for port in 3000 3100 3300 8001 8002 8003 8004 8005 8006 8007 8008; do
+  for _ in 1 2 3 4 5; do
+    if ! lsof -ti:$port &>/dev/null; then break; fi
+    echo "Port $port still busy, waiting..."
+    sleep 2
+  done
+done
 
 # Pre-build patient portal while system is idle (avoids build during heavy load; start is instant)
 echo "Pre-building Patient Portal..."
@@ -33,7 +40,9 @@ fi
 # Raise open-file limit to avoid EMFILE (too many open files) with multiple dev servers
 ulimit -n 65536 2>/dev/null || true
 # Use polling instead of native watchers to reduce file descriptors (avoids EMFILE)
+# Also avoids "operation not permitted" from fsevents/kqueue on macOS
 export WATCHPACK_POLLING=true
+export CHOKIDAR_USEPOLLING=true
 
 echo "=== AURIXA Run Stack ==="
 
@@ -76,9 +85,11 @@ sleep 2
 # uv can panic on some macOS; fallback with PYTHONPATH for workspace packages
 run_python_app() {
   local dir=$1 mod=$2 port=$3
-  (cd "$dir" && (
+  local full_dir="$ROOT/$dir"
+  local src_path="$full_dir/src"
+  (cd "$full_dir" && (
     uv run uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port" 2>/dev/null ||
-    PYTHONPATH="$ROOT/packages/db:$ROOT/packages/llm-clients:$ROOT:$dir" python -m uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port"
+    PYTHONPATH="$ROOT/packages/db/src:$ROOT/packages/llm-clients/src:$ROOT:$src_path:$full_dir" python -m uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port"
   )) &
 }
 

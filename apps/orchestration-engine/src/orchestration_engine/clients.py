@@ -8,6 +8,8 @@ from .config import (
     LLM_ROUTER_URL,
     RAG_SERVICE_URL,
     SAFETY_GUARDRAILS_URL,
+    AGENT_RUNTIME_URL,
+    OBSERVABILITY_URL,
 )
 
 _async_client = httpx.AsyncClient(timeout=60.0)  # RAG model load can take ~30s on first call
@@ -59,6 +61,50 @@ async def call_rag_service(prompt: str, intent: dict) -> dict:
     except httpx.HTTPError as e:
         logger.error("HTTP error calling RAG Service: {}", e)
         raise
+
+
+async def call_agent_runtime(prompt: str, patient_id: int | None = None) -> dict:
+    """Call the Agent Runtime for tool-using tasks (appointments, scheduling, knowledge search)."""
+    if not AGENT_RUNTIME_URL:
+        logger.warning("AGENT_RUNTIME_URL not set, skipping call.")
+        return {"mock": "agent_runtime_response", "output": None}
+
+    try:
+        task_dict: dict = {"prompt": prompt}
+        if patient_id is not None:
+            task_dict["metadata"] = {"patient_id": patient_id}
+        response = await _request_with_retry(
+            "POST", f"{AGENT_RUNTIME_URL}/api/v1/run", json={"task": task_dict}, timeout=30.0
+        )
+        response.raise_for_status()
+        data = response.json()
+        result = data.get("result", {})
+        return {
+            "output": result.get("output"),
+            "tool_calls": result.get("tool_calls", []),
+            "steps": result.get("steps", []),
+        }
+    except httpx.HTTPError as e:
+        logger.error("HTTP error calling Agent Runtime: {}", e)
+        raise
+
+
+async def emit_telemetry(service_name: str, event_type: str, data: dict) -> None:
+    """Fire-and-forget telemetry emission to Observability Core."""
+    if not OBSERVABILITY_URL:
+        return
+    try:
+        await _async_client.post(
+            f"{OBSERVABILITY_URL}/api/v1/telemetry",
+            json={
+                "service_name": service_name,
+                "event_type": event_type,
+                "data": data,
+            },
+            timeout=2.0,
+        )
+    except Exception as e:
+        logger.debug("Telemetry emit failed (non-fatal): {}", e)
 
 
 async def call_safety_guardrails(text: str) -> dict:

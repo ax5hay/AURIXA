@@ -98,6 +98,56 @@ The AURIXA platform follows a **microservices-first** architecture with clear se
 
 ---
 
+## Features & Capabilities
+
+### Pipeline Flow (E2E)
+
+```
+User → API Gateway (:3000)
+  ↓
+Orchestration Engine (:8001)
+  ├─ 1. Intent → LLM Router (:8002) — semantic + keyword routing, model selection
+  ├─ 2. Agent path (if appointment/insurance/search) → Agent Runtime (:8003)
+  │      └─ Execution Engine (:8007) — get_appointments, check_insurance, etc. (DB-backed)
+  ├─ 3. RAG path (else) → RAG Service (:8004) — hybrid BM25 + vector retrieval
+  │      └─ LLM Router — generate response
+  ├─ 4. Safety Guardrails (:8005) — validate, emergency escalation
+  └─ 5. Response → User
+```
+
+- **Response caching**: Repeated prompts cached (TTL 300s) for cost reduction
+- **Emergency escalation**: Safety detects clinical keywords (chest pain, stroke) and flags `requires_escalation`
+- **Telemetry**: Orchestration, LLM Router, RAG emit to Observability Core
+
+### Execution Engine (DB-Backed)
+
+| Action | Description |
+|--------|-------------|
+| `get_appointments` | List upcoming appointments for a patient |
+| `create_appointment` | Create appointment (patient, date, reason) |
+| `check_insurance` | Verify insurance coverage and copay |
+| `get_availability` | List available slots by date |
+| `request_prescription_refill` | Submit refill for active prescriptions |
+
+### Database Schema
+
+- **Patients**, **Appointments** (with reason), **Tenants**, **Conversations**
+- **PatientInsurance** — plan, payer, copay, status
+- **Prescription** — medication, status, refill_requested_at
+- **AvailabilitySlot** — date, time, provider for scheduling
+- **KnowledgeBaseArticle** — RAG documents per tenant
+
+### Playground (Dashboard)
+
+The **Playground** at http://localhost:3100/playground provides:
+
+- **Full pipeline test** — run E2E with patient context
+- **Service API tests** — Route, RAG, Safety, Agent, Execution individually
+- **Execution actions** — test get_appointments, check_insurance, get_availability
+- **Flow visualization** — Intent → RAG/Agent → Generate → Safety steps
+
+---
+
 ## Monorepo Structure
 
 AURIXA uses **Turborepo** with **pnpm workspaces** for efficient dependency management and parallel task execution across all packages and services.
@@ -330,13 +380,17 @@ The script will:
 
 **Endpoints after ~60 seconds:**
 
-| Service       | URL                    |
-|---------------|------------------------|
-| API Gateway   | http://localhost:3000  |
-| Dashboard     | http://localhost:3100  |
-| Patient Portal| http://localhost:3300  |
-| Orchestration | http://localhost:8001  |
-| LLM Router    | http://localhost:8002  |
+| Service         | URL                    |
+|-----------------|------------------------|
+| API Gateway     | http://localhost:3000  |
+| Dashboard       | http://localhost:3100  |
+| **Playground**  | http://localhost:3100/playground |
+| Patient Portal  | http://localhost:3300  |
+| Orchestration   | http://localhost:8001  |
+| LLM Router      | http://localhost:8002  |
+| Agent Runtime   | http://localhost:8003  |
+| RAG Service     | http://localhost:8004  |
+| Execution Engine| http://localhost:8007  |
 
 If Python services fail to start, run `./scripts/bootstrap-python.sh` once to install dependencies.
 
@@ -380,10 +434,11 @@ pnpm db:seed
 
 | App            | Port | Purpose                                                       |
 |----------------|------|---------------------------------------------------------------|
-| Dashboard      | 3100 | Unified: system status, playground, tenants, services, analytics, knowledge, config, audit, settings |
+| Dashboard      | 3100 | System status, **Playground** (E2E + API tests), tenants, services, analytics, knowledge, config, audit |
 | Patient Portal | 3300 | Patient chat & appointments, help articles, AI assistant      |
 
-Both fetch data from the API Gateway (port 3000). Patient Portal is pre-built and served in production mode for stability.
+- **Playground** (`/playground`): Test full pipeline, individual services (Route/RAG/Safety/Agent/Execution), and DB-backed execution actions
+- Both apps fetch from API Gateway (port 3000)
 
 ---
 

@@ -1,3 +1,6 @@
+import asyncio
+import hashlib
+import os
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
@@ -8,6 +11,34 @@ from pydantic import BaseModel
 
 from aurixa_db import get_db_session, engine, Base, models as db_models
 from . import clients
+
+# Response cache for repeated prompts (cost reduction)
+CACHE_TTL_SEC = int(os.getenv("ORCHESTRATION_RESPONSE_CACHE_TTL", "300"))
+_response_cache: dict[str, tuple[str, float]] = {}
+
+def _cache_key(prompt: str, tenant_id: str | None, user_id: str | None) -> str:
+    normalized = (prompt or "").strip().lower()
+    return hashlib.sha256(f"{normalized}|{tenant_id or ''}|{user_id or ''}".encode()).hexdigest()
+
+def _get_cached(key: str) -> str | None:
+    entry = _response_cache.get(key)
+    if not entry:
+        return None
+    text, ts = entry
+    if time.time() - ts > CACHE_TTL_SEC:
+        _response_cache.pop(key, None)
+        return None
+    return text
+
+def _set_cached(key: str, text: str) -> None:
+    _response_cache[key] = (text, time.time())
+
+# Prompt phrases that suggest agent tool use (appointments, scheduling, knowledge search, etc.)
+AGENT_WORTHY_PHRASES = [
+    "appointment", "schedule", "book", "reschedule", "cancel appointment",
+    "callback", "schedule a call", "get appointment", "my appointments",
+    "weather", "search", "knowledge", "refill", "prescription refill",
+]
 from .models import PipelineRequest, ConversationState, PipelineStep as PydanticPipelineStep
 
 async def _ensure_db_tables():
@@ -48,9 +79,28 @@ app = FastAPI(
 )
 
 
+def _is_agent_worthy(prompt: str) -> bool:
+    """Heuristic: prompt suggests tool use (appointments, scheduling, knowledge search)."""
+    lower = (prompt or "").lower()
+    return any(phrase in lower for phrase in AGENT_WORTHY_PHRASES)
+
+
+def _emit_step_telemetry(name: str, duration_ms: float | None, session_id: str) -> None:
+    """Fire-and-forget telemetry emission."""
+    if duration_ms is None:
+        return
+    asyncio.create_task(
+        clients.emit_telemetry(
+            "orchestration-engine",
+            "pipeline_step",
+            {"step_name": name, "latency_ms": duration_ms, "session_id": session_id},
+        )
+    )
+
+
 async def execute_step(
     db: AsyncSession, conversation: db_models.Conversation, name: str, input_data: dict, coro
-) -> (dict, db_models.PipelineStep):
+) -> tuple[dict, db_models.PipelineStep]:
     """Execute a pipeline step, record it, and update its state."""
     step = db_models.PipelineStep(
         conversation_id=conversation.id,
@@ -78,6 +128,8 @@ async def execute_step(
         step.end_time = time.time()
         db.add(step)
         await db.commit()
+        duration_ms = (step.end_time - step.start_time) * 1000 if step.end_time and step.start_time else None
+        _emit_step_telemetry(name, duration_ms, conversation.session_id)
 
 
 @app.get("/health", summary="Health check endpoint")
@@ -115,6 +167,23 @@ async def list_tenants(db: AsyncSession = Depends(get_db_session)):
         }
         for t in tenants
     ]
+
+
+class TenantCreateIn(BaseModel):
+    name: str
+    plan: str = "starter"
+    status: str = "active"
+
+
+@app.post("/api/v1/tenants", summary="Create a tenant")
+async def create_tenant(data: TenantCreateIn, db: AsyncSession = Depends(get_db_session)):
+    base = (data.name or "").lower().replace(" ", "-")[:32] or "tenant"
+    domain = f"{base}-{int(time.time() * 1000)}"
+    t = db_models.Tenant(name=data.name, plan=data.plan, status=data.status, domain=domain)
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    return {"id": f"t-{t.id:03d}", "name": t.name, "plan": t.plan, "status": t.status}
 
 
 class AuditEntryOut(BaseModel):
@@ -166,6 +235,27 @@ async def list_patients(
         }
         for p in patients
     ]
+
+
+class PatientCreateIn(BaseModel):
+    full_name: str
+    email: str | None = None
+    phone_number: str | None = None
+    tenant_id: int = 1
+
+
+@app.post("/api/v1/patients", summary="Create a patient")
+async def create_patient(data: PatientCreateIn, db: AsyncSession = Depends(get_db_session)):
+    p = db_models.Patient(
+        full_name=data.full_name,
+        email=data.email,
+        phone_number=data.phone_number,
+        tenant_id=data.tenant_id,
+    )
+    db.add(p)
+    await db.commit()
+    await db.refresh(p)
+    return {"id": p.id, "fullName": p.full_name, "email": p.email, "phoneNumber": p.phone_number}
 
 
 @app.get("/api/v1/patients/{patient_id}", summary="Get a single patient by ID")
@@ -334,6 +424,29 @@ async def run_pipeline(
     """
     logger.info("Received new pipeline request for session: {}", request.session_id)
 
+    # Cache check: skip for agent-worthy (patient-specific) prompts
+    use_cache = not _is_agent_worthy(request.prompt) and CACHE_TTL_SEC > 0
+    cache_key = _cache_key(request.prompt, request.tenant_id, request.user_id) if use_cache else None
+    if cache_key and use_cache:
+        cached = _get_cached(cache_key)
+        if cached:
+            logger.info("Cache hit for session: {}", request.session_id)
+            # Still persist conversation with minimal steps
+            conversation = db_models.Conversation(
+                session_id=request.session_id,
+                meta_data={"user_id": request.user_id, "tenant_id": request.tenant_id, "patient_id": request.patient_id},
+            )
+            db.add(conversation)
+            await db.commit()
+            return ConversationState(
+                session_id=request.session_id,
+                request=request,
+                steps=[PydanticPipelineStep(name="cache_hit", status="success", output={"cached": True})],
+                final_response=cached,
+                created_at=time.time(),
+                updated_at=time.time(),
+            )
+
     # Create a new conversation record in the database
     meta = {"user_id": request.user_id, "tenant_id": request.tenant_id}
     if request.patient_id is not None:
@@ -353,23 +466,34 @@ async def run_pipeline(
             clients.call_llm_router(request.prompt)
         )
 
-        # 2. Retrieve context
-        rag_context, _ = await execute_step(
-            db, conversation, "knowledge_retrieval", {"prompt": request.prompt, "intent": intent_result},
-            clients.call_rag_service(request.prompt, intent_result)
-        )
-        
-        # 3. Generate response
-        generation_result, _ = await execute_step(
-            db, conversation, "generate_response", {"context": rag_context, "intent": intent_result},
-            clients.call_llm_generate(
-                model=intent_result.get("model"),
-                provider=intent_result.get("provider"),
-                prompt=request.prompt,
-                context=rag_context
+        # 2. Agent path: when prompt suggests tool use, call agent-runtime
+        generated_text = ""
+        if _is_agent_worthy(request.prompt):
+            agent_result, _ = await execute_step(
+                db, conversation, "agent_execution", {"prompt": request.prompt, "patient_id": request.patient_id},
+                clients.call_agent_runtime(request.prompt, request.patient_id)
             )
-        )
-        generated_text = generation_result.get("content", "")
+            agent_output = agent_result.get("output")
+            if agent_output:
+                generated_text = agent_output
+                logger.info("Using agent output for session: {}", request.session_id)
+
+        # 3. Standard path: RAG + LLM generate when no agent output
+        if not generated_text:
+            rag_context, _ = await execute_step(
+                db, conversation, "knowledge_retrieval", {"prompt": request.prompt, "intent": intent_result},
+                clients.call_rag_service(request.prompt, intent_result)
+            )
+            generation_result, _ = await execute_step(
+                db, conversation, "generate_response", {"context": rag_context, "intent": intent_result},
+                clients.call_llm_generate(
+                    model=intent_result.get("model"),
+                    provider=intent_result.get("provider"),
+                    prompt=request.prompt,
+                    context=rag_context
+                )
+            )
+            generated_text = generation_result.get("content", "")
 
         # 4. Validate output
         validation_result, _ = await execute_step(
@@ -383,6 +507,17 @@ async def run_pipeline(
         else:
             final_response_text = validation_result.get("validated_text")
             logger.success("Pipeline executed successfully for session: {}", request.session_id)
+
+        # 5. Escalation: prepend notice when safety flagged emergency
+        if validation_result.get("requires_escalation"):
+            final_response_text = (
+                "⚠️ This may require immediate attention. Please connect with a staff member as soon as possible. "
+                + final_response_text
+            )
+
+        # 6. Cache response for repeated general prompts
+        if cache_key and use_cache and final_response_text:
+            _set_cached(cache_key, final_response_text)
     
     except Exception as e:
         logger.error("Pipeline failed for session {}: {}", request.session_id, e)

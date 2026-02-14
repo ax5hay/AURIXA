@@ -79,6 +79,46 @@ class Patient(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=True)
 
     appointments: Mapped[List["Appointment"]] = relationship(back_populates="patient")
+    insurance: Mapped[List["PatientInsurance"]] = relationship(back_populates="patient")
+    prescriptions: Mapped[List["Prescription"]] = relationship(back_populates="patient")
+
+
+class PatientInsurance(Base):
+    """Insurance coverage for a patient."""
+    __tablename__ = "patient_insurance"
+
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    plan_name: Mapped[str] = mapped_column(String)  # e.g., "In-Network PPO"
+    payer: Mapped[str] = mapped_column(String, nullable=True)  # e.g., "Aetna"
+    member_id: Mapped[str] = mapped_column(String, nullable=True)
+    copay: Mapped[str] = mapped_column(String, default="$25")  # e.g., "$25"
+    status: Mapped[str] = mapped_column(String, default="active")  # active, inactive
+
+    patient: Mapped["Patient"] = relationship(back_populates="insurance")
+
+
+class Prescription(Base):
+    """Prescription for a patient."""
+    __tablename__ = "prescriptions"
+
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    medication_name: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, default="active")  # active, refill_requested, filled
+    refill_requested_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+
+    patient: Mapped["Patient"] = relationship(back_populates="prescriptions")
+
+
+class AvailabilitySlot(Base):
+    """Available appointment slots (for scheduling)."""
+    __tablename__ = "availability_slots"
+
+    slot_date: Mapped[datetime.date] = mapped_column()
+    start_time: Mapped[str] = mapped_column(String)  # e.g., "09:00"
+    end_time: Mapped[str] = mapped_column(String)
+    provider_name: Mapped[str] = mapped_column(String)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
+
 
 class Appointment(Base):
     """Represents a single appointment."""
@@ -86,8 +126,9 @@ class Appointment(Base):
 
     start_time: Mapped[datetime.datetime] = mapped_column()
     end_time: Mapped[datetime.datetime] = mapped_column()
-    provider_name: Mapped[str] = mapped_column(String) # e.g., Dr. Smith
-    status: Mapped[str] = mapped_column(String, default="confirmed") # confirmed, cancelled, completed
+    provider_name: Mapped[str] = mapped_column(String)  # e.g., Dr. Smith
+    reason: Mapped[str] = mapped_column(String, nullable=True)  # e.g., "Annual checkup"
+    status: Mapped[str] = mapped_column(String, default="confirmed")  # confirmed, cancelled, completed
 
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
     tenant: Mapped["Tenant"] = relationship(back_populates="appointments")

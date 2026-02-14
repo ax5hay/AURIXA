@@ -8,6 +8,7 @@ from aurixa_db.database import AsyncSessionLocal, engine
 from aurixa_db.models import (
     Tenant, User, Patient, Appointment, KnowledgeBaseArticle,
     AuditLog, PlatformConfig, Conversation, Base,
+    PatientInsurance, Prescription, AvailabilitySlot,
 )
 
 
@@ -69,12 +70,14 @@ async def seed_database():
         await db.commit()
 
         # Create Appointments (use naive UTC for TIMESTAMP WITHOUT TIME ZONE columns)
-        now = datetime.datetime.utcnow()
+        # Use naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+        now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         appointments = [
             Appointment(
                 start_time=now + datetime.timedelta(days=1),
                 end_time=now + datetime.timedelta(days=1, hours=1),
                 provider_name="Dr. Adams",
+                reason="Annual checkup",
                 status="confirmed",
                 tenant_id=tenants[0].id,
                 patient_id=patients[0].id,
@@ -83,6 +86,7 @@ async def seed_database():
                 start_time=now + datetime.timedelta(days=2),
                 end_time=now + datetime.timedelta(days=2, hours=1),
                 provider_name="Dr. Bell",
+                reason="Follow-up",
                 status="confirmed",
                 tenant_id=tenants[1].id,
                 patient_id=patients[1].id,
@@ -91,6 +95,7 @@ async def seed_database():
                 start_time=now + datetime.timedelta(days=3),
                 end_time=now + datetime.timedelta(days=3, hours=1),
                 provider_name="Dr. Chen",
+                reason="Lab review",
                 status="completed",
                 tenant_id=tenants[0].id,
                 patient_id=patients[0].id,
@@ -99,6 +104,7 @@ async def seed_database():
                 start_time=now + datetime.timedelta(days=5),
                 end_time=now + datetime.timedelta(days=5, hours=1),
                 provider_name="Dr. Adams",
+                reason="General visit",
                 status="confirmed",
                 tenant_id=tenants[0].id,
                 patient_id=patients[2].id,
@@ -106,6 +112,43 @@ async def seed_database():
         ]
         for a in appointments:
             db.add(a)
+        await db.commit()
+
+        # Create Patient Insurance
+        insurances = [
+            PatientInsurance(patient_id=patients[0].id, plan_name="In-Network PPO", payer="Aetna", copay="$25", status="active"),
+            PatientInsurance(patient_id=patients[1].id, plan_name="UnitedHealthcare", payer="UHC", member_id="UHC-12345", copay="$30", status="active"),
+            PatientInsurance(patient_id=patients[2].id, plan_name="Blue Cross PPO", payer="BCBS", copay="$20", status="active"),
+            PatientInsurance(patient_id=patients[3].id, plan_name="Medicare", payer="CMS", copay="$0", status="active"),
+        ]
+        for i in insurances:
+            db.add(i)
+        await db.commit()
+
+        # Create Prescriptions
+        prescriptions = [
+            Prescription(patient_id=patients[0].id, medication_name="Lisinopril 10mg", status="active"),
+            Prescription(patient_id=patients[0].id, medication_name="Metformin 500mg", status="active"),
+            Prescription(patient_id=patients[2].id, medication_name="Amlodipine 5mg", status="active"),
+        ]
+        for pr in prescriptions:
+            db.add(pr)
+        await db.commit()
+
+        # Create Availability Slots (next 7 days)
+        today = datetime.date.today()
+        providers = ["Dr. Adams", "Dr. Bell", "Dr. Chen"]
+        for d in range(7):
+            slot_date = today + datetime.timedelta(days=d)
+            for prov in providers:
+                for st, et in [("09:00", "09:30"), ("10:00", "10:30"), ("14:00", "14:30")]:
+                    db.add(AvailabilitySlot(
+                        slot_date=slot_date,
+                        start_time=st,
+                        end_time=et,
+                        provider_name=prov,
+                        tenant_id=tenants[0].id,
+                    ))
         await db.commit()
 
         # Create Knowledge Base Articles (patient-facing FAQ + admin)

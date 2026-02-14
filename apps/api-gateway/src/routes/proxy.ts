@@ -47,7 +47,7 @@ export async function proxyRoutes(app: FastifyInstance) {
             headers,
             body:
               req.method !== "GET" && req.method !== "HEAD"
-                ? JSON.stringify(req.body)
+                ? JSON.stringify(req.body ?? {})
                 : undefined,
             signal: AbortSignal.timeout(timeoutMs),
           });

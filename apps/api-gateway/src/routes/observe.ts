@@ -8,4 +8,14 @@ export async function observeRoutes(app: FastifyInstance) {
     const body = await res.text();
     reply.status(res.status).type("application/json").send(body);
   });
+
+  app.post("/telemetry", async (req, reply) => {
+    const url = `${getServiceUrl("observability")}/api/v1/telemetry`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
+    reply.status(res.status).type("application/json").send(await res.text());
+  });
 }

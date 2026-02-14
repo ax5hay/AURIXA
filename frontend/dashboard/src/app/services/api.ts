@@ -40,6 +40,39 @@ export async function getTenants(): Promise<Tenant[]> {
   return res.json();
 }
 
+export async function createTenant(data: { name: string; plan?: string; status?: string }): Promise<{ id: string; name: string; plan: string; status: string }> {
+  const res = await fetchApi("/api/v1/admin/tenants", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: data.name, plan: data.plan ?? "starter", status: data.status ?? "active" }),
+  });
+  if (!res.ok) throw new Error("Failed to create tenant");
+  return res.json();
+}
+
+export async function createPatient(data: { full_name: string; email?: string; phone_number?: string; tenant_id?: number }): Promise<PatientSummary> {
+  const res = await fetchApi("/api/v1/admin/patients", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create patient");
+  return res.json();
+}
+
+export interface PatientSummary {
+  id: number;
+  fullName: string;
+  email?: string;
+  phoneNumber?: string;
+}
+
+export async function getPatients(): Promise<PatientSummary[]> {
+  const res = await fetchApi("/api/v1/admin/patients", FETCH_OPTS);
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export interface AnalyticsSummary {
   conversations_total: number;
   tenants_count: number;
@@ -111,15 +144,29 @@ export interface PipelineResponse {
   // Add other fields from the ConversationState as needed
 }
 
-export async function runPipeline(prompt: string): Promise<PipelineResponse> {
+export interface PipelineRequest {
+  prompt: string;
+  patient_id?: number;
+  session_id?: string;
+  tenant_id?: string;
+  user_id?: string;
+}
+
+export async function runPipeline(
+  prompt: string,
+  opts?: { patient_id?: number; session_id?: string; tenant_id?: string }
+): Promise<PipelineResponse> {
+  const body: PipelineRequest = { prompt };
+  if (opts?.patient_id != null) body.patient_id = opts.patient_id;
+  if (opts?.session_id) body.session_id = opts.session_id;
+  if (opts?.tenant_id) body.tenant_id = opts.tenant_id;
+
   const response = await fetchApi(
     "/api/v1/orchestration/pipelines",
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     },
     PIPELINE_TIMEOUT_MS
   );
@@ -130,6 +177,64 @@ export async function runPipeline(prompt: string): Promise<PipelineResponse> {
   }
 
   return response.json();
+}
+
+export async function routeIntent(prompt: string) {
+  const res = await fetchApi("/api/v1/llm/route", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function retrieveRAG(prompt: string, topK = 5) {
+  const res = await fetchApi("/api/v1/rag/retrieve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, top_k: topK }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function validateSafety(text: string) {
+  const res = await fetchApi("/api/v1/safety/validate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function runAgentTask(prompt: string, patientId?: number) {
+  const task: { prompt: string; metadata?: { patient_id?: number } } = { prompt };
+  if (patientId != null) task.metadata = { patient_id: patientId };
+  const res = await fetchApi("/api/v1/agents/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ task }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function executeAction(actionName: string, params: Record<string, unknown>) {
+  const res = await fetchApi("/api/v1/execute/execute", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action_name: actionName, params }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listExecutionActions() {
+  const res = await fetchApi("/api/v1/execute/actions");
+  if (!res.ok) return { actions: [] };
+  return res.json();
 }
 
 export interface ServiceHealth {

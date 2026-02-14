@@ -11,6 +11,18 @@ from aurixa_llm.types import LLMProvider, LLMRequest
 
 from .models import RouteRequest, RouteResponse, GenerateRequest, GenerateResponse
 
+OBSERVABILITY_URL = os.getenv("OBSERVABILITY_CORE_HOST", "http://localhost:8008")
+RAG_SERVICE_URL = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
+SEMANTIC_ROUTING_THRESHOLD = float(os.getenv("SEMANTIC_ROUTING_THRESHOLD", "0.5"))
+
+# Intent examples for semantic routing - phrase -> optional model override
+INTENT_EXAMPLES: dict[str, list[str]] = {
+    "appointment": ["schedule appointment", "book a visit", "reschedule", "cancel appointment"],
+    "billing": ["bill", "payment", "insurance", "copay", "balance due"],
+    "prescription": ["refill", "prescription", "medication"],
+    "general": ["hello", "help", "hours", "contact"],
+}
+
 # Keyword-based routing (cloud providers for specific use cases)
 ROUTING_RULES = {
     "haiku": {"keywords": ["fast", "quick", "summary"], "provider": LLMProvider.ANTHROPIC, "model": "claude-3-haiku-20240307"},
@@ -42,11 +54,48 @@ async def fetch_lm_studio_models() -> list[str]:
         return []
 
 
+async def _startup_semantic_intents() -> dict[str, list[float]]:
+    """Precompute intent embeddings from RAG service."""
+    if not RAG_SERVICE_URL:
+        return {}
+    intents: dict[str, list[float]] = {}
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for intent_name, phrases in INTENT_EXAMPLES.items():
+                # Use first phrase as representative; could average multiple
+                text = phrases[0] if phrases else intent_name
+                r = await client.post(
+                    f"{RAG_SERVICE_URL}/api/v1/embed",
+                    json={"text": text},
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    intents[intent_name] = data.get("embedding", [])
+        logger.info("Semantic routing: loaded {} intent embeddings", len(intents))
+    except Exception as e:
+        logger.warning("Could not load semantic intents: {}", e)
+    return intents
+
+
+def _cosine_sim(a: list[float], b: list[float]) -> float:
+    """Cosine similarity between two vectors."""
+    import math
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na * nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize the LLM router. Never crash - run with minimal providers if needed."""
     app.state.llm_router = None
     app.state.lm_studio_models = []
+    app.state.intent_embeddings = {}
     try:
         app.state.llm_router = LLMRouter()
         if not app.state.llm_router.providers:
@@ -62,12 +111,13 @@ async def lifespan(app: FastAPI):
                 except Exception as e:
                     logger.warning("Could not fetch LM Studio models at startup: {}", e)
             logger.info("LLM Router initialized with providers: {}", app.state.llm_router.providers)
+        app.state.intent_embeddings = await _startup_semantic_intents()
     except Exception as e:
         logger.error("LLM Router init failed: {} - service will start but generate() will fail", e)
-        # Create minimal router so health endpoint still works
         app.state.llm_router = LLMRouter.__new__(LLMRouter)
         app.state.llm_router._clients = {}
         app.state.llm_router._fallback_order = []
+        app.state.intent_embeddings = {}
     yield
     logger.info("LLM Router shutting down")
 
@@ -99,6 +149,32 @@ async def health(req: Request):
     }
 
 
+async def _emit_llm_telemetry(response) -> None:
+    """Fire-and-forget telemetry emission for LLM calls."""
+    if not OBSERVABILITY_URL:
+        return
+    try:
+        usage = getattr(response, "usage", None)
+        cost = usage.estimated_cost_usd if usage else None
+        prov = getattr(response, "provider", None)
+        provider_str = prov.value if prov and hasattr(prov, "value") else None
+        await httpx.AsyncClient(timeout=2.0).post(
+            f"{OBSERVABILITY_URL}/api/v1/telemetry",
+            json={
+                "service_name": "llm-router",
+                "event_type": "llm_call",
+                "data": {
+                    "latency_ms": getattr(response, "latency_ms", None),
+                    "cost_usd": cost,
+                    "model": getattr(response, "model", None),
+                    "provider": provider_str,
+                },
+            },
+        )
+    except Exception as e:
+        logger.debug("LLM telemetry emit failed (non-fatal): {}", e)
+
+
 @app.post("/api/v1/generate", response_model=GenerateResponse, summary="Generate text using a routed LLM")
 async def generate(request: GenerateRequest):
     """Generates a response with retry on transient failures."""
@@ -113,6 +189,7 @@ async def generate(request: GenerateRequest):
     for attempt in range(3):
         try:
             response = await app.state.llm_router.generate(llm_request, provider=request.provider)
+            asyncio.create_task(_emit_llm_telemetry(response))
             return response
         except Exception as e:
             last_err = e
@@ -168,10 +245,32 @@ async def list_models(req: Request):
 
 @app.post("/api/v1/route", response_model=RouteResponse, summary="Get the best model for a prompt")
 async def route_prompt(body: RouteRequest, req: Request):
-    """Route to LOCAL by default (cost-free); use cloud for keyword matches."""
+    """Route to LOCAL by default (cost-free); use cloud for keyword matches. Semantic routing adds confidence."""
     prompt_lower = body.prompt.lower()
     app = req.app
+    best_intent = None
+    best_confidence = 0.0
 
+    # Semantic routing: embedding similarity to predefined intents
+    intent_embs = getattr(app.state, "intent_embeddings", None) or {}
+    if intent_embs and RAG_SERVICE_URL:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.post(
+                    f"{RAG_SERVICE_URL}/api/v1/embed",
+                    json={"text": body.prompt},
+                )
+                if r.status_code == 200:
+                    q_emb = r.json().get("embedding", [])
+                    for intent_name, i_emb in intent_embs.items():
+                        sim = _cosine_sim(q_emb, i_emb)
+                        if sim > best_confidence:
+                            best_confidence = sim
+                            best_intent = intent_name
+        except Exception as e:
+            logger.debug("Semantic routing failed: {}", e)
+
+    # Keyword rules take precedence
     for route, config in ROUTING_RULES.items():
         if config["provider"] in app.state.llm_router.providers and any(
             kw in prompt_lower for kw in config["keywords"]
@@ -180,7 +279,11 @@ async def route_prompt(body: RouteRequest, req: Request):
             return RouteResponse(
                 model=config["model"],
                 provider=config["provider"],
-                metadata={"reason": f"Keyword match: {config['keywords']}"},
+                confidence=best_confidence if best_confidence > 0 else 1.0,
+                metadata={
+                    "reason": f"Keyword match: {config['keywords']}",
+                    "detected_intent": best_intent,
+                },
             )
 
     # Default: LOCAL (LM Studio) for cost savings
@@ -198,4 +301,13 @@ async def route_prompt(body: RouteRequest, req: Request):
     if not model:
         model = "local-model"
 
-    return RouteResponse(model=model or "local-model", provider=provider, metadata={"reason": "Default (local-first)"})
+    meta = {"reason": "Default (local-first)"}
+    if best_intent and best_confidence >= SEMANTIC_ROUTING_THRESHOLD:
+        meta["detected_intent"] = best_intent
+
+    return RouteResponse(
+        model=model or "local-model",
+        provider=provider,
+        confidence=best_confidence if best_confidence > 0 else 1.0,
+        metadata=meta,
+    )

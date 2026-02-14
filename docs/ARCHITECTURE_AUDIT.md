@@ -39,8 +39,8 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Real-time audio ingestion | ❌ | Voice accepts text; audio is placeholder |
-| Streaming ASR (Whisper/Deepgram) | ❌ | Not integrated |
+| Real-time audio ingestion | ✅ | Voice accepts base64 audio |
+| Streaming ASR (Deepgram) | ✅ Partial | When DEEPGRAM_API_KEY set |
 | Duplex audio | ❌ | Response is text only |
 | Interrupt handling | ❌ | — |
 | Latency target (<800ms) | ❌ | Pipeline is request-response |
@@ -55,9 +55,9 @@ Maps the production-grade conversational AI platform requirements to current imp
 |---------|--------|----------|
 | Intent classifier | ✅ Partial | LLM Router keyword rules |
 | LLM fallback | ✅ | LLM Router with LOCAL/cloud fallback |
-| Semantic routing | ❌ | No embedding similarity |
+| Semantic routing | ✅ | RAG /embed + cosine similarity to intent embeddings |
 | Context reasoning | ❌ | No conversation history in route |
-| Confidence scoring | ❌ | RouteResponse has confidence but not used |
+| Confidence scoring | ✅ | RouteResponse.confidence from semantic match |
 | Cost reduction (intent-based) | ✅ Partial | Keyword routing avoids LLM for simple cases |
 
 ---
@@ -70,6 +70,7 @@ Maps the production-grade conversational AI platform requirements to current imp
 |---------|--------|----------|
 | Tool calling LLMs | ✅ Partial | Agent runtime TOOL_REGISTRY |
 | RAG tool integration | ✅ | `search_knowledge_base` calls RAG |
+| Pipeline integration | ✅ | Orchestration calls agent when prompt suggests tool use |
 | Function execution chains | ❌ | Single-tool dispatch only |
 | Agent planners | ❌ | No LangGraph/CrewAI |
 | Multi-step state machine | ❌ | — |
@@ -84,7 +85,8 @@ Maps the production-grade conversational AI platform requirements to current imp
 |---------|--------|----------|
 | Vector search | ✅ | FAISS + sentence-transformers |
 | Keyword boost | ✅ | `apps/rag-service` relevance scoring |
-| BM25 hybrid | ❌ | Vector + keyword only |
+| BM25 hybrid | ✅ | rank-bm25 + Reciprocal Rank Fusion |
+| Embed API | ✅ | POST `/api/v1/embed` for semantic routing |
 | Medical/domain rerankers | ❌ | — |
 | Chunk lineage | ❌ | — |
 | DB + fallback docs | ✅ | `documents.py` |
@@ -100,9 +102,9 @@ Maps the production-grade conversational AI platform requirements to current imp
 | Banned words | ✅ | `safety-guardrails` configurable |
 | PII detection | ✅ | SSN, email, phone, credit card |
 | PII redaction | ✅ | Pattern substitution |
-| Emergency symptoms | ❌ | — |
+| Emergency symptoms | ✅ | `SAFETY_EMERGENCY_KEYWORDS` env; chest pain, stroke, etc. |
 | Unsafe advice detection | ❌ | — |
-| Escalation triggers | ❌ | — |
+| Escalation triggers | ✅ | `requires_escalation` in ValidateResponse |
 
 ---
 
@@ -115,10 +117,10 @@ Maps the production-grade conversational AI platform requirements to current imp
 | send_email | ✅ | `execution-engine` |
 | schedule_reminder | ✅ | — |
 | log_audit | ✅ | — |
-| EHR integration | ❌ | — |
-| Billing automation | ❌ | — |
-| Prescription workflows | ❌ | — |
-| Insurance verification | ❌ | — |
+| get_appointments, create_appointment | ✅ Stub | Execution + agent wiring |
+| check_insurance, get_availability | ✅ Stub | — |
+| request_prescription_refill | ✅ Stub | — |
+| EHR integration | Stub | Scaffolding for real APIs |
 
 ---
 
@@ -128,8 +130,9 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Performance reports | ✅ | `observability-core` mock |
+| Performance reports | ✅ | `observability-core` |
 | Conversation telemetry | ✅ | Orchestration stores steps |
+| Live pipeline telemetry | ✅ | Orchestration emits pipeline_step to observability |
 | Intent accuracy | ❌ | Not tracked |
 | Voice metrics | ❌ | — |
 | Retrieval precision | ❌ | — |

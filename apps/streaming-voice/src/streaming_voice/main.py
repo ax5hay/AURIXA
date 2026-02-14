@@ -13,6 +13,8 @@ from loguru import logger
 from .config import ServiceConfig
 
 SERVICE_NAME = "streaming-voice"
+DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
+DEEPGRAM_URL = "https://api.deepgram.com/v1/listen"
 config = ServiceConfig()
 ORCHESTRATION_URL = os.getenv("ORCHESTRATION_URL") or os.getenv("ORCHESTRATION_HOST", "http://localhost:8001")
 if not ORCHESTRATION_URL.startswith("http"):
@@ -91,14 +93,42 @@ async def _process_text_input(
     })
 
 
+async def _transcribe_audio(audio_bytes: bytes) -> str | None:
+    """
+    Transcribe audio via Deepgram. Set DEEPGRAM_API_KEY to enable.
+    Returns transcript or None if not configured / failed.
+    """
+    if not DEEPGRAM_API_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(
+                DEEPGRAM_URL,
+                content=audio_bytes,
+                headers={"Authorization": f"Token {DEEPGRAM_API_KEY}"},
+                params={"model": "nova-2", "language": "en", "smart_format": "true"},
+            )
+            if r.status_code != 200:
+                logger.warning("Deepgram returned {}", r.status_code)
+                return None
+            data = r.json()
+            channel = data.get("results", {}).get("channels", [{}])[0]
+            alternatives = channel.get("alternatives", [])
+            if alternatives:
+                return (alternatives[0].get("transcript") or "").strip()
+    except Exception as e:
+        logger.warning("Deepgram STT failed: {}", e)
+    return None
+
+
 async def _process_audio_input(
     websocket: WebSocket,
     data_b64: str,
     session_id: str | None,
     patient_id: int | None = None,
 ):
-    """Process audio input. Placeholder: base64-decode if it's text, else return info."""
-    # For now: if data looks like base64-encoded text, decode and process as text
+    """Process audio input. Uses Deepgram STT when DEEPGRAM_API_KEY is set."""
+    # Fallback: if data is base64-encoded text (for testing), decode and process
     try:
         decoded = base64.b64decode(data_b64).decode("utf-8", errors="replace")
         if decoded.isprintable() and len(decoded) < 2000:
@@ -106,10 +136,22 @@ async def _process_audio_input(
             return
     except Exception:
         pass
-    # Raw audio: STT not implemented - send helpful message
+
+    # Raw audio: try Deepgram STT
+    try:
+        audio_bytes = base64.b64decode(data_b64)
+    except Exception:
+        await websocket.send_json({"type": "error", "message": "Invalid base64 audio data"})
+        return
+
+    transcript = await _transcribe_audio(audio_bytes)
+    if transcript:
+        await _process_text_input(websocket, transcript, session_id, patient_id)
+        return
+
     await websocket.send_json({
         "type": "text",
-        "content": "Audio input received. Speech-to-text is not yet configured. Send text instead: {\"type\": \"text\", \"content\": \"your message\"}",
+        "content": "Audio received. Set DEEPGRAM_API_KEY for speech-to-text, or send text: {\"type\": \"text\", \"content\": \"your message\"}",
         "done": True,
     })
 

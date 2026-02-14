@@ -20,3 +20,7 @@ class ValidateResponse(BaseModel):
     is_safe: bool = Field(description="Whether the text is considered safe.")
     validated_text: str = Field(description="The original or a sanitized version of the text.")
     issues: List[ValidationIssue] = Field(description="A list of issues found, if any.", default_factory=list)
+    requires_escalation: bool = Field(
+        description="When True, indicates emergency/clinical triage requiring human escalation.",
+        default=False,
+    )
