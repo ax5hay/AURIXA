@@ -10,7 +10,7 @@
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![turborepo](https://img.shields.io/badge/monorepo-turborepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 
 > **Enterprise-grade conversational AI orchestration platform** — Multi-tenant, modular, horizontally scalable microservices infrastructure for building sophisticated real-time conversational experiences with cost-aware LLM routing and integrated safety guardrails.
 
@@ -38,7 +38,7 @@ The AURIXA platform follows a **microservices-first** architecture with clear se
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐   │
 │  │     Dashboard (Unified Admin)    │  │  Patient Portal                 │   │
 │  │        (Next.js 15)              │  │     (Next.js 15)                 │   │
-│  │        Port 3100                 │  │     Port 3102                   │   │
+│  │        Port 3100                 │  │     Port 3300                   │   │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘   │
 │                                  ▲                                           │
 └──────────────────────────────────┼───────────────────────────────────────────┘
@@ -157,7 +157,7 @@ aurixa/
 │   ├── db/                        Database layer
 │   │   ├── src/aurixa_db/
 │   │   │   ├── models.py          SQLAlchemy ORM models
-│   │   │   └── core.py            Database engine & session
+│   │   │   └── database.py        Database engine & session
 │   │   ├── seed.py                Database seeding script
 │   │   └── pyproject.toml
 │   │
@@ -191,7 +191,7 @@ aurixa/
 │
 ├── frontend/                      User-facing applications
 │   ├── dashboard/                 Unified admin: analytics, playground, tenants, services, audit, configuration (Next.js 15, Port 3100)
-│   └── patient-portal/            Patient interface (Next.js 15, Port 3102)
+│   └── patient-portal/            Patient interface (Next.js 15, Port 3300)
 │
 ├── infra/                         Infrastructure as Code
 │   ├── docker/                    Docker Compose (local development)
@@ -278,8 +278,8 @@ The LLM Router auto-detects configured providers from environment variables and 
 # .env configuration
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
-GEMINI_API_KEY=AIzaSy...
-LOCAL_LLM_URL=http://localhost:1234/v1/  # LM Studio
+GOOGLE_AI_API_KEY=AIzaSy...
+LM_STUDIO_BASE_URL=http://127.0.0.1:1234/v1  # LM Studio (local, cost-free)
 ```
 
 **Automatic Provider Selection:**
@@ -310,42 +310,70 @@ pnpm install
 
 # Setup environment variables
 cp .env.example .env
-
-# Start all services with Docker Compose
-cd infra/docker && docker-compose up -d
-
-# Or run individual services locally
-# TypeScript service
-cd apps/api-gateway && pnpm dev
-
-# Python service
-cd apps/orchestration-engine && uvicorn orchestration_engine.main:app --reload
 ```
 
-### Database Seeding
+### Run the Full Stack (Recommended)
 
-Seed the database with mock tenants, patients, appointments, and audit logs:
+Start all services (Postgres, backend, frontends) with one command:
 
 ```bash
-# Ensure PostgreSQL is running (via docker-compose or locally)
-pnpm db:seed
+# Kill any existing processes and start fresh
+./scripts/kill-stack.sh
+./scripts/run-stack.sh
 ```
+
+The script will:
+1. Start Postgres (and Redis) via Docker if not running
+2. Seed the database with mock data
+3. Start API Gateway, Orchestration, LLM Router, RAG, Safety, Voice, Execution, Observability
+4. Start Dashboard (port 3100) and Patient Portal (port 3300)
+
+**Endpoints after ~60 seconds:**
+
+| Service       | URL                    |
+|---------------|------------------------|
+| API Gateway   | http://localhost:3000  |
+| Dashboard     | http://localhost:3100  |
+| Patient Portal| http://localhost:3300  |
+| Orchestration | http://localhost:8001  |
+| LLM Router    | http://localhost:8002  |
+
+If Python services fail to start, run `./scripts/bootstrap-python.sh` once to install dependencies.
 
 ### Verify Installation
 
 ```bash
-# Check API Gateway health
+./scripts/e2e-check.sh
+```
+
+Or manually:
+```bash
 curl http://localhost:3000/health
+curl http://localhost:3100/
+curl http://localhost:3300/
+```
 
-# Check Orchestration Engine
-curl http://localhost:8001/health
+### Alternative: Docker Compose
 
-# Check LLM Router
-curl http://localhost:8002/health
+```bash
+cd infra/docker && docker-compose up -d
+```
 
-# View logs
-docker-compose logs -f api-gateway
-docker-compose logs -f orchestration-engine
+### Alternative: Individual Services
+
+```bash
+# API Gateway
+cd apps/api-gateway && pnpm dev
+
+# Orchestration Engine
+cd apps/orchestration-engine && uvicorn orchestration_engine.main:app --reload --port 8001
+```
+
+### Database Seeding
+
+```bash
+# Run manually if needed (run-stack does this automatically)
+pnpm db:seed
 ```
 
 ### Frontend Applications
@@ -353,9 +381,9 @@ docker-compose logs -f orchestration-engine
 | App            | Port | Purpose                                                       |
 |----------------|------|---------------------------------------------------------------|
 | Dashboard      | 3100 | Unified: system status, playground, tenants, services, analytics, knowledge, config, audit, settings |
-| Patient Portal | 3300 | Patient chat & appointments                                   |
+| Patient Portal | 3300 | Patient chat & appointments, help articles, AI assistant      |
 
-All frontends fetch real data from the API gateway. Run with `pnpm dev` from the monorepo root.
+Both fetch data from the API Gateway (port 3000). Patient Portal is pre-built and served in production mode for stability.
 
 ---
 
@@ -860,24 +888,9 @@ curl -X POST http://localhost:3000/api/v1/generate \
 ### Execute Orchestration Pipeline
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/orchestration/execute \
+curl -X POST http://localhost:3000/api/v1/orchestration/pipelines \
   -H "Content-Type: application/json" \
-  -H "x-tenant-id: tenant-123" \
-  -d '{
-    "conversation_id": "conv-456",
-    "steps": [
-      {
-        "name": "retrieve_context",
-        "service": "rag",
-        "input": {"query": "patient info"}
-      },
-      {
-        "name": "generate_response",
-        "service": "llm-router",
-        "input": {"prompt": "Generate summary"}
-      }
-    ]
-  }'
+  -d '{"prompt": "What is AURIXA?"}'
 ```
 
 ### WebSocket Connection
