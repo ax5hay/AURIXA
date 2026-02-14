@@ -1,9 +1,7 @@
 /** API client for AURIXA Patient Portal. */
 
 const API_BASE =
-  typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000")
-    : (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000");
+  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
 
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;

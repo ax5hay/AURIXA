@@ -10,18 +10,30 @@ from aurixa_db import get_db_session, engine, Base, models as db_models
 from . import clients
 from .models import PipelineRequest, ConversationState, PipelineStep as PydanticPipelineStep
 
+async def _ensure_db_tables():
+    """Create tables with retry when Postgres may still be starting."""
+    import asyncio
+    for attempt in range(5):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            return True
+        except Exception as e:
+            logger.warning("DB connect attempt {} failed: {}", attempt + 1, e)
+            if attempt < 4:
+                await asyncio.sleep(2)
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create database tables on startup."""
     logger.info("Orchestration engine starting up")
     if engine is not None:
-        try:
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
+        if await _ensure_db_tables():
             logger.info("Database tables created.")
-        except Exception as e:
-            logger.error("Could not connect to database: {}", e)
-            logger.warning("Orchestration starting; DB routes will fail until Postgres is available.")
+        else:
+            logger.error("Could not connect to database after 5 attempts. DB routes will fail.")
     else:
         logger.warning("Database engine not initialized.")
     yield

@@ -45,20 +45,29 @@ async def fetch_lm_studio_models() -> list[str]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize the LLM router. Never crash - run with minimal providers if needed."""
+    app.state.llm_router = None
+    app.state.lm_studio_models = []
     try:
         app.state.llm_router = LLMRouter()
-        app.state.lm_studio_models = []
-        if LLMProvider.LOCAL in app.state.llm_router.providers:
-            try:
-                app.state.lm_studio_models = await fetch_lm_studio_models()
-                if app.state.lm_studio_models:
-                    logger.info("LM Studio models: {}", app.state.lm_studio_models[:5])
-            except Exception as e:
-                logger.warning("Could not fetch LM Studio models at startup: {}", e)
-        logger.info("LLM Router initialized with providers: {}", app.state.llm_router.providers)
+        if not app.state.llm_router.providers:
+            logger.warning("No LLM providers configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_AI_API_KEY, or LM_STUDIO_BASE_URL.")
+        else:
+            if LLMProvider.LOCAL in app.state.llm_router.providers:
+                try:
+                    app.state.lm_studio_models = await asyncio.wait_for(
+                        fetch_lm_studio_models(), timeout=3.0
+                    )
+                    if app.state.lm_studio_models:
+                        logger.info("LM Studio models: {}", app.state.lm_studio_models[:5])
+                except Exception as e:
+                    logger.warning("Could not fetch LM Studio models at startup: {}", e)
+            logger.info("LLM Router initialized with providers: {}", app.state.llm_router.providers)
     except Exception as e:
-        logger.error("LLM Router init failed: {}", e)
-        raise
+        logger.error("LLM Router init failed: {} - service will start but generate() will fail", e)
+        # Create minimal router so health endpoint still works
+        app.state.llm_router = LLMRouter.__new__(LLMRouter)
+        app.state.llm_router._clients = {}
+        app.state.llm_router._fallback_order = []
     yield
     logger.info("LLM Router shutting down")
 
@@ -72,13 +81,17 @@ app = FastAPI(
 
 
 @app.get("/health", summary="Health check endpoint")
-async def health():
-    """Return a 200 OK status and provider health. Timeout 5s to avoid blocking."""
-    try:
-        provider_health = await asyncio.wait_for(app.state.llm_router.health(), timeout=5.0)
-    except asyncio.TimeoutError:
-        provider_health = {}
-        logger.warning("Health check timed out")
+async def health(req: Request):
+    """Return 200 OK quickly. Provider health is best-effort with short timeout to avoid blocking gateways."""
+    provider_health: dict[str, bool] = {}
+    router = getattr(req.app.state, "llm_router", None)
+    if router is not None and hasattr(router, "health"):
+        try:
+            provider_health = await asyncio.wait_for(router.health(), timeout=2.0)
+        except asyncio.TimeoutError:
+            logger.debug("Provider health check timed out (non-fatal)")
+        except Exception as e:
+            logger.debug("Provider health check failed: {} (non-fatal)", e)
     return {
         "service": "llm-router",
         "status": "healthy",

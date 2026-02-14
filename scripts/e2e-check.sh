@@ -34,6 +34,7 @@ curl -sf "$GATEWAY/api/v1/admin/config/summary" > /dev/null && pass "GET /api/v1
 curl -sf "$GATEWAY/api/v1/admin/config/detail" > /dev/null && pass "GET /api/v1/admin/config/detail" || fail "GET /api/v1/admin/config/detail"
 curl -sf "$GATEWAY/api/v1/admin/knowledge/articles" > /dev/null && pass "GET /api/v1/admin/knowledge/articles" || fail "GET /api/v1/admin/knowledge/articles"
 curl -sf "$GATEWAY/api/v1/admin/patients" > /dev/null && pass "GET /api/v1/admin/patients" || fail "GET /api/v1/admin/patients"
+curl -sf "$GATEWAY/api/v1/admin/patients/1" > /dev/null && pass "GET /api/v1/admin/patients/1 (patient profile)" || fail "GET /api/v1/admin/patients/1"
 
 # Orchestration routes (via proxy)
 curl -sf "$GATEWAY/api/v1/orchestration/knowledge/articles" > /dev/null && pass "GET /api/v1/orchestration/knowledge/articles" || warn "GET /api/v1/orchestration/knowledge/articles (orchestration may be down)"

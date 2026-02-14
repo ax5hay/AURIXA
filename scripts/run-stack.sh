@@ -12,7 +12,16 @@ cd "$ROOT"
 
 # Kill any existing stack first (avoid EADDRINUSE)
 "$ROOT/scripts/kill-stack.sh" 2>/dev/null || true
-sleep 6
+sleep 8
+
+# Pre-build patient portal while system is idle (avoids build during heavy load; start is instant)
+echo "Pre-building Patient Portal..."
+if (cd "$ROOT/frontend/patient-portal" && rm -rf .next && pnpm build 2>&1); then
+  echo "Patient Portal build complete."
+else
+  echo "Warn: Patient Portal build failed; will try dev mode as fallback."
+  PATIENT_PORTAL_DEV_FALLBACK=1
+fi
 
 # Load .env if present
 if [ -f .env ]; then
@@ -21,8 +30,10 @@ if [ -f .env ]; then
   set +a
 fi
 
-# Raise open-file limit to avoid EMFILE when starting many processes
+# Raise open-file limit to avoid EMFILE (too many open files) with multiple dev servers
 ulimit -n 65536 2>/dev/null || true
+# Use polling instead of native watchers to reduce file descriptors (avoids EMFILE)
+export WATCHPACK_POLLING=true
 
 echo "=== AURIXA Run Stack ==="
 
@@ -38,9 +49,22 @@ else
   echo "Docker not found. Ensure Postgres is running on localhost:5432 (user: aurixa, pass: aurixa, db: aurixa)"
 fi
 
-# Seed DB (non-fatal; stack runs anyway)
+# Wait for Postgres to accept connections (retry seed until success or max attempts)
 echo "Seeding database..."
-pnpm db:seed 2>/dev/null || (cd packages/db && python seed.py) || true
+SEED_OK=false
+for attempt in 1 2 3 4 5; do
+  if pnpm db:seed 2>&1; then
+    SEED_OK=true
+    break
+  fi
+  if [ "$attempt" -lt 5 ]; then
+    echo "Seed attempt $attempt failed; waiting 3s for Postgres..."
+    sleep 3
+  fi
+done
+if [ "$SEED_OK" != "true" ]; then
+  echo "Warn: db:seed failed after 5 attempts. Run 'pnpm db:seed' manually. Patient portal may show 'Could not load profile'."
+fi
 
 # Start backend services in background
 echo "Starting API Gateway..."
@@ -49,10 +73,13 @@ GATEWAY_PID=$!
 sleep 2
 
 # Python services: use uv run (or pip-installed uvicorn)
-# uv can panic on some macOS; fallback to pip install -e . then uvicorn
+# uv can panic on some macOS; fallback with PYTHONPATH for workspace packages
 run_python_app() {
   local dir=$1 mod=$2 port=$3
-  (cd "$dir" && (uv run uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port" 2>/dev/null || python -m uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port")) &
+  (cd "$dir" && (
+    uv run uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port" 2>/dev/null ||
+    PYTHONPATH="$ROOT/packages/db:$ROOT/packages/llm-clients:$ROOT:$dir" python -m uvicorn "$mod.main:app" --host 0.0.0.0 --port "$port"
+  )) &
 }
 
 # Python apps: try uv run first; if uv panics (e.g. macOS), ensure deps are installed:
@@ -94,8 +121,12 @@ sleep 1
 # Start frontends
 echo "Starting frontends..."
 pnpm --filter @aurixa/dashboard dev &
-# Patient portal: production mode; clean build to avoid webpack cache issues
-(cd "$ROOT/frontend/patient-portal" && rm -rf .next && pnpm build --silent && pnpm start) &
+# Patient portal: use pre-built start if available, else dev mode
+if [ "${PATIENT_PORTAL_DEV_FALLBACK:-}" = "1" ]; then
+  WATCHPACK_POLLING=true pnpm --filter @aurixa/patient-portal dev &
+else
+  (cd "$ROOT/frontend/patient-portal" && pnpm start) &
+fi
 
 echo ""
 echo "Stack running. Endpoints:"
