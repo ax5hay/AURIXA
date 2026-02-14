@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
+import { PatientNav } from "@/components/PatientNav";
 
 export const metadata: Metadata = {
   title: "AURIXA Patient Portal",
   description: "Your virtual assistant for appointments and inquiries.",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({
   children,
@@ -16,8 +16,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.className} bg-background text-white min-h-screen`}>
+      <body className="font-sans bg-background text-white min-h-screen antialiased">
         <main className="w-full max-w-5xl mx-auto px-4 sm:px-6">
+          <PatientNav />
           {children}
         </main>
       </body>

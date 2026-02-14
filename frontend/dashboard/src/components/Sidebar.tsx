@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 
 const iconClass = "w-5 h-5 flex-shrink-0";
 const navItems = [
@@ -119,7 +119,7 @@ export default function Sidebar() {
           return (
             <Link key={item.href} href={item.href}>
               <div
-                className={clsx(
+                className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors relative hover:translate-x-0.5",
                   isActive
                     ? "bg-aurixa-600/15 text-aurixa-400"

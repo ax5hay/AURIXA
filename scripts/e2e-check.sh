@@ -41,5 +41,11 @@ curl -sf "$GATEWAY/api/v1/orchestration/knowledge/articles" > /dev/null && pass 
 # Observability
 curl -sf "$GATEWAY/api/v1/observe/reports/performance" > /dev/null && pass "GET /api/v1/observe/reports/performance" || warn "GET /api/v1/observe/reports/performance (observability may be down)"
 
+# Voice service health (direct)
+curl -sf "http://localhost:8006/health" > /dev/null && pass "Voice service GET /health" || warn "Voice service GET /health (voice may be down)"
+
+# Pipeline (orchestration) - allow 90s for LLM response
+curl -sf --max-time 90 -X POST "$GATEWAY/api/v1/orchestration/pipelines" -H "Content-Type: application/json" -d '{"prompt":"Hi"}' > /dev/null && pass "POST /api/v1/orchestration/pipelines" || warn "POST /api/v1/orchestration/pipelines (pipeline/LLM may be down)"
+
 echo ""
 echo "=== E2E Check Complete ==="

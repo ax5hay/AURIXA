@@ -112,9 +112,26 @@ async def generate(request: GenerateRequest):
 
 @app.get("/api/v1/providers", summary="List available LLM providers")
 async def list_providers(req: Request):
-    """Return providers with health status for UI selection."""
+    """Return providers with health status for UI selection. LOCAL uses models fetch (fast); others use quick health."""
     router = req.app.state.llm_router
-    health = await router.health()
+    health: dict[str, bool] = {}
+    # For LOCAL: if we can fetch models, treat as healthy (avoid slow SDK health_check)
+    if LLMProvider.LOCAL in router.providers:
+        try:
+            models = await fetch_lm_studio_models()
+            health[LLMProvider.LOCAL.value] = bool(models)
+        except Exception:
+            health[LLMProvider.LOCAL.value] = False
+    # For other providers, run health with short timeout
+    try:
+        other_health = await asyncio.wait_for(router.health(), timeout=5.0)
+        for k, v in other_health.items():
+            if k not in health:
+                health[k] = v
+    except asyncio.TimeoutError:
+        for p in router.providers:
+            if p.value not in health:
+                health[p.value] = False
     return {
         "providers": [
             {"id": p.value, "name": p.value.replace("_", " ").title(), "healthy": health.get(p.value, False)}

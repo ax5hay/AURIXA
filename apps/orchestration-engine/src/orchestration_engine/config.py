@@ -10,7 +10,7 @@ class ServiceConfig(BaseSettings):
     log_level: str = "debug"
     environment: str = "development"
 
-    # URLs for downstream services
+    # URLs for downstream services (set ORCHESTRATION_ENGINE_* for Docker; LLM_ROUTER_HOST etc. as fallback)
     llm_router_host: str = os.getenv("LLM_ROUTER_HOST", "http://localhost:8002")
     rag_service_host: str = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
     safety_guardrails_host: str = os.getenv("SAFETY_GUARDRAILS_HOST", "http://localhost:8005")

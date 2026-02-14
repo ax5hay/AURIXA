@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { getKnowledgeArticles, getAnalyticsSummary, getTenants, type KnowledgeArticle } from "@/app/services/api";
 
 export default function KnowledgePage() {
@@ -141,7 +141,7 @@ export default function KnowledgePage() {
                       )}
                     </div>
                     <svg
-                      className={clsx("w-5 h-5 text-white/40 flex-shrink-0 ml-4 transition-transform", expandedId === a.id && "rotate-180")}
+                      className={cn("w-5 h-5 text-white/40 flex-shrink-0 ml-4 transition-transform", expandedId === a.id && "rotate-180")}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"

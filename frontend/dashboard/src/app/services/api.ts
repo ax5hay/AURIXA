@@ -2,10 +2,16 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
 const FETCH_TIMEOUT_MS = 8000;
+/** LLM pipeline calls: RAG + LLM can take 2–3 min; LM Studio slow on first token. */
+const PIPELINE_TIMEOUT_MS = 180000;
 
-async function fetchApi(path: string, opts: RequestInit = {}): Promise<Response> {
+async function fetchApi(
+  path: string,
+  opts: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS
+): Promise<Response> {
   const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     return await fetch(`${API_BASE}${path}`, {
       ...opts,
@@ -106,13 +112,17 @@ export interface PipelineResponse {
 }
 
 export async function runPipeline(prompt: string): Promise<PipelineResponse> {
-  const response = await fetchApi("/api/v1/orchestration/pipelines", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetchApi(
+    "/api/v1/orchestration/pipelines",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
     },
-    body: JSON.stringify({ prompt }),
-  });
+    PIPELINE_TIMEOUT_MS
+  );
 
   if (!response.ok) {
     const errorBody = await response.text();

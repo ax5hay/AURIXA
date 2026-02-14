@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --port 3300 --hostname 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3300 --hostname 127.0.0.1",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
@@ -14,8 +14,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@aurixa/ui-kit": "workspace:*",
-    "framer-motion": "^11.15.0",
-    "clsx": "^2.1.0"
+    "framer-motion": "^11.15.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

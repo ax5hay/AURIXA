@@ -28,7 +28,13 @@ export default function PlaygroundPage() {
       const res = await runPipeline(prompt);
       setResponse(res);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred.");
+      const msg = err instanceof Error ? err.message : "An unknown error occurred.";
+      const isAbort = msg.toLowerCase().includes("abort") || msg.includes("signal is aborted");
+      setError(
+        isAbort
+          ? "Request timed out. LLM generation can take 30–120 seconds—ensure LM Studio is running at http://127.0.0.1:1234 with a model loaded."
+          : msg
+      );
     } finally {
       setLoading(false);
     }

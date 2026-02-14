@@ -38,6 +38,10 @@ export async function adminRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     return proxyToOrchestration(`patients/${id}/appointments`, req, reply);
   });
+  app.get("/patients/:id/conversations", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`patients/${id}/conversations`, req, reply);
+  });
   app.get("/patients/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
     return proxyToOrchestration(`patients/${id}`, req, reply);

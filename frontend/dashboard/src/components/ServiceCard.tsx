@@ -1,6 +1,6 @@
 "use client";
 
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 
 type ServiceStatus = "healthy" | "degraded" | "down";
 
@@ -37,8 +37,8 @@ export default function ServiceCard({ name, status, latency, lastCheck, descript
     <div className="glass glass-hover rounded-xl p-5 cursor-default hover:-translate-y-0.5 hover:scale-[1.01] transition-transform duration-200">
       <div className="flex items-start justify-between mb-3">
         <h3 className="text-sm font-semibold text-white/90">{name}</h3>
-        <span className={clsx("flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full", config.color, config.bg)}>
-          <span className={clsx("w-1.5 h-1.5 rounded-full", status === "healthy" ? "bg-accent-success" : status === "degraded" ? "bg-accent-warning" : "bg-accent-error")} />
+        <span className={cn("flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full", config.color, config.bg)}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", status === "healthy" ? "bg-accent-success" : status === "degraded" ? "bg-accent-warning" : "bg-accent-error")} />
           {config.label}
         </span>
       </div>

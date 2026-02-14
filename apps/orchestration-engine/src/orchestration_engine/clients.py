@@ -10,7 +10,7 @@ from .config import (
     SAFETY_GUARDRAILS_URL,
 )
 
-_async_client = httpx.AsyncClient(timeout=30.0)
+_async_client = httpx.AsyncClient(timeout=60.0)  # RAG model load can take ~30s on first call
 
 
 async def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
@@ -51,7 +51,8 @@ async def call_rag_service(prompt: str, intent: dict) -> dict:
 
     try:
         response = await _request_with_retry(
-            "POST", f"{RAG_SERVICE_URL}/api/v1/retrieve", json={"prompt": prompt, "intent": intent}
+            "POST", f"{RAG_SERVICE_URL}/api/v1/retrieve", json={"prompt": prompt, "intent": intent},
+            timeout=60.0,
         )
         response.raise_for_status()
         return response.json()
@@ -109,6 +110,7 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_content},
         ]
+        # LLM generation can take 60–120s; LM Studio is slow on first token
         response = await _request_with_retry(
             "POST",
             f"{LLM_ROUTER_URL}/api/v1/generate",
@@ -117,6 +119,7 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
                 "model": model or None,
                 "provider": provider,
             },
+            timeout=120.0,
         )
         response.raise_for_status()
         return response.json()

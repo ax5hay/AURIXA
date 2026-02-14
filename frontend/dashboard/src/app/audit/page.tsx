@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { getAuditLog, type AuditEntry } from "@/app/services/api";
 
 const severityColors: Record<string, string> = {
@@ -111,13 +111,13 @@ export default function AuditPage() {
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <div className={clsx("w-1.5 h-1.5 rounded-full flex-shrink-0", severityDotColors[log.severity] || "bg-white/30")} />
+                      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", severityDotColors[log.severity] || "bg-white/30")} />
                       <span className="text-xs font-mono text-white/50">{log.timestamp}</span>
                     </div>
                   </td>
                   <td className="px-5 py-3 text-sm text-white/70">{log.service}</td>
                   <td className="px-5 py-3">
-                    <span className={clsx("text-sm font-medium", severityColors[log.severity] || "text-white/70")}>{log.action}</span>
+                    <span className={cn("text-sm font-medium", severityColors[log.severity] || "text-white/70")}>{log.action}</span>
                   </td>
                   <td className="px-5 py-3 text-xs font-mono text-white/40">{log.user}</td>
                   <td className="px-5 py-3 text-xs text-white/40 max-w-xs truncate">{log.details}</td>

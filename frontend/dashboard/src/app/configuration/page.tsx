@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { getConfigSummary, getConfigDetail, getServiceHealth, getLLMProviders, getLLMModels } from "@/app/services/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
@@ -107,7 +107,7 @@ export default function ConfigurationPage() {
                 {Object.entries(services ?? {}).map(([name, h]) => (
                   <span
                     key={name}
-                    className={clsx(
+                    className={cn(
                       "text-xs px-2 py-1 rounded flex items-center gap-1.5",
                       h?.status === "healthy" ? "bg-accent-success/15 text-accent-success" : h?.status === "degraded" ? "bg-accent-warning/15 text-accent-warning" : "bg-accent-error/15 text-accent-error"
                     )}
@@ -181,7 +181,7 @@ export default function ConfigurationPage() {
                 {providers.map((p) => (
                   <span
                     key={p.id}
-                    className={clsx(
+                    className={cn(
                       "text-xs px-3 py-1.5 rounded-lg flex items-center gap-2",
                       p.healthy ? "bg-accent-success/15 text-accent-success" : "bg-white/10 text-white/50"
                     )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { getTenants, type Tenant } from "@/app/services/api";
 
 const planColors: Record<string, string> = {
@@ -92,14 +92,14 @@ export default function TenantsPage() {
                     <p className="text-xs text-white/30 font-mono">{tenant.id}</p>
                   </td>
                   <td className="px-5 py-4">
-                    <span className={clsx("text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize", planColors[tenant.plan] || "bg-white/10")}>
+                    <span className={cn("text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize", planColors[tenant.plan] || "bg-white/10")}>
                       {tenant.plan}
                     </span>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
-                      <div className={clsx("w-1.5 h-1.5 rounded-full", statusDotColors[tenant.status] || "bg-white/30")} />
-                      <span className={clsx("text-sm capitalize", statusColors[tenant.status])}>{tenant.status}</span>
+                      <div className={cn("w-1.5 h-1.5 rounded-full", statusDotColors[tenant.status] || "bg-white/30")} />
+                      <span className={cn("text-sm capitalize", statusColors[tenant.status])}>{tenant.status}</span>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-sm text-white/60 font-mono">{tenant.apiKeys ?? 0}</td>

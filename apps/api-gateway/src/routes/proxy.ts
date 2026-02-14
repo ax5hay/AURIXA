@@ -38,6 +38,10 @@ export async function proxyRoutes(app: FastifyInstance) {
             headers["x-tenant-id"] = req.headers["x-tenant-id"] as string;
           }
 
+          // Orchestration pipelines (LLM generation) need 2+ minutes; LM Studio can be slow
+          const isPipeline = prefix === "orchestration" && (path ?? "").includes("pipeline");
+          const isLlm = prefix === "llm";
+          const timeoutMs = isPipeline ? 180000 : isLlm ? 15000 : 30000;
           const response = await fetch(url, {
             method: req.method,
             headers,
@@ -45,7 +49,7 @@ export async function proxyRoutes(app: FastifyInstance) {
               req.method !== "GET" && req.method !== "HEAD"
                 ? JSON.stringify(req.body)
                 : undefined,
-            signal: AbortSignal.timeout(30000),
+            signal: AbortSignal.timeout(timeoutMs),
           });
 
           const latency = Math.round(performance.now() - start);

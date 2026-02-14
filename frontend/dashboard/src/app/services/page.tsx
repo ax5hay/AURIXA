@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 import { getServiceHealth } from "@/app/services/api";
 
 interface Service {
@@ -74,14 +74,14 @@ export default function ServicesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
                   onClick={() => setSelectedService(service)}
-                  className={clsx(
+                  className={cn(
                     "glass rounded-xl p-4 text-left transition-all",
                     selectedService?.name === service.name ? "ring-2 ring-aurixa-500/50" : "hover:bg-white/[0.02]"
                   )}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className={clsx("w-2 h-2 rounded-full", statusColors[service.status] || "bg-accent-error")} />
+                      <div className={cn("w-2 h-2 rounded-full", statusColors[service.status] || "bg-accent-error")} />
                       <span className="text-sm font-medium text-white/90">{service.name}</span>
                     </div>
                     <span className="text-[10px] font-mono text-white/30">
@@ -119,7 +119,7 @@ export default function ServicesPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-white/40">Status</span>
-                  <span className={clsx("font-medium capitalize", selectedService.status === "healthy" ? "text-accent-success" : selectedService.status === "degraded" ? "text-accent-warning" : "text-accent-error")}>
+                  <span className={cn("font-medium capitalize", selectedService.status === "healthy" ? "text-accent-success" : selectedService.status === "degraded" ? "text-accent-warning" : "text-accent-error")}>
                     {statusLabels[selectedService.status] || selectedService.status}
                   </span>
                 </div>

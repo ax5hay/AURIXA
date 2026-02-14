@@ -10,6 +10,10 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# Kill any existing stack first (avoid EADDRINUSE)
+"$ROOT/scripts/kill-stack.sh" 2>/dev/null || true
+sleep 6
+
 # Load .env if present
 if [ -f .env ]; then
   set -a
@@ -90,7 +94,8 @@ sleep 1
 # Start frontends
 echo "Starting frontends..."
 pnpm --filter @aurixa/dashboard dev &
-pnpm --filter @aurixa/patient-portal dev &
+# Patient portal: production mode; clean build to avoid webpack cache issues
+(cd "$ROOT/frontend/patient-portal" && rm -rf .next && pnpm build --silent && pnpm start) &
 
 echo ""
 echo "Stack running. Endpoints:"

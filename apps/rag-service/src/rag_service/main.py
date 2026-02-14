@@ -1,3 +1,4 @@
+import re
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
@@ -8,6 +9,7 @@ from .models import RetrieveRequest, RetrieveResponse, DocumentSnippet
 from .documents import load_documents_from_db
 
 MODEL_NAME = "all-MiniLM-L6-v2"
+KEYWORD_BOOST = 0.15  # Boost score when query terms appear in document
 
 
 @asynccontextmanager
@@ -96,6 +98,7 @@ async def retrieve(request: RetrieveRequest):
             )
 
         distances, indices = app.state.index.search(query_embedding, k)
+        query_terms = set(re.findall(r"\w+", request.prompt.lower())) - {"a", "an", "the", "is", "are", "to", "i", "me", "my", "how", "what", "when", "where", "do", "does", "can", "tell"}
         retrieved_snippets = []
         for i in range(k):
             idx = int(indices[0][i])
@@ -105,14 +108,20 @@ async def retrieve(request: RetrieveRequest):
             content = app.state.documents.get(source, "")
             dist = float(distances[0][i])
             score = max(0, 1 - dist)
+            # Keyword boost: exact term matches in content improve relevance
+            content_lower = content.lower()
+            matches = sum(1 for t in query_terms if t in content_lower)
+            if matches:
+                score = min(1.0, score + KEYWORD_BOOST * min(matches, 5))
             retrieved_snippets.append(
                 DocumentSnippet(
                     source=source,
                     content=content,
                     score=round(score, 4),
-                    metadata={"retrieval_method": "vector_search", "engine": "faiss"},
+                    metadata={"retrieval_method": "vector_search", "engine": "faiss", "keyword_matches": matches},
                 )
             )
+        retrieved_snippets.sort(key=lambda s: s.score, reverse=True)
 
         elapsed_ms = round((time.perf_counter() - t0) * 1000)
         logger.info("Retrieved {} snippets in {}ms", len(retrieved_snippets), elapsed_ms)

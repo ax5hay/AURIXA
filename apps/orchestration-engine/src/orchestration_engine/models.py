@@ -13,6 +13,7 @@ class PipelineRequest(BaseModel):
     prompt: str
     tenant_id: str | None = None
     user_id: str | None = None
+    patient_id: int | None = None  # Links voice/chat to patient profile
 
 
 class PipelineStep(BaseModel):

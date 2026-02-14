@@ -77,6 +77,9 @@ services:
     environment:
       ORCHESTRATION_ENGINE_PORT: 8001
       DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+      ORCHESTRATION_ENGINE_LLM_ROUTER_HOST: http://llm-router:8002
+      ORCHESTRATION_ENGINE_RAG_SERVICE_HOST: http://rag-service:8004
+      ORCHESTRATION_ENGINE_SAFETY_GUARDRAILS_HOST: http://safety-guardrails:8005
     depends_on:
       - postgres
     networks:
@@ -103,6 +106,9 @@ services:
     env_file: ../../.env
     environment:
       AGENT_RUNTIME_PORT: 8003
+      RAG_SERVICE_HOST: http://rag-service:8004
+    depends_on:
+      - rag-service
     networks:
       - aurixa
 
@@ -139,6 +145,9 @@ services:
     env_file: ../../.env
     environment:
       STREAMING_VOICE_PORT: 8006
+      ORCHESTRATION_URL: http://orchestration-engine:8001
+    depends_on:
+      - orchestration-engine
     networks:
       - aurixa
 

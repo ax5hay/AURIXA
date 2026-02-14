@@ -1,13 +1,40 @@
+import asyncio
+import os
 from contextlib import asynccontextmanager
+import httpx
 from fastapi import FastAPI
 from loguru import logger
 
 from .models import RunTaskRequest, RunTaskResponse, AgentResult, AgentTask
 
-# Tool registry - extend for production (e.g. RAG, calendar, EHR)
+RAG_SERVICE_URL = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
+
+
+async def _search_knowledge_base(q: str) -> str:
+    """Call RAG service for real retrieval."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(
+                f"{RAG_SERVICE_URL}/api/v1/retrieve",
+                json={"prompt": q, "top_k": 3},
+            )
+            if r.status_code != 200:
+                return f"RAG unavailable (status {r.status_code}). Try again later."
+            data = r.json()
+            snippets = data.get("snippets", [])
+            if not snippets:
+                return "No relevant documents found in the knowledge base."
+            parts = [f"- {s.get('content', '')[:200]}..." for s in snippets[:3]]
+            return "Knowledge base results:\n" + "\n".join(parts)
+    except Exception as e:
+        logger.warning("RAG call failed: {}", e)
+        return f"Could not search knowledge base: {e}"
+
+
+# Tool registry - search_knowledge_base calls real RAG; others are placeholders
 TOOL_REGISTRY: dict[str, callable] = {
     "get_weather": lambda loc: f"Weather in {loc}: sunny, 72°F",
-    "search_knowledge_base": lambda q: f"Search for '{q}' returned relevant articles.",
+    "search_knowledge_base": _search_knowledge_base,
     "get_appointment": lambda pid: f"Appointments for patient {pid} retrieved.",
     "schedule_call": lambda x: "Callback scheduled.",
 }
@@ -54,11 +81,13 @@ async def run_task(request: RunTaskRequest):
 
     for tool_name, tool_func in TOOL_REGISTRY.items():
         if tool_name in task.prompt:
-            # Mock extracting arguments from the prompt
-            arg = task.prompt.split(tool_name)[-1].strip()
-            result = tool_func(arg)
+            arg = task.prompt.split(tool_name)[-1].strip() or task.prompt[:100]
+            if asyncio.iscoroutinefunction(tool_func):
+                result = await tool_func(arg)
+            else:
+                result = tool_func(arg)
             tool_calls.append({"tool_name": tool_name, "arguments": arg, "result": result})
-            final_output = f"I have run the tool {tool_name} and the result is: {result}"
+            final_output = f"I ran {tool_name} and got: {result}"
             break
     
     agent_result = AgentResult(

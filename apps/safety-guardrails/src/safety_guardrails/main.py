@@ -62,10 +62,8 @@ async def validate(request: ValidateRequest):
             )
             validated_text = "[Content Redacted]"
 
-    # 2. PII detection (flag only; avoid false positives on generic content)
-    if validated_text == "[Content Redacted]":
-        pass
-    else:
+    # 2. PII detection and redaction
+    if validated_text != "[Content Redacted]":
         for pattern, name in PII_PATTERNS:
             if pattern.search(validated_text):
                 found_issues.append(
@@ -73,9 +71,10 @@ async def validate(request: ValidateRequest):
                         policy_name="pii_policy",
                         risk_category="pii",
                         severity=0.7,
-                        details=f"Potential {name} detected.",
+                        details=f"Potential {name} detected and redacted.",
                     )
                 )
+                validated_text = pattern.sub(f"[REDACTED-{name}]", validated_text)
                 break
 
     if found_issues:

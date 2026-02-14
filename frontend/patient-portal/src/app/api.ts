@@ -6,10 +6,11 @@ const API_BASE =
     : (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000");
 
 const FETCH_TIMEOUT_MS = 8000;
+const PIPELINE_TIMEOUT_MS = 120000;
 
-async function fetchWithTimeout(url: string, opts: RequestInit = {}): Promise<Response> {
+async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
   const ctrl = new AbortController();
-  const id = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, { ...opts, signal: ctrl.signal });
     return res;
@@ -68,12 +69,38 @@ export interface PipelineResponse {
   final_response: string;
 }
 
-export async function sendMessage(prompt: string): Promise<PipelineResponse> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/orchestration/pipelines`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt }),
-  });
+export interface ConversationSummary {
+  id: number;
+  sessionId: string;
+  prompt: string;
+  response: string;
+  createdAt: string | null;
+}
+
+export async function getConversations(patientId: number): Promise<ConversationSummary[]> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/v1/admin/patients/${patientId}/conversations`,
+    { method: "GET" }
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function sendMessage(
+  prompt: string,
+  patientId?: number
+): Promise<PipelineResponse> {
+  const body: Record<string, unknown> = { prompt };
+  if (patientId != null) body.patient_id = patientId;
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/v1/orchestration/pipelines`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    PIPELINE_TIMEOUT_MS
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to get response: ${text}`);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import clsx from "clsx";
+import { cn } from "@/lib/utils";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -24,11 +24,11 @@ export default function ChatMessage({ role, content, timestamp, metadata }: Chat
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={clsx("flex gap-3 mb-4", isUser && "flex-row-reverse")}
+      className={cn("flex gap-3 mb-4", isUser && "flex-row-reverse")}
     >
       {/* Avatar */}
       <div
-        className={clsx(
+        className={cn(
           "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold",
           isUser
             ? "bg-aurixa-600/20 text-aurixa-400"
@@ -39,9 +39,9 @@ export default function ChatMessage({ role, content, timestamp, metadata }: Chat
       </div>
 
       {/* Message bubble */}
-      <div className={clsx("max-w-[75%] group", isUser && "items-end")}>
+      <div className={cn("max-w-[75%] group", isUser && "items-end")}>
         <div
-          className={clsx(
+          className={cn(
             "rounded-xl px-4 py-3 text-sm leading-relaxed",
             isUser
               ? "bg-aurixa-600/20 text-white/90 rounded-tr-sm"
@@ -52,7 +52,7 @@ export default function ChatMessage({ role, content, timestamp, metadata }: Chat
         </div>
 
         {/* Timestamp and metadata toggle */}
-        <div className={clsx("flex items-center gap-2 mt-1.5 px-1", isUser && "flex-row-reverse")}>
+        <div className={cn("flex items-center gap-2 mt-1.5 px-1", isUser && "flex-row-reverse")}>
           <span className="text-[10px] text-white/30">{timestamp}</span>
           {metadata && (
             <button
@@ -70,7 +70,7 @@ export default function ChatMessage({ role, content, timestamp, metadata }: Chat
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className={clsx(
+            className={cn(
               "mt-1 px-3 py-2 rounded-lg bg-surface-tertiary/50 border border-white/5 text-[11px] text-white/40 space-y-0.5",
               isUser && "text-right"
             )}

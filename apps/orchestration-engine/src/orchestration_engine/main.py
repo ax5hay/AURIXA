@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from pydantic import BaseModel
 
 from aurixa_db import get_db_session, engine, Base, models as db_models
@@ -176,6 +176,45 @@ async def get_patient(
     }
 
 
+@app.get("/api/v1/patients/{patient_id}/conversations", summary="List conversations (calls/chat) for a patient")
+async def list_patient_conversations(
+    patient_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    limit: int = 20,
+):
+    """Return recent conversations where meta_data contains patient_id (voice calls, portal chat)."""
+    stmt = (
+        select(db_models.Conversation)
+        .where(text("(meta_data->>'patient_id')::int = :pid").bindparams(pid=patient_id))
+        .order_by(db_models.Conversation.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    convos = result.scalars().all()
+    out = []
+    for c in convos:
+        steps = await db.execute(
+            select(db_models.PipelineStep)
+            .where(db_models.PipelineStep.conversation_id == c.id)
+            .order_by(db_models.PipelineStep.start_time.asc())
+        )
+        steps_list = steps.scalars().all()
+        prompt_step = next((s for s in steps_list if s.step_name == "classify_intent"), None)
+        gen_step = next((s for s in steps_list if s.step_name == "generate_response"), None)
+        prompt = (prompt_step.input or {}).get("prompt", "") if prompt_step else ""
+        response = ""
+        if gen_step and gen_step.output:
+            response = (gen_step.output or {}).get("content", "")
+        out.append({
+            "id": c.id,
+            "sessionId": c.session_id,
+            "prompt": prompt[:200],
+            "response": response[:500] if response else "",
+            "createdAt": c.created_at.isoformat() if c.created_at else None,
+        })
+    return out
+
+
 @app.get("/api/v1/patients/{patient_id}/appointments", summary="List appointments for a patient")
 async def list_patient_appointments(
     patient_id: int,
@@ -284,9 +323,12 @@ async def run_pipeline(
     logger.info("Received new pipeline request for session: {}", request.session_id)
 
     # Create a new conversation record in the database
+    meta = {"user_id": request.user_id, "tenant_id": request.tenant_id}
+    if request.patient_id is not None:
+        meta["patient_id"] = request.patient_id
     conversation = db_models.Conversation(
         session_id=request.session_id,
-        meta_data={"user_id": request.user_id, "tenant_id": request.tenant_id}
+        meta_data=meta
     )
     db.add(conversation)
     await db.commit()
