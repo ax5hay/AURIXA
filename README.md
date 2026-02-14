@@ -137,13 +137,25 @@ Orchestration Engine (:8001)
 - **AvailabilitySlot** — date, time, provider for scheduling
 - **KnowledgeBaseArticle** — RAG documents per tenant
 
+### Admin API (DB Writes)
+
+| Endpoint | Method | Description |
+|----------|--------|--------------|
+| `/api/v1/admin/tenants` | POST | Create tenant |
+| `/api/v1/admin/patients` | POST | Create patient |
+
+The Tenants page uses Add Tenant to create new organizations. Execution Engine handles appointment creation and prescription refill requests.
+
 ### Playground (Dashboard)
 
 The **Playground** at http://localhost:3100/playground provides:
 
-- **Full pipeline test** — run E2E with patient context
-- **Service API tests** — Route, RAG, Safety, Agent, Execution individually
-- **Execution actions** — test get_appointments, check_insurance, get_availability
+- **Service Health & Metrics** — Live health status and latency for all 8 services; telemetry (conversations, tenants, patients, event counts, avg latency); auto-loads on open
+- **Run All Tests** — One-click verification of all services; shows pass/fail and latency per test
+- **Full pipeline test** — Run E2E with patient context and sample prompts
+- **Service API tests** — Route, RAG, Safety, Agent, Execution, Knowledge Articles, LLM Providers, LLM Models, Audit Log, Service Health
+- **Test results table** — Last 20 test runs with status, latency (ms), and errors
+- **Execution actions** — get_appointments, check_insurance, get_availability, create_appointment (DB write), request_prescription_refill (DB write)
 - **Flow visualization** — Intent → RAG/Agent → Generate → Safety steps
 
 ---
@@ -400,7 +412,9 @@ If Python services fail to start, run `./scripts/bootstrap-python.sh` once to in
 ./scripts/e2e-check.sh
 ```
 
-Or manually:
+Or use the **Playground** at http://localhost:3100/playground — click **Run All Tests** to verify all 10 services in one go.
+
+Manually:
 ```bash
 curl http://localhost:3000/health
 curl http://localhost:3100/
@@ -434,10 +448,11 @@ pnpm db:seed
 
 | App            | Port | Purpose                                                       |
 |----------------|------|---------------------------------------------------------------|
-| Dashboard      | 3100 | System status, **Playground** (E2E + API tests), tenants, services, analytics, knowledge, config, audit |
+| Dashboard      | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit |
 | Patient Portal | 3300 | Patient chat & appointments, help articles, AI assistant      |
 
-- **Playground** (`/playground`): Test full pipeline, individual services (Route/RAG/Safety/Agent/Execution), and DB-backed execution actions
+- **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
+- **Tenants** (`/tenants`): List tenants; Add Tenant creates new tenants (DB write)
 - Both apps fetch from API Gateway (port 3000)
 
 ---
