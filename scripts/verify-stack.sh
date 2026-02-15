@@ -22,5 +22,6 @@ check "$GATEWAY/api/v1/admin/analytics/summary" "Analytics summary"
 check "$GATEWAY/api/v1/admin/config/detail" "Config detail"
 check "http://127.0.0.1:3100" "Dashboard (3100 - unified)"
 check "http://127.0.0.1:3300" "Patient Portal (3300)"
+check "http://127.0.0.1:3400" "Hospital Portal (3400)"
 
 [ $FAILED -eq 0 ] && echo "" && echo "All checks passed." || exit 1

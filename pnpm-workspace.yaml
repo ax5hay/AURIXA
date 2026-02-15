@@ -3,3 +3,4 @@ packages:
   - "packages/*"
   - "frontend/dashboard"
   - "frontend/patient-portal"
+  - "frontend/hospital-portal"

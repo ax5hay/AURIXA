@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Kill all AURIXA-related processes (ports 3000, 3100, 3300, 8001-8008)
+# Kill all AURIXA-related processes (ports 3000, 3100, 3300, 3400, 8001-8008)
 set -e
-PORTS="3000 3100 3300 8001 8002 8003 8004 8005 8006 8007 8008"
+PORTS="3000 3100 3300 3400 8001 8002 8003 8004 8005 8006 8007 8008"
 for port in $PORTS; do
   pids=$(lsof -ti:$port 2>/dev/null) || true
   if [ -n "$pids" ]; then

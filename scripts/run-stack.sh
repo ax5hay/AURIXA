@@ -3,7 +3,7 @@
 # 1. Starts Postgres (and Redis) via Docker if not running
 # 2. Seeds the database
 # 3. Starts API Gateway, Orchestration, Observability
-# 4. Starts frontends (Dashboard unified, Patient Portal)
+# 4. Starts frontends (Dashboard, Patient Portal, Hospital Portal)
 # Frontends use --hostname 127.0.0.1 for sandbox/CI compatibility.
 
 set -e
@@ -13,7 +13,7 @@ cd "$ROOT"
 # Kill any existing stack first (avoid EADDRINUSE)
 "$ROOT/scripts/kill-stack.sh" 2>/dev/null || true
 # Ensure ports are free before starting (kill-stack has internal wait)
-for port in 3000 3100 3300 8001 8002 8003 8004 8005 8006 8007 8008; do
+for port in 3000 3100 3300 3400 8001 8002 8003 8004 8005 8006 8007 8008; do
   for _ in 1 2 3 4 5; do
     if ! lsof -ti:$port &>/dev/null; then break; fi
     echo "Port $port still busy, waiting..."
@@ -139,6 +139,9 @@ else
   (cd "$ROOT/frontend/patient-portal" && pnpm start) &
 fi
 
+echo "Starting Hospital Portal..."
+pnpm --filter @aurixa/hospital-portal dev &
+
 echo ""
 echo "Stack running. Endpoints:"
 echo "  Gateway:       http://localhost:3000"
@@ -152,6 +155,7 @@ echo "  Execution:    http://localhost:8007"
 echo "  Observability: http://localhost:8008"
 echo "  Dashboard:    http://localhost:3100 (unified)"
 echo "  Patient:      http://localhost:3300"
+echo "  Hospital:     http://localhost:3400 (staff)"
 echo ""
 echo "Run ./scripts/e2e-check.sh to verify APIs."
 echo "If Python services fail, run ./scripts/bootstrap-python.sh once."

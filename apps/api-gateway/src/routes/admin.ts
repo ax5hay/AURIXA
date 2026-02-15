@@ -62,6 +62,7 @@ export async function adminRoutes(app: FastifyInstance) {
   });
   app.get("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
   app.post("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
+  app.get("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
 
   app.get("/health", async () => ({
     service: "api-gateway-admin",

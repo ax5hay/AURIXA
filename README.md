@@ -253,7 +253,8 @@ aurixa/
 │
 ├── frontend/                      User-facing applications
 │   ├── dashboard/                 Unified admin: analytics, playground, tenants, services, audit, configuration (Next.js 15, Port 3100)
-│   └── patient-portal/            Patient interface (Next.js 15, Port 3300)
+│   ├── patient-portal/            Patient interface (Next.js 15, Port 3300)
+│   └── hospital-portal/           Hospital staff interface (Next.js 15, Port 3400)
 │
 ├── infra/                         Infrastructure as Code
 │   ├── docker/                    Docker Compose (local development)
@@ -388,7 +389,7 @@ The script will:
 1. Start Postgres (and Redis) via Docker if not running
 2. Seed the database with mock data
 3. Start API Gateway, Orchestration, LLM Router, RAG, Safety, Voice, Execution, Observability
-4. Start Dashboard (port 3100) and Patient Portal (port 3300)
+4. Start Dashboard (port 3100), Patient Portal (port 3300), and Hospital Portal (port 3400)
 
 **Endpoints after ~60 seconds:**
 
@@ -398,6 +399,7 @@ The script will:
 | Dashboard       | http://localhost:3100  |
 | **Playground**  | http://localhost:3100/playground |
 | Patient Portal  | http://localhost:3300  |
+| Hospital Portal | http://localhost:3400  |
 | Orchestration   | http://localhost:8001  |
 | LLM Router      | http://localhost:8002  |
 | Agent Runtime   | http://localhost:8003  |
@@ -419,6 +421,7 @@ Manually:
 curl http://localhost:3000/health
 curl http://localhost:3100/
 curl http://localhost:3300/
+curl http://localhost:3400/
 ```
 
 ### Alternative: Docker Compose
@@ -446,10 +449,11 @@ pnpm db:seed
 
 ### Frontend Applications
 
-| App            | Port | Purpose                                                       |
-|----------------|------|---------------------------------------------------------------|
-| Dashboard      | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit |
-| Patient Portal | 3300 | Patient chat & appointments, help articles, AI assistant      |
+| App             | Port | Purpose                                                       |
+|-----------------|------|---------------------------------------------------------------|
+| Dashboard       | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit |
+| Patient Portal  | 3300 | Patient chat & appointments, help articles, AI assistant      |
+| Hospital Portal | 3400 | Staff dashboard (reception, nurses, doctors, schedulers), patients, appointments, scheduling, AI assistant, knowledge base, system status |
 
 - **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
 - **Tenants** (`/tenants`): List tenants; Add Tenant creates new tenants (DB write)

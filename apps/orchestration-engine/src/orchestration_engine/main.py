@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import hashlib
 import os
 import time
@@ -399,6 +400,47 @@ async def list_patient_conversations(
             "createdAt": c.created_at.isoformat() if c.created_at else None,
         })
     return out
+
+
+@app.get("/api/v1/appointments", summary="List appointments (staff view, filterable by tenant/date)")
+async def list_appointments(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    limit: int = 100,
+):
+    """List appointments for hospital staff. Optional filters: tenant_id, date_from (YYYY-MM-DD), date_to."""
+    q = select(db_models.Appointment).order_by(db_models.Appointment.start_time.desc())
+    if tenant_id:
+        q = q.where(db_models.Appointment.tenant_id == tenant_id)
+    if date_from:
+        try:
+            dt = datetime.datetime.strptime(date_from[:10], "%Y-%m-%d")
+            q = q.where(db_models.Appointment.start_time >= dt)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt = datetime.datetime.strptime(date_to[:10], "%Y-%m-%d")
+            dt = dt.replace(hour=23, minute=59, second=59)
+            q = q.where(db_models.Appointment.start_time <= dt)
+        except ValueError:
+            pass
+    result = await db.execute(q.limit(limit))
+    appointments = result.scalars().all()
+    return [
+        {
+            "id": a.id,
+            "startTime": a.start_time.isoformat() if a.start_time else None,
+            "endTime": a.end_time.isoformat() if a.end_time else None,
+            "providerName": a.provider_name,
+            "status": a.status,
+            "patientId": a.patient_id,
+            "tenantId": a.tenant_id,
+        }
+        for a in appointments
+    ]
 
 
 @app.get("/api/v1/patients/{patient_id}/appointments", summary="List appointments for a patient")
