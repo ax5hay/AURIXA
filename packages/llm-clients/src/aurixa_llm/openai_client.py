@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 from loguru import logger
@@ -149,6 +150,29 @@ class OpenAIClient(LLMClient):
             latency_ms=round(latency_ms, 2),
             metadata={"finish_reason": choice.finish_reason},
         )
+
+    async def generate_stream(self, request: LLMRequest) -> AsyncIterator[str]:
+        """Stream completion deltas from OpenAI/LM Studio (stream=True)."""
+        model = request.model or self._default_model
+        messages = self._map_messages(request.messages)
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": True,
+        }
+        if request.tools:
+            kwargs["tools"] = self._map_tools(request.tools)
+            kwargs["tool_choice"] = "auto"
+        try:
+            stream = await self._client.chat.completions.create(**kwargs)
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as exc:
+            logger.error("OpenAI generate_stream failed for model {}: {}", model, exc)
+            raise
 
     async def health_check(self) -> bool:
         """Verify connectivity by listing models."""

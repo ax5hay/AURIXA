@@ -11,6 +11,7 @@ async function proxyToOrchestration(path: string, req: any, reply: any) {
       method: req.method,
       headers: { "content-type": "application/json" },
       body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
+      signal: AbortSignal.timeout(30000),
     });
     const body = await res.text();
     if (!res.ok) {

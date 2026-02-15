@@ -1,9 +1,11 @@
 import asyncio
+import json
 import os
 import time
 from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from loguru import logger
 
 from aurixa_llm.router import LLMRouter
@@ -96,6 +98,8 @@ async def lifespan(app: FastAPI):
     app.state.llm_router = None
     app.state.lm_studio_models = []
     app.state.intent_embeddings = {}
+    # Shared HTTP client for RAG embed and telemetry (connection reuse, lower latency)
+    app.state.http_client = httpx.AsyncClient(timeout=30.0, limits=httpx.Limits(max_keepalive_connections=8))
     try:
         app.state.llm_router = LLMRouter()
         if not app.state.llm_router.providers:
@@ -119,6 +123,7 @@ async def lifespan(app: FastAPI):
         app.state.llm_router._fallback_order = []
         app.state.intent_embeddings = {}
     yield
+    await app.state.http_client.aclose()
     logger.info("LLM Router shutting down")
 
 
@@ -149,8 +154,8 @@ async def health(req: Request):
     }
 
 
-async def _emit_llm_telemetry(response) -> None:
-    """Fire-and-forget telemetry emission for LLM calls."""
+async def _emit_llm_telemetry(response, app) -> None:
+    """Fire-and-forget telemetry emission for LLM calls. Uses shared http_client when available."""
     if not OBSERVABILITY_URL:
         return
     try:
@@ -158,25 +163,43 @@ async def _emit_llm_telemetry(response) -> None:
         cost = usage.estimated_cost_usd if usage else None
         prov = getattr(response, "provider", None)
         provider_str = prov.value if prov and hasattr(prov, "value") else None
-        await httpx.AsyncClient(timeout=2.0).post(
-            f"{OBSERVABILITY_URL}/api/v1/telemetry",
-            json={
-                "service_name": "llm-router",
-                "event_type": "llm_call",
-                "data": {
-                    "latency_ms": getattr(response, "latency_ms", None),
-                    "cost_usd": cost,
-                    "model": getattr(response, "model", None),
-                    "provider": provider_str,
+        client = getattr(app.state, "http_client", None)
+        if client is not None:
+            await client.post(
+                f"{OBSERVABILITY_URL}/api/v1/telemetry",
+                json={
+                    "service_name": "llm-router",
+                    "event_type": "llm_call",
+                    "data": {
+                        "latency_ms": getattr(response, "latency_ms", None),
+                        "cost_usd": cost,
+                        "model": getattr(response, "model", None),
+                        "provider": provider_str,
+                    },
                 },
-            },
-        )
+                timeout=2.0,
+            )
+        else:
+            async with httpx.AsyncClient(timeout=2.0) as c:
+                await c.post(
+                    f"{OBSERVABILITY_URL}/api/v1/telemetry",
+                    json={
+                        "service_name": "llm-router",
+                        "event_type": "llm_call",
+                        "data": {
+                            "latency_ms": getattr(response, "latency_ms", None),
+                            "cost_usd": cost,
+                            "model": getattr(response, "model", None),
+                            "provider": provider_str,
+                        },
+                    },
+                )
     except Exception as e:
         logger.debug("LLM telemetry emit failed (non-fatal): {}", e)
 
 
 @app.post("/api/v1/generate", response_model=GenerateResponse, summary="Generate text using a routed LLM")
-async def generate(request: GenerateRequest):
+async def generate(request: GenerateRequest, req: Request):
     """Generates a response with retry on transient failures."""
     llm_request = LLMRequest(
         messages=request.messages,
@@ -188,8 +211,8 @@ async def generate(request: GenerateRequest):
     last_err = None
     for attempt in range(3):
         try:
-            response = await app.state.llm_router.generate(llm_request, provider=request.provider)
-            asyncio.create_task(_emit_llm_telemetry(response))
+            response = await req.app.state.llm_router.generate(llm_request, provider=request.provider)
+            asyncio.create_task(_emit_llm_telemetry(response, req.app))
             return response
         except Exception as e:
             last_err = e
@@ -198,7 +221,35 @@ async def generate(request: GenerateRequest):
                 await asyncio.sleep(0.5 * (attempt + 1))
     logger.error("LLM generation failed after 3 attempts")
     raise HTTPException(status_code=500, detail=f"LLM generation failed: {last_err}")
-    
+
+
+@app.post("/api/v1/generate/stream", summary="Stream LLM response as NDJSON")
+async def generate_stream(request: GenerateRequest, req: Request):
+    """Stream completion tokens as NDJSON lines: {\"type\":\"delta\",\"content\":\"...\"} then {\"type\":\"done\"}."""
+    llm_request = LLMRequest(
+        messages=request.messages,
+        model=request.model,
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+        tools=request.tools,
+        stream=True,
+    )
+
+    async def ndjson_stream():
+        try:
+            async for chunk in req.app.state.llm_router.generate_stream(llm_request, provider=request.provider):
+                yield json.dumps({"type": "delta", "content": chunk}) + "\n"
+            yield json.dumps({"type": "done"}) + "\n"
+        except Exception as e:
+            logger.warning("generate_stream failed: {}", e)
+            yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+
+    return StreamingResponse(
+        ndjson_stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
 
 @app.get("/api/v1/providers", summary="List available LLM providers")
 async def list_providers(req: Request):
@@ -255,18 +306,26 @@ async def route_prompt(body: RouteRequest, req: Request):
     intent_embs = getattr(app.state, "intent_embeddings", None) or {}
     if intent_embs and RAG_SERVICE_URL:
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            client = getattr(app.state, "http_client", None)
+            if client is None:
+                async with httpx.AsyncClient(timeout=5.0) as c:
+                    r = await c.post(
+                        f"{RAG_SERVICE_URL}/api/v1/embed",
+                        json={"text": body.prompt},
+                    )
+            else:
                 r = await client.post(
                     f"{RAG_SERVICE_URL}/api/v1/embed",
                     json={"text": body.prompt},
+                    timeout=5.0,
                 )
-                if r.status_code == 200:
-                    q_emb = r.json().get("embedding", [])
-                    for intent_name, i_emb in intent_embs.items():
-                        sim = _cosine_sim(q_emb, i_emb)
-                        if sim > best_confidence:
-                            best_confidence = sim
-                            best_intent = intent_name
+            if r.status_code == 200:
+                q_emb = r.json().get("embedding", [])
+                for intent_name, i_emb in intent_embs.items():
+                    sim = _cosine_sim(q_emb, i_emb)
+                    if sim > best_confidence:
+                        best_confidence = sim
+                        best_intent = intent_name
         except Exception as e:
             logger.debug("Semantic routing failed: {}", e)
 

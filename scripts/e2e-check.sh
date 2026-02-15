@@ -34,7 +34,15 @@ curl -sf "$GATEWAY/api/v1/admin/config/summary" > /dev/null && pass "GET /api/v1
 curl -sf "$GATEWAY/api/v1/admin/config/detail" > /dev/null && pass "GET /api/v1/admin/config/detail" || fail "GET /api/v1/admin/config/detail"
 curl -sf "$GATEWAY/api/v1/admin/knowledge/articles" > /dev/null && pass "GET /api/v1/admin/knowledge/articles" || fail "GET /api/v1/admin/knowledge/articles"
 curl -sf "$GATEWAY/api/v1/admin/patients" > /dev/null && pass "GET /api/v1/admin/patients" || fail "GET /api/v1/admin/patients"
-curl -sf "$GATEWAY/api/v1/admin/patients/1" > /dev/null && pass "GET /api/v1/admin/patients/1 (patient profile)" || fail "GET /api/v1/admin/patients/1"
+# Patient 1 may not exist if DB not seeded; accept 200 or 404
+E2E_PATIENT_CODE=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/patients/1")
+if [ "$E2E_PATIENT_CODE" = "200" ]; then
+  pass "GET /api/v1/admin/patients/1 (patient profile)"
+elif [ "$E2E_PATIENT_CODE" = "404" ]; then
+  warn "GET /api/v1/admin/patients/1 returned 404 (run pnpm db:seed to create patients)"
+else
+  fail "GET /api/v1/admin/patients/1 (status $E2E_PATIENT_CODE)"
+fi
 curl -sf "$GATEWAY/api/v1/admin/appointments" > /dev/null && pass "GET /api/v1/admin/appointments" || fail "GET /api/v1/admin/appointments"
 
 # Orchestration routes (via proxy)

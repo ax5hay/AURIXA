@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 
 from .types import LLMRequest, LLMResponse
 
@@ -13,6 +14,13 @@ class LLMClient(ABC):
     Every concrete provider implementation must supply ``generate``,
     ``health_check``, and ``estimate_cost``.
     """
+
+    async def generate_stream(self, request: LLMRequest) -> AsyncIterator[str]:
+        """Stream completion tokens. Default: run generate() and yield full content once.
+        Override in providers that support streaming (e.g. OpenAI/LM Studio)."""
+        response = await self.generate(request)
+        if response.content:
+            yield response.content
 
     @abstractmethod
     async def generate(self, request: LLMRequest) -> LLMResponse:

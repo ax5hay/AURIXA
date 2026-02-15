@@ -1,7 +1,9 @@
 """HTTP clients for calling downstream AURIXA services."""
 
 import asyncio
+import json
 import httpx
+from collections.abc import AsyncIterator
 from loguru import logger
 
 from .config import (
@@ -171,4 +173,47 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
         return response.json()
     except httpx.HTTPError as e:
         logger.error("HTTP error calling LLM Router for generation: {}", e)
+        raise
+
+
+async def call_llm_generate_stream(
+    model: str, provider: str, prompt: str, context: dict
+) -> AsyncIterator[str]:
+    """Call the LLM Router streaming endpoint and yield content deltas."""
+    if not LLM_ROUTER_URL:
+        logger.warning("LLM_ROUTER_URL not set, skipping stream.")
+        return
+    formatted_context = _format_rag_context(context)
+    system_content = (
+        "You are a helpful healthcare assistant for AURIXA. "
+        "Use the provided knowledge base context to answer the user's question accurately. "
+        "If the context does not contain relevant information, say so politely."
+    )
+    user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
+    messages = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": user_content},
+    ]
+    try:
+        async with _async_client.stream(
+            "POST",
+            f"{LLM_ROUTER_URL}/api/v1/generate/stream",
+            json={"messages": messages, "model": model or None, "provider": provider},
+            timeout=120.0,
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                    if obj.get("type") == "delta" and "content" in obj:
+                        yield obj["content"]
+                    elif obj.get("type") == "error":
+                        raise RuntimeError(obj.get("message", "Stream error"))
+                except json.JSONDecodeError:
+                    continue
+    except httpx.HTTPError as e:
+        logger.error("HTTP error calling LLM Router stream: {}", e)
         raise

@@ -3,7 +3,7 @@ import os
 import re
 from contextlib import asynccontextmanager
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from loguru import logger
 
 from .models import RunTaskRequest, RunTaskResponse, AgentResult, AgentTask
@@ -12,42 +12,42 @@ RAG_SERVICE_URL = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
 EXECUTION_ENGINE_URL = os.getenv("EXECUTION_ENGINE_HOST", "http://localhost:8007")
 
 
-async def _search_knowledge_base(q: str) -> str:
-    """Call RAG service for real retrieval."""
+async def _search_knowledge_base(q: str, client: httpx.AsyncClient) -> str:
+    """Call RAG service for real retrieval. Uses shared client for connection reuse."""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(
-                f"{RAG_SERVICE_URL}/api/v1/retrieve",
-                json={"prompt": q, "top_k": 3},
-            )
-            if r.status_code != 200:
-                return f"RAG unavailable (status {r.status_code}). Try again later."
-            data = r.json()
-            snippets = data.get("snippets", [])
-            if not snippets:
-                return "No relevant documents found in the knowledge base."
-            parts = [f"- {s.get('content', '')[:200]}..." for s in snippets[:3]]
-            return "Knowledge base results:\n" + "\n".join(parts)
+        r = await client.post(
+            f"{RAG_SERVICE_URL}/api/v1/retrieve",
+            json={"prompt": q, "top_k": 3},
+            timeout=10.0,
+        )
+        if r.status_code != 200:
+            return f"RAG unavailable (status {r.status_code}). Try again later."
+        data = r.json()
+        snippets = data.get("snippets", [])
+        if not snippets:
+            return "No relevant documents found in the knowledge base."
+        parts = [f"- {s.get('content', '')[:200]}..." for s in snippets[:3]]
+        return "Knowledge base results:\n" + "\n".join(parts)
     except Exception as e:
         logger.warning("RAG call failed: {}", e)
         return f"Could not search knowledge base: {e}"
 
 
-async def _call_execution(action: str, params: dict) -> str:
-    """Call execution engine. Returns result message or error."""
+async def _call_execution(action: str, params: dict, client: httpx.AsyncClient) -> str:
+    """Call execution engine. Returns result message or error. Uses shared client for connection reuse."""
     if not EXECUTION_ENGINE_URL:
         return f"[Execution engine not configured] Action {action} would run with params {params}."
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.post(
-                f"{EXECUTION_ENGINE_URL}/api/v1/execute",
-                json={"action_name": action, "params": params},
-            )
-            if r.status_code != 200:
-                return f"Execution returned {r.status_code}."
-            data = r.json()
-            res = data.get("result", {})
-            return res.get("message", str(res))
+        r = await client.post(
+            f"{EXECUTION_ENGINE_URL}/api/v1/execute",
+            json={"action_name": action, "params": params},
+            timeout=15.0,
+        )
+        if r.status_code != 200:
+            return f"Execution returned {r.status_code}."
+        data = r.json()
+        res = data.get("result", {})
+        return res.get("message", str(res))
     except Exception as e:
         logger.warning("Execution engine call failed: {}", e)
         return f"Could not execute {action}: {e}"
@@ -83,9 +83,14 @@ EXECUTION_ACTIONS: dict[str, tuple[str, callable]] = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Log service startup and shutdown."""
+    """Log service startup and shutdown. Create shared HTTP client for RAG and execution engine."""
     logger.info("Agent Runtime service starting up")
+    app.state.http_client = httpx.AsyncClient(
+        timeout=15.0,
+        limits=httpx.Limits(max_keepalive_connections=8),
+    )
     yield
+    await app.state.http_client.aclose()
     logger.info("Agent Runtime service shutting down")
 
 
@@ -104,7 +109,7 @@ async def health():
 
 
 @app.post("/api/v1/run", response_model=RunTaskResponse, summary="Run an agent task")
-async def run_task(request: RunTaskRequest):
+async def run_task(request: RunTaskRequest, req: Request):
     """
     Executes an agentic task.
 
@@ -117,6 +122,7 @@ async def run_task(request: RunTaskRequest):
     task = request.task
     prompt = task.prompt.lower()
     meta = task.metadata or {}
+    client = req.app.state.http_client
     logger.info("Received request to run task with prompt: '{}'", task.prompt)
 
     final_output = "I'm not sure how to help with that."
@@ -126,14 +132,14 @@ async def run_task(request: RunTaskRequest):
     for kw, (action_name, params_fn) in EXECUTION_ACTIONS.items():
         if kw in prompt:
             params = params_fn(task.prompt, meta)
-            result = await _call_execution(action_name, params)
+            result = await _call_execution(action_name, params, client)
             tool_calls.append({"tool_name": action_name, "arguments": str(params), "result": result})
             final_output = result
             break
 
     # 2. RAG search
     if not tool_calls and ("search" in prompt or "knowledge" in prompt or "find" in prompt):
-        result = await _search_knowledge_base(task.prompt)
+        result = await _search_knowledge_base(task.prompt, client)
         tool_calls.append({"tool_name": "search_knowledge_base", "arguments": task.prompt[:100], "result": result})
         final_output = result
 

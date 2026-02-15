@@ -1,10 +1,12 @@
 import asyncio
 import datetime
 import hashlib
+import json
 import os
 import time
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
@@ -13,8 +15,9 @@ from pydantic import BaseModel
 from aurixa_db import get_db_session, engine, Base, models as db_models
 from . import clients
 
-# Response cache for repeated prompts (cost reduction)
+# Response cache for repeated prompts (cost reduction). Capped size to avoid unbounded memory growth.
 CACHE_TTL_SEC = int(os.getenv("ORCHESTRATION_RESPONSE_CACHE_TTL", "300"))
+CACHE_MAX_ENTRIES = int(os.getenv("ORCHESTRATION_RESPONSE_CACHE_MAX_ENTRIES", "1000"))
 _response_cache: dict[str, tuple[str, float]] = {}
 
 def _cache_key(prompt: str, tenant_id: str | None, user_id: str | None) -> str:
@@ -32,7 +35,17 @@ def _get_cached(key: str) -> str | None:
     return text
 
 def _set_cached(key: str, text: str) -> None:
-    _response_cache[key] = (text, time.time())
+    now = time.time()
+    # Evict expired entries first
+    if len(_response_cache) >= CACHE_MAX_ENTRIES:
+        expired = [k for k, (_, ts) in _response_cache.items() if now - ts > CACHE_TTL_SEC]
+        for k in expired[:10]:  # cap work per call
+            _response_cache.pop(k, None)
+    # If still at capacity, evict oldest (min timestamp)
+    if len(_response_cache) >= CACHE_MAX_ENTRIES and _response_cache:
+        oldest_key = min(_response_cache, key=lambda k: _response_cache[k][1])
+        _response_cache.pop(oldest_key, None)
+    _response_cache[key] = (text, now)
 
 # Prompt phrases that suggest agent tool use (appointments, scheduling, knowledge search, etc.)
 AGENT_WORTHY_PHRASES = [
@@ -843,4 +856,67 @@ async def run_pipeline(
         final_response=final_response_text,
         created_at=conversation.created_at.timestamp(),
         updated_at=conversation.updated_at.timestamp(),
+    )
+
+
+def _ndjson_line(obj: dict) -> bytes:
+    return (json.dumps(obj) + "\n").encode("utf-8")
+
+
+@app.post("/api/v1/pipelines/stream", summary="Run pipeline with NDJSON stream (status + text_delta + done)")
+async def run_pipeline_stream(request: PipelineRequest):
+    """
+    Stream pipeline progress and LLM tokens as NDJSON.
+    Events: {"event":"status","message":"..."}, {"event":"text_delta","delta":"..."}, {"event":"done","final_response":"..."}.
+    Used by voice WebSocket for snappy token-by-token streaming; REST /pipelines remains full response.
+    """
+    logger.info("Stream pipeline request for session: {}", request.session_id)
+
+    async def event_stream():
+        try:
+            yield _ndjson_line({"event": "status", "message": "Classifying intent..."})
+            intent_result = await clients.call_llm_router(request.prompt)
+            generated_text = ""
+
+            if _is_agent_worthy(request.prompt):
+                yield _ndjson_line({"event": "status", "message": "Running agent..."})
+                agent_result = await clients.call_agent_runtime(request.prompt, request.patient_id)
+                generated_text = (agent_result.get("output") or "").strip()
+            else:
+                yield _ndjson_line({"event": "status", "message": "Searching knowledge base..."})
+                rag_context = await clients.call_rag_service(request.prompt, intent_result)
+                yield _ndjson_line({"event": "status", "message": "Generating response..."})
+                accumulated = []
+                async for delta in clients.call_llm_generate_stream(
+                    model=intent_result.get("model"),
+                    provider=intent_result.get("provider"),
+                    prompt=request.prompt,
+                    context=rag_context,
+                ):
+                    accumulated.append(delta)
+                    yield _ndjson_line({"event": "text_delta", "delta": delta})
+                generated_text = "".join(accumulated)
+
+            if not generated_text:
+                generated_text = "I couldn't generate a response for that."
+
+            yield _ndjson_line({"event": "status", "message": "Validating..."})
+            validation_result = await clients.call_safety_guardrails(generated_text)
+            final_response = validation_result.get("validated_text", generated_text)
+            if not validation_result.get("is_safe"):
+                final_response = "[Content Redacted]"
+            if validation_result.get("requires_escalation"):
+                final_response = (
+                    "⚠️ This may require immediate attention. Please connect with a staff member as soon as possible. "
+                    + final_response
+                )
+            yield _ndjson_line({"event": "done", "final_response": final_response})
+        except Exception as e:
+            logger.error("Pipeline stream failed: {}", e)
+            yield _ndjson_line({"event": "error", "message": str(e)})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )

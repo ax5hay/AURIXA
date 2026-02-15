@@ -27,7 +27,12 @@ if not ORCHESTRATION_URL.startswith("http"):
 async def lifespan(app: FastAPI):
     start = time.monotonic()
     logger.info("{} starting on port {}", SERVICE_NAME, config.port)
+    app.state.http_client = httpx.AsyncClient(
+        timeout=120.0,
+        limits=httpx.Limits(max_keepalive_connections=4),
+    )
     yield
+    await app.state.http_client.aclose()
     logger.info("{} shutting down", SERVICE_NAME)
 
 
@@ -50,28 +55,99 @@ async def _run_pipeline(
     prompt: str,
     session_id: str | None = None,
     patient_id: int | None = None,
+    app: FastAPI | None = None,
 ) -> str:
-    """Call orchestration pipeline (RAG + LLM + safety) and return final response."""
+    """Call orchestration pipeline (RAG + LLM + safety). Uses shared http_client when app is provided.
+    Used by REST /api/v1/voice/process — returns full response in one go."""
     sid = session_id or str(uuid.uuid4())
     payload: dict = {"prompt": prompt, "session_id": sid}
     if patient_id is not None:
         payload["patient_id"] = patient_id
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        client = getattr(app.state, "http_client", None) if app else None
+        if client is not None:
             r = await client.post(
                 f"{ORCHESTRATION_URL}/api/v1/pipelines",
                 json=payload,
             )
-            if r.status_code != 200:
-                return f"Pipeline error (status {r.status_code}). Please try again."
-            data = r.json()
-            return data.get("final_response", "No response generated.")
+        else:
+            async with httpx.AsyncClient(timeout=120.0) as c:
+                r = await c.post(
+                    f"{ORCHESTRATION_URL}/api/v1/pipelines",
+                    json=payload,
+                )
+        if r.status_code != 200:
+            return f"Pipeline error (status {r.status_code}). Please try again."
+        data = r.json()
+        return data.get("final_response", "No response generated.")
     except httpx.ConnectError:
         logger.warning("Orchestration unavailable")
         return "The backend is temporarily unavailable. Please try again later."
     except Exception as e:
         logger.error("Pipeline call failed: {}", e)
         return f"Sorry, I could not process that: {e}"
+
+
+async def _run_pipeline_stream_ws(
+    websocket: WebSocket,
+    prompt: str,
+    session_id: str | None,
+    patient_id: int | None,
+    app: FastAPI,
+) -> str | None:
+    """Call orchestration pipelines/stream and forward status + text_delta to WebSocket. Returns final_response or None on error."""
+    sid = session_id or str(uuid.uuid4())
+    payload: dict = {"prompt": prompt, "session_id": sid}
+    if patient_id is not None:
+        payload["patient_id"] = patient_id
+    client = getattr(app.state, "http_client", None)
+    if not client:
+        return await _run_pipeline(prompt, session_id, patient_id, app)
+    try:
+        final_response: str | None = None
+        async with client.stream(
+            "POST",
+            f"{ORCHESTRATION_URL}/api/v1/pipelines/stream",
+            json=payload,
+            timeout=120.0,
+        ) as response:
+            if response.status_code != 200:
+                await websocket.send_json({"type": "error", "message": f"Pipeline returned {response.status_code}"})
+                return None
+            buffer = ""
+            async for chunk in response.aiter_text():
+                buffer += chunk
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        event = obj.get("event")
+                        if event == "status":
+                            await websocket.send_json({"type": "status", "status": "processing", "message": obj.get("message", "")})
+                        elif event == "text_delta":
+                            await websocket.send_json({"type": "text_delta", "content": obj.get("delta", "")})
+                        elif event == "done":
+                            final_response = obj.get("final_response", "")
+                        elif event == "error":
+                            await websocket.send_json({"type": "error", "message": obj.get("message", "Stream error")})
+                            return None
+                    except json.JSONDecodeError:
+                        continue
+        return final_response or "No response generated."
+    except httpx.ConnectError:
+        logger.warning("Orchestration unavailable")
+        await websocket.send_json({"type": "error", "message": "The backend is temporarily unavailable."})
+        return None
+    except Exception as e:
+        logger.error("Pipeline stream failed: {}", e)
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass
+        return None
 
 
 async def _process_text_input(
@@ -81,13 +157,13 @@ async def _process_text_input(
     patient_id: int | None = None,
     want_tts: bool = True,
 ):
-    """Process text input through the pipeline and send response back (text + optional TTS audio)."""
-    await websocket.send_json({
-        "type": "status",
-        "status": "processing",
-        "message": "Thinking...",
-    })
-    response_text = await _run_pipeline(content, session_id, patient_id)
+    """Process text input: stream pipeline (status + text_delta) over WebSocket, then send final text + optional TTS.
+    REST /api/v1/voice/process is unchanged and uses full pipeline response."""
+    response_text = await _run_pipeline_stream_ws(
+        websocket, content, session_id, patient_id, websocket.app
+    )
+    if response_text is None:
+        return
 
     # TTS: synthesize speech only when user wants it and TTS is configured
     if want_tts and tts.is_tts_available():
@@ -190,7 +266,7 @@ async def voice_process(req: VoiceProcessRequest):
             "audio_b64": None,
         }
 
-    response_text = await _run_pipeline(transcript, None, req.patient_id)
+    response_text = await _run_pipeline(transcript, None, req.patient_id, app=req.app)
     audio_b64: str | None = None
     if req.want_tts and tts.is_tts_available():
         audio_bytes_out, _ = await tts.synthesize(response_text)

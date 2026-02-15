@@ -2,7 +2,7 @@
 
 from .base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, JSON, ForeignKey, Text, Integer
+from sqlalchemy import String, JSON, ForeignKey, Text, Integer, Index
 from typing import List, Dict, Any
 import datetime
 
@@ -137,6 +137,9 @@ class AvailabilitySlot(Base):
 class Appointment(Base):
     """Represents a single appointment."""
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index("ix_appointments_patient_status_start", "patient_id", "status", "start_time"),
+    )
 
     start_time: Mapped[datetime.datetime] = mapped_column()
     end_time: Mapped[datetime.datetime] = mapped_column()

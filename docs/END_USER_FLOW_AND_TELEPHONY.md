@@ -6,10 +6,11 @@ This document defines how end users interact with AURIXA across different channe
 
 ## Executive Summary
 
-**Current State**: The platform has a **WebSocket voice channel** and **webchat** (patient portal AI assistant). The **telephony layer (PSTN/VoIP)** is not yet implemented. End users can interact via:
+**Current State**: The platform has **webchat**, **REST voice**, and **WebSocket voice** in the patient portal. The **telephony layer (PSTN/VoIP)** is not yet implemented. End users can interact via:
 
-1. **Webchat** — Text-based conversation in the patient portal
-2. **WebSocket voice** — Browser-to-browser voice (mic → STT → AI → TTS → speakers) with no phone integration
+1. **Webchat** — Text-based conversation in the patient portal (REST pipelines).
+2. **Voice (REST)** — Patient Portal **Voice** page (`/voice`): mic or text → `POST /api/v1/voice/process` (audio_b64, want_tts) → transcript + response + optional TTS audio. User can toggle "Play aloud" (TTS on/off). Most reliable path.
+3. **WebSocket voice** — Optional: connect to `ws://host/ws/voice` (proxied to streaming-voice `/ws/stream`) for real-time duplex; same STT/TTS pipeline, supports `want_tts` in messages.
 
 **Planned**: Telephony via SIP/WebRTC gateways (e.g., Twilio, Vapi, Bland) will sit in front of the same streaming pipeline, providing PSTN/VoIP call handling.
 
@@ -19,7 +20,7 @@ This document defines how end users interact with AURIXA across different channe
 
 | Channel        | Status       | Endpoint/Protocol            | Primary Use                    |
 |----------------|-------------|-----------------------------|--------------------------------|
-| Voice (Web)    | Implemented  | WebSocket `/ws/voice` → `/ws/stream` | In-browser voice conversations |
+| Voice (Web)    | Implemented  | REST `POST /api/v1/voice/process` (primary); WebSocket `/ws/voice` → `/ws/stream` (optional) | Patient portal `/voice`: mic or text, optional TTS |
 | Webchat        | Implemented  | REST `/api/v1/orchestration/pipelines` | Patient portal chat            |
 | Voice (Phone)  | Not implemented | (Planned: SIP/WebRTC gateway) | Inbound/outbound phone calls   |
 | SMS            | Stub         | (Planned)                    | Appointment reminders, alerts  |
@@ -53,36 +54,63 @@ Patient opens Patient Portal (port 3300)
 
 ---
 
-### 2. WebSocket Voice Flow (No Telephony)
+### 2. REST Voice Flow (Patient Portal `/voice` — Recommended)
 
-**User**: Patient or staff using the voice-enabled interface (e.g., hospital portal AI assistant, or a dedicated voice widget).
+**User**: Patient on the Patient Portal **Voice** page.
 
 **Flow**:
 ```
-User clicks "Start voice" in browser
-    → WebSocket connect to wss://host/ws/voice (proxied to streaming-voice /ws/stream)
-    → Browser captures mic → sends audio chunks as base64 in JSON
+User opens Patient Portal → /voice
+    → Option A: Records with mic → audio encoded to base64
+    → Option B: Types message in text field
 
-Inbound (User → Platform):
-    {"type": "audio", "data": "<base64>"}  or  {"type": "text", "content": "..."}
-    → Streaming-voice: STT (faster-whisper/Vosk primary; Deepgram/Whisper fallback) → transcript
+REST (Option A — voice):
+    POST /api/v1/voice/process
+    Body: { "audio_b64": "<base64>", "patient_id": 1, "want_tts": true }
+    → API Gateway → Streaming-voice: STT (OSS first) → transcript
     → Orchestration pipeline → text response
-    → TTS (Piper/edge-tts primary; OpenAI/ElevenLabs fallback) → audio bytes
+    → If want_tts: TTS (Piper/edge-tts primary; OpenAI/ElevenLabs fallback) → audio_b64
+    ← { "transcript", "response", "audio_b64" | null }
 
-Outbound (Platform → User):
-    {"type": "status", "status": "processing", "message": "Thinking..."}
-    {"type": "audio", "data": "<base64>", "done": false}  (streaming TTS chunks)
-    {"type": "audio", "data": "<base64>", "done": true}
-    {"type": "text", "content": "...", "done": true}  (fallback when no TTS)
+REST (Option B — text):
+    POST /api/v1/orchestration/pipelines { "prompt", "patient_id" }
+    ← { "final_response" }
+    If "Play aloud" on: POST /api/v1/voice/tts { "text": "<response>" } → play audio_b64
 ```
 
 **I/O**:
-- **Input**: WebSocket messages — `text` (content) or `audio` (base64)
+- **Input**: `POST /api/v1/voice/process` — `audio_b64`, `patient_id?`, `want_tts?` (default true)
+- **Output**: `{ transcript?, response, audio_b64? }` — always text; audio only when `want_tts` and TTS configured
+
+The **"Play aloud"** toggle on the Voice page controls `want_tts`; when off, only text is returned/displayed.
+
+### 3. WebSocket Voice Flow (Optional)
+
+**User**: Client that prefers real-time duplex (e.g., future telephony gateway or custom app).
+
+**Flow**:
+```
+WebSocket connect to wss://host/ws/voice (proxied to streaming-voice /ws/stream)
+
+Inbound (User → Platform):
+    {"type": "audio", "data": "<base64>", "patient_id": 1, "want_tts": true}
+    or {"type": "text", "content": "...", "want_tts": true}
+    → Streaming-voice: STT (OSS first) → transcript → Orchestration → TTS if want_tts
+
+Outbound (Platform → User):
+    {"type": "status", "status": "processing"}
+    {"type": "audio", "data": "<base64>", "done": true}
+    {"type": "text", "content": "...", "done": true}
+    {"type": "error", "message": "..."}
+```
+
+**I/O**:
+- **Input**: WebSocket messages — `text` or `audio`, optional `want_tts` (default true)
 - **Output**: WebSocket messages — `text`, `audio`, `status`, `error`
 
 ---
 
-### 3. Telephony Flow (Planned — When Implemented)
+### 4. Telephony Flow (Planned — When Implemented)
 
 **User**: Caller dialing a hospital/clinic number.
 
@@ -126,13 +154,19 @@ The streaming-voice service remains **gateway-agnostic**: it receives audio, ret
 
 ### TTS (Text-to-Speech)
 
-| Provider   | Input        | Output              |
-|-----------|--------------|---------------------|
-| OpenAI    | Text string  | MP3/opus bytes      |
-| ElevenLabs| Text string  | MP3 bytes           |
-| (Local)   | Text string  | WAV bytes (planned) |
+**Primary (OSS, free, no API keys):**
+| Provider   | Notes |
+|------------|--------|
+| Piper      | Local neural TTS. Set `PIPER_MODEL_PATH` (e.g. `/models/piper/en_US-lessac-medium.onnx`). Model can be downloaded at build time or mounted. |
+| edge-tts   | Free Microsoft TTS (internet required). No key. `EDGE_TTS_VOICE` (default `en-US-JennyNeural`). |
 
-**Current**: `OPENAI_API_KEY` or `ELEVENLABS_API_KEY` enables TTS. Response includes `{"type": "audio", "data": "<base64>"}`.
+**Fallbacks (proprietary):**
+| Provider   | When used |
+|------------|-----------|
+| OpenAI     | `OPENAI_API_KEY` (not placeholder) |
+| ElevenLabs | `ELEVENLABS_API_KEY` |
+
+**Order**: `TTS_PROVIDER_ORDER=piper,edge_tts,openai,elevenlabs`. Service works with zero API keys when Piper or edge-tts is available. User can disable TTS per request via `want_tts: false` (Voice page "Play aloud" off).
 
 ---
 
@@ -142,9 +176,10 @@ The streaming-voice service remains **gateway-agnostic**: it receives audio, ret
    - Go to Patient Portal → Chat tab
    - Type messages; receive text responses (no voice)
 
-2. **As a patient (voice — if voice UI is exposed)**:
-   - Connect to WebSocket `/ws/voice`
-   - Speak into mic; receive text + optional audio responses
+2. **As a patient (voice)**:
+   - Go to Patient Portal → **Voice** tab (`/voice`)
+   - Tap mic to speak or type in the text field; responses shown as text and optionally played aloud (toggle "Play aloud"). Uses REST `/api/v1/voice/process` for reliability.
+   - Alternatively, connect to WebSocket `/ws/voice` and send `audio` or `text` messages with optional `want_tts`
 
 3. **As hospital staff**:
    - Use Hospital Portal (port 3400)
@@ -170,3 +205,15 @@ The streaming-voice service is designed to accept:
 - Base64 audio chunks (for any WebSocket-based client, including gateways)
 
 No changes to the core pipeline logic are required; the channel adapter (gateway) handles protocol translation.
+
+---
+
+## Observability & Telemetry
+
+Platform telemetry is aggregated by **Observability Core** (port 8008):
+
+- **Health:** `GET http://localhost:8008/health` — service status and event count
+- **Performance report:** `GET http://localhost:8008/api/v1/reports/performance` — overall and per-service metrics (latency, cost, counts)
+- **Submit event:** `POST http://localhost:8008/api/v1/telemetry` — body: `TelemetryEvent` (service_name, event_type, data)
+
+When running via Docker, ensure the observability-core service is up (e.g. `docker compose ps`); it requires `numpy` and is listed in `apps/observability-core/pyproject.toml`.

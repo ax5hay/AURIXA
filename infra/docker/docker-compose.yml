@@ -72,9 +72,17 @@ services:
       VOICE_HOST: streaming-voice
       EXECUTION_HOST: execution-engine
       OBSERVABILITY_HOST: observability-core
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', (r)=>{ r.resume(); process.exit(r.statusCode===200?0:1); }).on('error', ()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - orchestration-engine
-      - llm-router
+      orchestration-engine:
+        condition: service_healthy
+      llm-router:
+        condition: service_healthy
     networks:
       - aurixa
 
@@ -94,6 +102,12 @@ services:
       ORCHESTRATION_ENGINE_SAFETY_GUARDRAILS_HOST: http://safety-guardrails:8005
       AGENT_RUNTIME_HOST: http://agent-runtime:8003
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,8 +125,15 @@ services:
       LLM_ROUTER_PORT: 8002
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
       RAG_SERVICE_HOST: http://rag-service:8004
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     depends_on:
-      - rag-service
+      rag-service:
+        condition: service_healthy
     networks:
       - aurixa
 
@@ -127,8 +148,15 @@ services:
       AGENT_RUNTIME_PORT: 8003
       RAG_SERVICE_HOST: http://rag-service:8004
       EXECUTION_ENGINE_HOST: http://execution-engine:8007
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8003/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - rag-service
+      rag-service:
+        condition: service_healthy
     networks:
       - aurixa
 
@@ -142,6 +170,12 @@ services:
     environment:
       RAG_SERVICE_PORT: 8004
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     networks:
       - aurixa
 
@@ -154,6 +188,12 @@ services:
     env_file: ../../.env
     environment:
       SAFETY_GUARDRAILS_PORT: 8005
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8005/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - aurixa
 
@@ -167,8 +207,15 @@ services:
     environment:
       STREAMING_VOICE_PORT: 8006
       ORCHESTRATION_URL: http://orchestration-engine:8001
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8006/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
-      - orchestration-engine
+      orchestration-engine:
+        condition: service_healthy
     networks:
       - aurixa
 
@@ -182,6 +229,12 @@ services:
     environment:
       EXECUTION_ENGINE_PORT: 8007
       DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8007/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
@@ -197,6 +250,12 @@ services:
     env_file: ../../.env
     environment:
       OBSERVABILITY_CORE_PORT: 8008
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8008/health')\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - aurixa
 

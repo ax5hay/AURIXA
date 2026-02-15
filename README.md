@@ -291,9 +291,9 @@ aurixa/
 | **Agent Runtime** | `8003` | Python | Tool invocation, Multi-step planning, Function calling, Async execution |
 | **RAG Service** | `8004` | Python | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking |
 | **Safety Guardrails** | `8005` | Python | Risk classification, Policy enforcement, Response filtering, Escalation logic |
-| **Streaming Voice** | `8006` | Python | Duplex audio, ASR integration, Partial transcripts, Barge-in detection |
+| **Streaming Voice** | `8006` | Python | Voice I/O: STT, TTS (OSS first). REST: full response; WebSocket: status + **LLM token stream** + TTS. Orchestration pipeline (and `/pipelines/stream` for WS). |
 | **Execution Engine** | `8007` | Python | External API calls, Retry logic, Idempotency, Task scheduling |
-| **Observability Core** | `8008` | Python | Metrics aggregation, Cost analysis, Latency tracking, Performance reports |
+| **Observability Core** | `8008` | Python | Telemetry aggregation, Performance reports (`/api/v1/reports/performance`), Metrics, Cost analysis |
 
 ---
 
@@ -368,45 +368,72 @@ LM_STUDIO_BASE_URL=http://127.0.0.1:1234/v1  # LM Studio (local, cost-free)
 # Clone repository
 git clone <repo-url> aurixa && cd aurixa
 
-# Install dependencies
+# Install dependencies (for local dev)
 pnpm install
 
 # Setup environment variables
 cp .env.example .env
 ```
 
-### Run the Full Stack (Recommended)
+### Run the Full Stack via Docker (Recommended)
 
-Start all services (Postgres, backend, frontends) with one command:
+Run the entire SaaS (Postgres, Redis, all backend services, and frontends) with Docker:
 
 ```bash
-# Kill any existing processes and start fresh
+# From repo root: first time or after code changes (builds all images)
+./scripts/docker-up.sh --build
+
+# Subsequent runs (no rebuild)
+./scripts/docker-up.sh
+```
+
+Or with Docker Compose directly:
+
+```bash
+cd infra/docker
+docker compose down          # Stop and remove containers (optional)
+docker compose up --build -d # Build and start all services in background
+```
+
+The stack will:
+1. Start Postgres and Redis
+2. Run db-seed to populate the database
+3. Build and start API Gateway, Orchestration, LLM Router, Agent Runtime, RAG, Safety, Streaming Voice, Execution Engine, Observability Core
+4. Build and start Dashboard, Patient Portal, Hospital Portal
+
+**Endpoints after startup:**
+
+| Service            | URL |
+|--------------------|-----|
+| API Gateway        | http://localhost:3000 |
+| Dashboard          | http://localhost:3100 |
+| **Playground**     | http://localhost:3100/playground |
+| Patient Portal     | http://localhost:3300 |
+| Hospital Portal    | http://localhost:3400 |
+| Orchestration      | http://localhost:8001 |
+| LLM Router         | http://localhost:8002 |
+| Agent Runtime      | http://localhost:8003 |
+| RAG Service        | http://localhost:8004 |
+| Safety Guardrails  | http://localhost:8005 |
+| Streaming Voice    | http://localhost:8006 |
+| Execution Engine   | http://localhost:8007 |
+| Observability Core | http://localhost:8008 |
+
+**Stop the stack:**
+```bash
+cd infra/docker && docker compose down
+```
+
+### Run the Full Stack Locally (Alternative)
+
+Start all services without Docker (Postgres/Redis still via Docker if available):
+
+```bash
 ./scripts/kill-stack.sh
 ./scripts/run-stack.sh
 ```
 
-The script will:
-1. Start Postgres (and Redis) via Docker if not running
-2. Seed the database with mock data
-3. Start API Gateway, Orchestration, LLM Router, RAG, Safety, Voice, Execution, Observability
-4. Start Dashboard (port 3100), Patient Portal (port 3300), and Hospital Portal (port 3400)
-
-**Endpoints after ~60 seconds:**
-
-| Service         | URL                    |
-|-----------------|------------------------|
-| API Gateway     | http://localhost:3000  |
-| Dashboard       | http://localhost:3100  |
-| **Playground**  | http://localhost:3100/playground |
-| Patient Portal  | http://localhost:3300  |
-| Hospital Portal | http://localhost:3400  |
-| Orchestration   | http://localhost:8001  |
-| LLM Router      | http://localhost:8002  |
-| Agent Runtime   | http://localhost:8003  |
-| RAG Service     | http://localhost:8004  |
-| Execution Engine| http://localhost:8007  |
-
-If Python services fail to start, run `./scripts/bootstrap-python.sh` once to install dependencies.
+The script will start Postgres/Redis (Docker), seed the DB, then run API Gateway, all Python services, and the three frontends. If Python services fail, run `./scripts/bootstrap-python.sh` once.
 
 ### Verify Installation
 
@@ -414,43 +441,15 @@ If Python services fail to start, run `./scripts/bootstrap-python.sh` once to in
 ./scripts/e2e-check.sh
 ```
 
-Or use the **Playground** at http://localhost:3100/playground — click **Run All Tests** to verify all 10 services in one go.
+Or use the **Playground** at http://localhost:3100/playground — click **Run All Tests** to verify services.
 
 Manually:
 ```bash
 curl http://localhost:3000/health
+curl http://localhost:8008/health   # Observability Core (telemetry)
 curl http://localhost:3100/
 curl http://localhost:3300/
 curl http://localhost:3400/
-```
-
-### Run Entire Stack via Docker
-
-Run the full SaaS (Postgres, Redis, all backend services, and frontends) with Docker:
-
-```bash
-# First time or after adding new images
-./scripts/docker-up.sh --build
-
-# Subsequent runs (no rebuild)
-./scripts/docker-up.sh
-```
-
-This script will:
-1. Start Postgres and Redis
-2. Seed the database with mock data
-3. Build and start all services (API Gateway, Orchestration, LLM Router, RAG, Safety, Voice, Execution, Observability, Dashboard, Patient Portal, Hospital Portal)
-
-**Endpoints:** Same as above (Gateway :3000, Dashboard :3100, Patient :3300, Hospital :3400).
-
-Or run Docker Compose directly:
-
-```bash
-cd infra/docker
-docker compose up -d postgres redis
-# Wait for Postgres, then:
-docker compose run --rm db-seed
-docker compose up -d
 ```
 
 ### Alternative: Individual Services
@@ -480,7 +479,8 @@ pnpm db:seed
 
 - **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
 - **Tenants** (`/tenants`): List tenants; Add Tenant creates new tenants (DB write)
-- Both apps fetch from API Gateway (port 3000)
+- **Patient Portal — Voice** (`/voice`): Mic or text input; REST-based voice processing (STT → pipeline → optional TTS); user toggle for "Play aloud" (TTS on/off)
+- Both apps fetch from API Gateway (port 3000). Telemetry data is provided by Observability Core (port 8008).
 
 ---
 
@@ -580,15 +580,18 @@ docker-compose logs | grep "550e8400-e29b-41d4-a716-446655440000"
 docker-compose logs -f orchestration-engine
 ```
 
-### Performance Metrics
+### Performance Metrics & Telemetry
 
-The **observability-core** service collects and aggregates metrics:
+The **Observability Core** service (port 8008) collects and aggregates telemetry:
 
+- **Health:** `GET http://localhost:8008/health` — returns service status and event count
+- **Performance report:** `GET http://localhost:8008/api/v1/reports/performance` — overall and per-service metrics (latency, cost, counts)
+- **Submit events:** `POST http://localhost:8008/api/v1/telemetry` — services send events for aggregation
 - **Latency percentiles:** p50, p95, p99 (per service)
 - **LLM costs:** Breakdown by provider and model
-- **Token consumption:** Prompt & completion tokens over time
 - **Error rates:** Percentage of failed requests
-- **System health:** Memory, CPU, uptime
+
+Ensure the observability-core container is running (`docker compose ps`); if it exits, check logs and rebuild (it requires `numpy` in its dependencies).
 
 ### Health Check Endpoints
 
@@ -752,48 +755,45 @@ services:
 
 ### Local Development (Docker Compose)
 
-Full-stack deployment with all services, databases, and caches:
+Full-stack deployment with all services, databases, and caches. Compose file is in `infra/docker/`; build context is the **monorepo root** (parent of `infra/`).
 
 ```bash
 cd infra/docker
-docker-compose up -d
+docker compose up --build -d   # Build and start all (first time or after changes)
+# or
+docker compose up -d            # Start existing images only
 
 # Verify all services
-docker-compose ps
+docker compose ps -a
 
 # Check service logs
-docker-compose logs -f api-gateway
+docker compose logs -f api-gateway
+docker compose logs observability-core   # Telemetry service
 
 # Stop all services
-docker-compose down
+docker compose down
 ```
 
 **Services started:**
-- PostgreSQL 16 (localhost:5432)
-- Redis 7 (localhost:6379)
-- API Gateway (localhost:3000)
-- All 8 Python microservices (ports 8001-8008)
+- PostgreSQL 16 (localhost:5432), Redis 7 (localhost:6379)
+- db-seed (one-off, then exits)
+- API Gateway (3000), Orchestration (8001), LLM Router (8002), Agent Runtime (8003), RAG (8004), Safety (8005), Streaming Voice (8006), Execution Engine (8007), Observability Core (8008)
+- Dashboard (3100), Patient Portal (3300), Hospital Portal (3400)
 
 ### Docker Images
 
-Each service has a `Dockerfile` in its root directory:
+Each service has a `Dockerfile` in its app directory. Images are built with **monorepo root** as build context so shared packages (`packages/db`, `packages/llm-clients`, etc.) are available.
 
-```dockerfile
-# Example: apps/api-gateway/Dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY . .
-RUN pnpm install --prod
-CMD ["pnpm", "start"]
+**Build all images:**
+```bash
+cd infra/docker
+docker compose build
 ```
 
-**Build images:**
+**Build a single service:**
 ```bash
-# Build single service
-docker build -t aurixa/api-gateway:latest apps/api-gateway/
-
-# Build all services
-docker-compose -f infra/docker/docker-compose.yml build
+docker build -f apps/api-gateway/Dockerfile -t aurixa/api-gateway:latest .
+# Run from repo root so context includes package.json, packages/, apps/
 ```
 
 ### Kubernetes Deployment
@@ -1010,6 +1010,15 @@ ws.send(JSON.stringify({
 
 ## Testing
 
+### End-to-end (stack running)
+
+With the full stack and DB seeded:
+
+```bash
+./scripts/e2e-check.sh          # Gateway, admin, pipeline, health
+./scripts/e2e-detailed.sh       # All services health, proxy routes, pipeline stream, voice, LLM
+```
+
 ### Run All Tests
 
 ```bash
@@ -1035,12 +1044,13 @@ open coverage/index.html
 
 ## Documentation
 
-Currently maintaining these resources:
-
-- [Performance Report](./performance_report.md) - System metrics and benchmarks
-- [Architecture Decision Records](./docs/adr/) - Design decisions
-- [API Reference](./docs/api/) - Endpoint documentation
-- [Deployment Guide](./docs/deployment.md) - Production setup
+- [Streaming Service & End-User Flows](./docs/STREAMING_AND_END_USER_FLOWS.md) — Streaming-voice (REST + WebSocket with **LLM token streaming** over WS), channel layer, and full layman flows for AURIXA admin, patient, and hospital tenants
+- [End-User Flow & Telephony](./docs/END_USER_FLOW_AND_TELEPHONY.md) — Webchat, WebSocket voice, REST voice, STT/TTS providers (OSS first), telephony integration points
+- [Performance Report](./performance_report.md) — System metrics and benchmarks
+- [Architecture Audit](./docs/ARCHITECTURE_AUDIT.md) — Architecture review
+- [Feature Gap Analysis](./docs/FEATURE_GAP_ANALYSIS.md) — Capability gaps and roadmap
+- [API Reference](./docs/api/) — Endpoint documentation (if present)
+- Deployment: see [Quick Start](#quick-start) and [Deployment](#deployment) above
 
 ---
 

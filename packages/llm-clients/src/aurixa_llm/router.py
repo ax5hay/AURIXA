@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from typing import Any
 
 from loguru import logger
@@ -135,6 +136,31 @@ class LLMRouter:
                 last_error = exc
                 continue
 
+        raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
+
+    async def generate_stream(
+        self,
+        request: LLMRequest,
+        provider: LLMProvider | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream completion tokens. Uses specified provider or fallback chain.
+        Providers that do not implement generate_stream yield the full content once."""
+        if provider and provider in self._clients:
+            async for chunk in self._clients[provider].generate_stream(request):
+                yield chunk
+            return
+        if not self._fallback_order:
+            raise RuntimeError("No LLM providers configured.")
+        last_error: Exception | None = None
+        for p in self._fallback_order:
+            try:
+                async for chunk in self._clients[p].generate_stream(request):
+                    yield chunk
+                return
+            except Exception as exc:
+                logger.warning("Provider {} stream failed: {}", p.value, exc)
+                last_error = exc
+                continue
         raise RuntimeError(f"All LLM providers failed. Last error: {last_error}")
 
     async def health(self) -> dict[str, bool]:
