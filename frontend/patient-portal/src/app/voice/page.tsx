@@ -1,13 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { processVoice, sendMessage, synthesizeSpeech } from "./api";
 
 const DEMO_PATIENT_ID = 1;
-const WS_BASE = typeof window !== "undefined"
-  ? (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000")
-      .replace(/^http/, "ws")
-  : "ws://127.0.0.1:3000";
-const VOICE_WS_URL = `${WS_BASE.replace(/\/$/, "")}/ws/voice`;
 
 interface Message {
   id: number;
@@ -16,71 +12,20 @@ interface Message {
 }
 
 export default function VoicePage() {
+  const [wantTts, setWantTts] = useState(true);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Tap the microphone to speak. I'll listen, then respond with voice and text.",
+      text: "Tap the microphone to speak, or type below. I'll respond with text and optional voice.",
       sender: "bot",
     },
   ]);
-  const [status, setStatus] = useState<"idle" | "connecting" | "listening" | "processing" | "speaking" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "listening" | "processing" | "speaking" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const textInputRef = useRef<HTMLInputElement | null>(null);
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return wsRef.current;
-    setStatus("connecting");
-    setErrorMsg(null);
-    const ws = new WebSocket(VOICE_WS_URL);
-    ws.onopen = () => {
-      setStatus("idle");
-      setErrorMsg(null);
-    };
-    ws.onclose = () => {
-      setStatus("idle");
-      wsRef.current = null;
-    };
-    ws.onerror = () => {
-      setStatus("error");
-      setErrorMsg("Connection failed. Ensure the API gateway and voice service are running.");
-    };
-    ws.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data as string);
-        const t = data.type;
-        if (t === "status") {
-          if (data.status === "processing") setStatus("processing");
-        } else if (t === "text") {
-          setStatus("idle");
-          setMessages((prev) => [
-            ...prev,
-            { id: Date.now(), text: data.content || "", sender: "bot" },
-          ]);
-        } else if (t === "audio") {
-          setStatus("speaking");
-          const b64 = data.data;
-          if (b64 && typeof b64 === "string") {
-            const audio = new Audio("data:audio/mpeg;base64," + b64);
-            audio.onended = () => setStatus("idle");
-            audio.onerror = () => setStatus("idle");
-            audio.play().catch(() => setStatus("idle"));
-          } else {
-            setStatus("idle");
-          }
-        } else if (t === "error") {
-          setStatus("idle");
-          setErrorMsg(data.message || "Unknown error");
-        }
-      } catch {
-        // ignore parse errors
-      }
-    };
-    wsRef.current = ws;
-    return ws;
-  }, []);
+  const awaitingResponseRef = useRef(false);
 
   const startListening = useCallback(async () => {
     try {
@@ -96,15 +41,48 @@ export default function VoicePage() {
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+        if (blob.size < 1000) {
+          setErrorMsg("Recording too short. Please speak for at least 1–2 seconds before releasing.");
+          setStatus("idle");
+          return;
+        }
         const buf = await blob.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-        const ws = connect();
-        if (ws.readyState !== WebSocket.OPEN) {
-          ws.addEventListener("open", () => {
-            ws.send(JSON.stringify({ type: "audio", data: b64, patient_id: DEMO_PATIENT_ID }));
-          });
-        } else {
-          ws.send(JSON.stringify({ type: "audio", data: b64, patient_id: DEMO_PATIENT_ID }));
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 8192) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+        }
+        const b64 = btoa(binary);
+        awaitingResponseRef.current = true;
+        setStatus("processing");
+        setErrorMsg(null);
+        try {
+          const res = await processVoice(b64, DEMO_PATIENT_ID, wantTts);
+          awaitingResponseRef.current = false;
+          if (res.transcript) {
+            setMessages((prev) => [
+              ...prev,
+              { id: Date.now(), text: res.transcript, sender: "user" },
+            ]);
+          }
+          const responseText = res.response?.trim() || "I didn't catch that. Try again or type your message below.";
+          setMessages((prev) => [
+            ...prev,
+            { id: Date.now(), text: responseText, sender: "bot" },
+          ]);
+          if (res.audio_b64 && wantTts) {
+            setStatus("speaking");
+            const audio = new Audio("data:audio/mpeg;base64," + res.audio_b64);
+            audio.onended = () => setStatus("idle");
+            audio.onerror = () => setStatus("idle");
+            audio.play().catch(() => setStatus("idle"));
+          } else {
+            setStatus("idle");
+          }
+        } catch (err) {
+          awaitingResponseRef.current = false;
+          setStatus("idle");
+          setErrorMsg(err instanceof Error ? err.message : "Voice processing failed. Try again.");
         }
       };
       mediaRecorderRef.current = mr;
@@ -114,7 +92,7 @@ export default function VoicePage() {
       setStatus("error");
       setErrorMsg("Microphone access denied or unavailable.");
     }
-  }, [connect]);
+  }, [wantTts]);
 
   const stopListening = useCallback(() => {
     const mr = mediaRecorderRef.current;
@@ -125,24 +103,40 @@ export default function VoicePage() {
     if (status === "listening") setStatus("processing");
   }, [status]);
 
-  const sendText = useCallback((text: string) => {
+  const sendText = useCallback(async (text: string) => {
     if (!text.trim()) return;
     setMessages((prev) => [...prev, { id: Date.now(), text: text.trim(), sender: "user" }]);
-    const ws = connect();
-    const send = () => {
-      ws.send(JSON.stringify({ type: "text", content: text.trim(), patient_id: DEMO_PATIENT_ID }));
-    };
-    if (ws.readyState === WebSocket.OPEN) {
-      send();
-    } else {
-      ws.addEventListener("open", send);
-    }
     setStatus("processing");
-  }, [connect]);
+    setErrorMsg(null);
+    try {
+      const res = await sendMessage(text.trim(), DEMO_PATIENT_ID);
+      const responseText = res.final_response?.trim() || "No response.";
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now(), text: responseText, sender: "bot" },
+      ]);
+      if (wantTts) {
+        setStatus("speaking");
+        const audioB64 = await synthesizeSpeech(responseText);
+        if (audioB64) {
+          const audio = new Audio("data:audio/mpeg;base64," + audioB64);
+          audio.onended = () => setStatus("idle");
+          audio.onerror = () => setStatus("idle");
+          audio.play().catch(() => setStatus("idle"));
+        } else {
+          setStatus("idle");
+        }
+      } else {
+        setStatus("idle");
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to get response.");
+      setStatus("idle");
+    }
+  }, [wantTts]);
 
   useEffect(() => {
     return () => {
-      wsRef.current?.close();
       mediaRecorderRef.current?.stop();
     };
   }, []);
@@ -152,10 +146,24 @@ export default function VoicePage() {
   return (
     <div className="glass rounded-xl flex flex-col min-h-[520px] overflow-hidden -mt-6">
       <div className="px-4 py-3 border-b border-white/5 bg-surface-secondary/30">
-        <h2 className="font-semibold text-white">Voice Assistant</h2>
-        <p className="text-white/50 text-sm mt-0.5">
-          Speak naturally — STT (AssemblyAI/Deepgram/Whisper) and TTS enabled
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-white">Voice Assistant</h2>
+            <p className="text-white/50 text-sm mt-0.5">
+              Speak or type — responses shown as text
+              {wantTts ? " and played aloud" : ""}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <span className="text-white/70 text-sm">Play aloud</span>
+            <input
+              type="checkbox"
+              checked={wantTts}
+              onChange={(e) => setWantTts(e.target.checked)}
+              className="w-4 h-4 rounded border-white/20 bg-surface-secondary text-aurixa-500 focus:ring-aurixa-500"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -197,7 +205,7 @@ export default function VoicePage() {
           <button
             type="button"
             onClick={isRecording ? stopListening : startListening}
-            disabled={status === "connecting" || status === "speaking"}
+            disabled={status === "speaking"}
             className={`flex items-center justify-center w-16 h-16 rounded-full transition-all ${
               isRecording
                 ? "bg-red-500 hover:bg-red-600 animate-pulse"
@@ -239,7 +247,7 @@ export default function VoicePage() {
                 if (textInputRef.current) textInputRef.current.value = "";
               }
             }}
-            disabled={status === "connecting"}
+            disabled={status === "processing" || status === "speaking"}
             className="px-4 py-2.5 rounded-xl bg-aurixa-500 hover:bg-aurixa-600 text-white disabled:opacity-50"
           >
             Send

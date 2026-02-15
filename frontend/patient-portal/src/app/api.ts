@@ -105,3 +105,51 @@ export async function sendMessage(
   }
   return res.json();
 }
+
+export interface VoiceProcessResponse {
+  error: string | null;
+  transcript: string | null;
+  response: string;
+  audio_b64: string | null;
+}
+
+export async function synthesizeSpeech(text: string): Promise<string | null> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/v1/voice/tts`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    },
+    15000
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.audio_b64 ?? null;
+}
+
+export async function processVoice(
+  audioB64: string,
+  patientId?: number,
+  wantTts = true
+): Promise<VoiceProcessResponse> {
+  const body: Record<string, unknown> = {
+    audio_b64: audioB64,
+    want_tts: wantTts,
+  };
+  if (patientId != null) body.patient_id = patientId;
+  const res = await fetchWithTimeout(
+    `${API_BASE}/api/v1/voice/process`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    PIPELINE_TIMEOUT_MS
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Voice processing failed: ${text}`);
+  }
+  return res.json();
+}

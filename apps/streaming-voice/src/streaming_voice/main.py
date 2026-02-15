@@ -79,6 +79,7 @@ async def _process_text_input(
     content: str,
     session_id: str | None,
     patient_id: int | None = None,
+    want_tts: bool = True,
 ):
     """Process text input through the pipeline and send response back (text + optional TTS audio)."""
     await websocket.send_json({
@@ -88,8 +89,8 @@ async def _process_text_input(
     })
     response_text = await _run_pipeline(content, session_id, patient_id)
 
-    # TTS: synthesize speech when configured
-    if tts.is_tts_available():
+    # TTS: synthesize speech only when user wants it and TTS is configured
+    if want_tts and tts.is_tts_available():
         audio_bytes, _ = await tts.synthesize(response_text)
         if audio_bytes:
             await websocket.send_json({
@@ -113,13 +114,14 @@ async def _process_audio_input(
     data_b64: str,
     session_id: str | None,
     patient_id: int | None = None,
+    want_tts: bool = True,
 ):
-    """Process audio input. Uses Deepgram STT when DEEPGRAM_API_KEY is set."""
+    """Process audio input. Uses OSS (faster-whisper etc) and proprietary STT fallbacks."""
     # Fallback: if data is base64-encoded text (for testing), decode and process
     try:
         decoded = base64.b64decode(data_b64).decode("utf-8", errors="replace")
         if decoded.isprintable() and len(decoded) < 2000:
-            await _process_text_input(websocket, decoded, session_id, patient_id)
+            await _process_text_input(websocket, decoded, session_id, patient_id, want_tts)
             return
     except Exception:
         pass
@@ -133,12 +135,13 @@ async def _process_audio_input(
 
     transcript = await stt.transcribe(audio_bytes)
     if transcript:
-        await _process_text_input(websocket, transcript, session_id, patient_id)
+        await _process_text_input(websocket, transcript, session_id, patient_id, want_tts)
         return
 
+    logger.warning("STT returned no transcript for {} bytes", len(audio_bytes))
     await websocket.send_json({
         "type": "text",
-        "content": "Audio received. Set DEEPGRAM_API_KEY for speech-to-text, or send text: {\"type\": \"text\", \"content\": \"your message\"}",
+        "content": "I couldn't transcribe that. Try speaking a bit longer, or type your message below.",
         "done": True,
     })
 
@@ -151,12 +154,55 @@ async def capabilities():
         "stt": stt.is_stt_available(),
         "stt_providers": stt.configured_providers(),
         "tts": tts.is_tts_available(),
-        "tts_provider": tts.TTS_PROVIDER if tts.is_tts_available() else None,
+        "tts_providers": tts.configured_providers(),
     }
+
+
+class VoiceProcessRequest(BaseModel):
+    """REST request for voice processing (STT + pipeline + optional TTS)."""
+    audio_b64: str
+    patient_id: int | None = None
+    want_tts: bool = True
 
 
 class TTSRequest(BaseModel):
     text: str
+
+
+@app.post("/api/v1/voice/process")
+@app.post("/api/v1/process")  # alias for gateway proxy (strips /voice prefix)
+async def voice_process(req: VoiceProcessRequest):
+    """
+    REST endpoint for voice: upload audio, get transcript + response + optional TTS.
+    Use when WebSocket is unreliable; always returns JSON.
+    """
+    try:
+        audio_bytes = base64.b64decode(req.audio_b64)
+    except Exception:
+        return {"error": "Invalid base64 audio", "transcript": None, "response": None, "audio_b64": None}
+
+    transcript = await stt.transcribe(audio_bytes)
+    if not transcript or not transcript.strip():
+        return {
+            "error": None,
+            "transcript": None,
+            "response": "I couldn't transcribe that. Try speaking a bit longer, or type your message below.",
+            "audio_b64": None,
+        }
+
+    response_text = await _run_pipeline(transcript, None, req.patient_id)
+    audio_b64: str | None = None
+    if req.want_tts and tts.is_tts_available():
+        audio_bytes_out, _ = await tts.synthesize(response_text)
+        if audio_bytes_out:
+            audio_b64 = tts.to_base64(audio_bytes_out)
+
+    return {
+        "error": None,
+        "transcript": transcript,
+        "response": response_text,
+        "audio_b64": audio_b64,
+    }
 
 
 @app.post("/api/v1/tts")
@@ -196,19 +242,20 @@ async def ws_stream(websocket: WebSocket):
             session_id = msg.get("session_id") or session_id
             if msg.get("patient_id") is not None:
                 patient_id = int(msg["patient_id"])
+            want_tts = msg.get("want_tts", True)  # default on for backward compat
 
             if msg_type == "text":
                 content = msg.get("content", "").strip()
                 if not content:
                     await websocket.send_json({"type": "error", "message": "Empty text input"})
                     continue
-                await _process_text_input(websocket, content, session_id, patient_id)
+                await _process_text_input(websocket, content, session_id, patient_id, want_tts)
             elif msg_type == "audio":
                 data_b64 = msg.get("data", "")
                 if not data_b64:
                     await websocket.send_json({"type": "error", "message": "No audio data"})
                     continue
-                await _process_audio_input(websocket, data_b64, session_id, patient_id)
+                await _process_audio_input(websocket, data_b64, session_id, patient_id, want_tts)
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
             else:

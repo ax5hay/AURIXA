@@ -424,10 +424,33 @@ curl http://localhost:3300/
 curl http://localhost:3400/
 ```
 
-### Alternative: Docker Compose
+### Run Entire Stack via Docker
+
+Run the full SaaS (Postgres, Redis, all backend services, and frontends) with Docker:
 
 ```bash
-cd infra/docker && docker-compose up -d
+# First time or after adding new images
+./scripts/docker-up.sh --build
+
+# Subsequent runs (no rebuild)
+./scripts/docker-up.sh
+```
+
+This script will:
+1. Start Postgres and Redis
+2. Seed the database with mock data
+3. Build and start all services (API Gateway, Orchestration, LLM Router, RAG, Safety, Voice, Execution, Observability, Dashboard, Patient Portal, Hospital Portal)
+
+**Endpoints:** Same as above (Gateway :3000, Dashboard :3100, Patient :3300, Hospital :3400).
+
+Or run Docker Compose directly:
+
+```bash
+cd infra/docker
+docker compose up -d postgres redis
+# Wait for Postgres, then:
+docker compose run --rm db-seed
+docker compose up -d
 ```
 
 ### Alternative: Individual Services

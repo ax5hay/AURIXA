@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-python-service: &python-service
   build:
     context: ../../
@@ -42,11 +40,25 @@ services:
       timeout: 3s
       retries: 3
 
+  db-seed:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.db-seed
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aurixa
+    restart: "no"
+
   # ---------- TypeScript Services ----------
   api-gateway:
     build:
-      context: ../../apps/api-gateway
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/api-gateway/Dockerfile
     ports:
       - "3000:3000"
     env_file: ../../.env
@@ -83,14 +95,15 @@ services:
       AGENT_RUNTIME_HOST: http://agent-runtime:8003
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - aurixa
 
   llm-router:
     build:
-      context: ../../apps/llm-router
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/llm-router/Dockerfile
     ports:
       - "8002:8002"
     env_file: ../../.env
@@ -105,8 +118,8 @@ services:
 
   agent-runtime:
     build:
-      context: ../../apps/agent-runtime
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/agent-runtime/Dockerfile
     ports:
       - "8003:8003"
     env_file: ../../.env
@@ -121,8 +134,8 @@ services:
 
   rag-service:
     build:
-      context: ../../apps/rag-service
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/rag-service/Dockerfile
     ports:
       - "8004:8004"
     env_file: ../../.env
@@ -134,8 +147,8 @@ services:
 
   safety-guardrails:
     build:
-      context: ../../apps/safety-guardrails
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/safety-guardrails/Dockerfile
     ports:
       - "8005:8005"
     env_file: ../../.env
@@ -146,8 +159,8 @@ services:
 
   streaming-voice:
     build:
-      context: ../../apps/streaming-voice
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/streaming-voice/Dockerfile
     ports:
       - "8006:8006"
     env_file: ../../.env
@@ -170,14 +183,15 @@ services:
       EXECUTION_ENGINE_PORT: 8007
       DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - aurixa
 
   observability-core:
     build:
-      context: ../../apps/observability-core
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: apps/observability-core/Dockerfile
     ports:
       - "8008:8008"
     env_file: ../../.env
@@ -189,10 +203,34 @@ services:
   # ---------- Frontend ----------
   dashboard:
     build:
-      context: ../../frontend/dashboard
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: frontend/dashboard/Dockerfile
     ports:
       - "3100:3100"
+    environment:
+      NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+    networks:
+      - aurixa
+
+  patient-portal:
+    build:
+      context: ../..
+      dockerfile: frontend/patient-portal/Dockerfile
+    ports:
+      - "3300:3300"
+    environment:
+      NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+    networks:
+      - aurixa
+
+  hospital-portal:
+    build:
+      context: ../..
+      dockerfile: frontend/hospital-portal/Dockerfile
+    ports:
+      - "3400:3400"
+    environment:
+      NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
     networks:
       - aurixa
 

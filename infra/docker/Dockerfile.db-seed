@@ -1,0 +1,8 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY packages/db/pyproject.toml packages/db/
+COPY packages/db/src packages/db/src
+COPY packages/db/seed.py packages/db/
+RUN pip install --no-cache-dir -e ./packages/db
+WORKDIR /app/packages/db
+CMD ["python", "seed.py"]

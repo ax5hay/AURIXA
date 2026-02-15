@@ -65,9 +65,9 @@ User clicks "Start voice" in browser
 
 Inbound (User → Platform):
     {"type": "audio", "data": "<base64>"}  or  {"type": "text", "content": "..."}
-    → Streaming-voice: STT (Deepgram/Whisper) → transcript
+    → Streaming-voice: STT (faster-whisper/Vosk primary; Deepgram/Whisper fallback) → transcript
     → Orchestration pipeline → text response
-    → TTS (OpenAI/ElevenLabs) → audio bytes
+    → TTS (Piper/edge-tts primary; OpenAI/ElevenLabs fallback) → audio bytes
 
 Outbound (Platform → User):
     {"type": "status", "status": "processing", "message": "Thinking..."}
