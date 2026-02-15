@@ -16,14 +16,14 @@ export async function wsRoutes(app: FastifyInstance) {
       });
 
       // Client → Upstream
-      socket.on("message", (data) => {
+      socket.on("message", (data: Buffer | Buffer[] | ArrayBuffer) => {
         if (upstream.readyState === WebSocket.OPEN) {
           upstream.send(data);
         }
       });
 
       // Upstream → Client
-      upstream.on("message", (data) => {
+      upstream.on("message", (data: Buffer | Buffer[] | ArrayBuffer) => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(data);
         }
@@ -37,11 +37,11 @@ export async function wsRoutes(app: FastifyInstance) {
 
       socket.on("close", cleanup);
       upstream.on("close", cleanup);
-      socket.on("error", (err) => {
+      socket.on("error", (err: Error) => {
         req.log.error({ err }, "Client WebSocket error");
         cleanup();
       });
-      upstream.on("error", (err) => {
+      upstream.on("error", (err: Error) => {
         req.log.error({ err }, "Upstream WebSocket error");
         cleanup();
       });
@@ -60,13 +60,13 @@ export async function wsRoutes(app: FastifyInstance) {
         req.log.info("Orchestration upstream connection established");
       });
 
-      socket.on("message", (data) => {
+      socket.on("message", (data: Buffer | Buffer[] | ArrayBuffer) => {
         if (upstream.readyState === WebSocket.OPEN) {
           upstream.send(data);
         }
       });
 
-      upstream.on("message", (data) => {
+      upstream.on("message", (data: Buffer | Buffer[] | ArrayBuffer) => {
         if (socket.readyState === WebSocket.OPEN) {
           socket.send(data);
         }

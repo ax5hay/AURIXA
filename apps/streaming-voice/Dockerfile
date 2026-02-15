@@ -13,6 +13,9 @@ COPY apps/streaming-voice/pyproject.toml apps/streaming-voice/
 # Copy shared packages
 COPY packages/ packages/
 
+# Copy source code (needed for editable install)
+COPY apps/streaming-voice/src apps/streaming-voice/src/
+
 # Install dependencies (OSS STT: faster-whisper, vosk; OSS TTS: piper, edge-tts)
 RUN pip install --no-cache-dir -e ./apps/streaming-voice
 
@@ -21,9 +24,6 @@ RUN mkdir -p /models/piper && cd /models/piper && \
     python -m piper.download_voices en_US-lessac-medium 2>/dev/null || \
     curl -sL -o en_US-lessac-medium.onnx \
     "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx"
-
-# Copy source code
-COPY apps/streaming-voice/src src/
 
 ENV PIPER_MODEL_PATH="/models/piper/en_US-lessac-medium.onnx"
 ENV VOSK_MODEL_PATH=""

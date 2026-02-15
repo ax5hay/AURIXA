@@ -16,6 +16,8 @@
     "@aurixa/auth": "workspace:*",
     "@aurixa/config": "workspace:*",
     "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.0",
+    "ws": "^8.18.0",
     "@fastify/websocket": "^11.0.0",
     "@fastify/cors": "^10.0.0",
     "@fastify/rate-limit": "^10.2.0",
@@ -25,6 +27,7 @@
     "typescript": "^5.7.0",
     "tsx": "^4.19.0",
     "vitest": "^3.0.0",
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0"
   }
 }

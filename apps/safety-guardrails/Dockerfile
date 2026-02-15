@@ -10,11 +10,11 @@ COPY apps/safety-guardrails/pyproject.toml apps/safety-guardrails/
 # Copy shared packages
 COPY packages/ packages/
 
+# Copy source code (needed for editable install)
+COPY apps/safety-guardrails/src apps/safety-guardrails/src/
+
 # Install dependencies
 RUN pip install --no-cache-dir -e ./apps/safety-guardrails
-
-# Copy source code
-COPY apps/safety-guardrails/src src/
 
 EXPOSE 8005
 CMD ["uvicorn", "safety_guardrails.main:app", "--host", "0.0.0.0", "--port", "8005"]

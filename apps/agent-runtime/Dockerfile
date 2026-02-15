@@ -10,11 +10,11 @@ COPY apps/agent-runtime/pyproject.toml apps/agent-runtime/
 # Copy shared packages
 COPY packages/ packages/
 
-# Install dependencies
-RUN pip install --no-cache-dir -e ./apps/agent-runtime
+# Copy source code (needed for editable install)
+COPY apps/agent-runtime/src apps/agent-runtime/src/
 
-# Copy source code
-COPY apps/agent-runtime/src src/
+# Install shared packages first, then service
+RUN pip install --no-cache-dir -e ./packages/llm-clients -e ./apps/agent-runtime
 
 EXPOSE 8003
 CMD ["uvicorn", "agent_runtime.main:app", "--host", "0.0.0.0", "--port", "8003"]

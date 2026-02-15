@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { processVoice, sendMessage, synthesizeSpeech } from "./api";
+import { processVoice, sendMessage, synthesizeSpeech } from "../api";
 
 const DEMO_PATIENT_ID = 1;
 
@@ -50,7 +50,7 @@ export default function VoicePage() {
         const bytes = new Uint8Array(buf);
         let binary = "";
         for (let i = 0; i < bytes.length; i += 8192) {
-          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+          binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 8192)));
         }
         const b64 = btoa(binary);
         awaitingResponseRef.current = true;
@@ -62,7 +62,7 @@ export default function VoicePage() {
           if (res.transcript) {
             setMessages((prev) => [
               ...prev,
-              { id: Date.now(), text: res.transcript, sender: "user" },
+              { id: Date.now(), text: res.transcript as string, sender: "user" },
             ]);
           }
           const responseText = res.response?.trim() || "I didn't catch that. Try again or type your message below.";

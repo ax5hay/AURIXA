@@ -2,7 +2,7 @@ FROM node:22-slim AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_API_GATEWAY_URL=http://localhost:3000
 ENV NEXT_PUBLIC_API_GATEWAY_URL=$NEXT_PUBLIC_API_GATEWAY_URL
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.json ./
 COPY packages ./packages
 COPY frontend/dashboard ./frontend/dashboard
 RUN npm install -g pnpm@10.28.1

@@ -10,11 +10,11 @@ COPY apps/llm-router/pyproject.toml apps/llm-router/
 # Copy shared packages
 COPY packages/ packages/
 
-# Install dependencies
-RUN pip install --no-cache-dir -e ./apps/llm-router
+# Copy source code (needed for editable install)
+COPY apps/llm-router/src apps/llm-router/src/
 
-# Copy source code
-COPY apps/llm-router/src src/
+# Install shared packages first, then service
+RUN pip install --no-cache-dir -e ./packages/llm-clients -e ./apps/llm-router
 
 EXPOSE 8002
 CMD ["uvicorn", "llm_router.main:app", "--host", "0.0.0.0", "--port", "8002"]

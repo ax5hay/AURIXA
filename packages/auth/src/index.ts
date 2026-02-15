@@ -5,7 +5,7 @@ import jwt, {
   TokenExpiredError,
 } from "jsonwebtoken";
 import fp from "fastify-plugin";
-import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";m "fastify";m "fastify";m "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 
 // ---------------------------------------------------------------------------
 // Types

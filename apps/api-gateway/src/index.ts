@@ -25,7 +25,7 @@ async function main() {
           ? { target: "pino-pretty", options: { colorize: true } }
           : undefined,
     },
-    requestId: "x-request-id",
+    requestIdHeader: "x-request-id",
     genReqId: () => crypto.randomUUID(),
   });
 
@@ -49,7 +49,8 @@ async function main() {
   await app.register(websocket);
 
   // Request logging
-  requestLogger(app);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  requestLogger(app as any);
 
   // Routes (specific routes before catch-all proxy)
   await app.register(healthRoutes, { prefix: "/" });
