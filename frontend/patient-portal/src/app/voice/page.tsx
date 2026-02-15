@@ -7,7 +7,7 @@ const WS_BASE = typeof window !== "undefined"
   ? (process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000")
       .replace(/^http/, "ws")
   : "ws://127.0.0.1:3000";
-const VOICE_WS_URL = `${WS_BASE.replace(/\/$/, "")}/voice`;
+const VOICE_WS_URL = `${WS_BASE.replace(/\/$/, "")}/ws/voice`;
 
 interface Message {
   id: number;

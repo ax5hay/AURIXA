@@ -19,7 +19,7 @@ This document defines how end users interact with AURIXA across different channe
 
 | Channel        | Status       | Endpoint/Protocol            | Primary Use                    |
 |----------------|-------------|-----------------------------|--------------------------------|
-| Voice (Web)    | Implemented  | WebSocket `/voice` → `/ws/stream` | In-browser voice conversations |
+| Voice (Web)    | Implemented  | WebSocket `/ws/voice` → `/ws/stream` | In-browser voice conversations |
 | Webchat        | Implemented  | REST `/api/v1/orchestration/pipelines` | Patient portal chat            |
 | Voice (Phone)  | Not implemented | (Planned: SIP/WebRTC gateway) | Inbound/outbound phone calls   |
 | SMS            | Stub         | (Planned)                    | Appointment reminders, alerts  |
@@ -60,7 +60,7 @@ Patient opens Patient Portal (port 3300)
 **Flow**:
 ```
 User clicks "Start voice" in browser
-    → WebSocket connect to wss://host/voice (proxied to streaming-voice /ws/stream)
+    → WebSocket connect to wss://host/ws/voice (proxied to streaming-voice /ws/stream)
     → Browser captures mic → sends audio chunks as base64 in JSON
 
 Inbound (User → Platform):
@@ -143,7 +143,7 @@ The streaming-voice service remains **gateway-agnostic**: it receives audio, ret
    - Type messages; receive text responses (no voice)
 
 2. **As a patient (voice — if voice UI is exposed)**:
-   - Connect to WebSocket `/voice`
+   - Connect to WebSocket `/ws/voice`
    - Speak into mic; receive text + optional audio responses
 
 3. **As hospital staff**:
