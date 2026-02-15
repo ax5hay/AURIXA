@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import ServiceCard from "@/components/ServiceCard";
-import { getServiceHealth, getAnalyticsSummary, getTenants, getAnalytics, type ServiceHealth } from "@/app/services/api";
+import { getServiceHealth, getAnalyticsSummary, getTenants, getAnalytics, getKnowledgeArticles, type ServiceHealth } from "@/app/services/api";
 
 function formatServiceName(name: string): string {
   return name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -11,8 +12,9 @@ function formatServiceName(name: string): string {
 export default function DashboardPage() {
   const [serviceHealth, setServiceHealth] = useState<ServiceHealth>({});
   const [insights, setInsights] = useState<Awaited<ReturnType<typeof getAnalyticsSummary>> | null>(null);
-  const [tenants, setTenants] = useState<{ status: string }[]>([]);
+  const [tenants, setTenants] = useState<{ status: string; id: string; name: string }[]>([]);
   const [analytics, setAnalytics] = useState<{ totalCalls: number; totalCost: number } | null>(null);
+  const [articlesByTenant, setArticlesByTenant] = useState<Record<string, number>>({});
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,15 +22,24 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [health, summary, t, obs] = await Promise.all([
+        const [health, summary, t, obs, articles] = await Promise.all([
           getServiceHealth(),
           getAnalyticsSummary().catch(() => null),
           getTenants().catch(() => []),
           getAnalytics().catch(() => ({ overall_metrics: {}, service_metrics: {} })),
+          getKnowledgeArticles().catch(() => []),
         ]);
         setServiceHealth(health);
         setInsights(summary);
         setTenants(t);
+        const byTenant: Record<string, number> = {};
+        for (const a of articles) {
+          if (a.tenantId != null) {
+            const key = `t-${String(a.tenantId).padStart(3, "0")}`;
+            byTenant[key] = (byTenant[key] ?? 0) + 1;
+          }
+        }
+        setArticlesByTenant(byTenant);
         const totalCalls = Object.values(obs?.overall_metrics ?? {}).reduce((s, m) => s + (m?.count ?? 0), 0);
         const totalCost = Object.values(obs?.overall_metrics ?? {}).reduce((s, m) => s + (m?.total_cost_usd ?? 0), 0);
         setAnalytics({ totalCalls, totalCost });
@@ -77,6 +88,33 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Knowledge Base CTA */}
+      <Link
+        href="/knowledge"
+        className="block mb-8 glass rounded-xl p-5 hover:ring-2 hover:ring-aurixa-500/40 transition-all group"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white group-hover:text-aurixa-300 transition-colors">Knowledge Base</h2>
+            <p className="text-sm text-white/50 mt-0.5">
+              RAG-indexed articles by tenant. Browse and search tenant-specific knowledge.
+            </p>
+            {Object.keys(articlesByTenant).length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tenants
+                  .filter((t) => articlesByTenant[t.id] != null && articlesByTenant[t.id] > 0)
+                  .map((t) => (
+                    <span key={t.id} className="text-xs px-2 py-1 rounded bg-aurixa-600/20 text-aurixa-400">
+                      {t.name}: {articlesByTenant[t.id]} articles
+                    </span>
+                  ))}
+              </div>
+            )}
+          </div>
+          <span className="text-aurixa-400 group-hover:translate-x-1 transition-transform">→</span>
+        </div>
+      </Link>
 
       {/* DB insight cards */}
       {insights && (

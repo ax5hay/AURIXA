@@ -183,6 +183,15 @@ async def create_tenant(data: TenantCreateIn, db: AsyncSession = Depends(get_db_
     db.add(t)
     await db.commit()
     await db.refresh(t)
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Tenant Created",
+        user="admin",
+        details=f"Created tenant '{t.name}' (id={t.id}, plan={t.plan})",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
     return {"id": f"t-{t.id:03d}", "name": t.name, "plan": t.plan, "status": t.status}
 
 
@@ -227,14 +236,28 @@ async def update_tenant(tenant_id: str, data: TenantUpdateIn, db: AsyncSession =
     t = result.scalar_one_or_none()
     if not t:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    changes = []
     if data.name is not None:
+        changes.append(f"name→{data.name}")
         t.name = data.name
     if data.plan is not None:
+        changes.append(f"plan→{data.plan}")
         t.plan = data.plan
     if data.status is not None:
+        changes.append(f"status→{data.status}")
         t.status = data.status
     await db.commit()
     await db.refresh(t)
+    if changes:
+        audit = db_models.AuditLog(
+            service="Orchestration Engine",
+            action="Tenant Updated",
+            user="admin",
+            details=f"Updated tenant {tenant_id} ({t.name}): {', '.join(changes)}",
+            severity="info",
+        )
+        db.add(audit)
+        await db.commit()
     return {"id": f"t-{t.id:03d}", "name": t.name, "plan": t.plan, "status": t.status}
 
 
@@ -307,6 +330,15 @@ async def create_patient(data: PatientCreateIn, db: AsyncSession = Depends(get_d
     db.add(p)
     await db.commit()
     await db.refresh(p)
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Patient Created",
+        user="admin",
+        details=f"Created patient '{p.full_name}' (id={p.id}, tenant_id={p.tenant_id})",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
     return {"id": p.id, "fullName": p.full_name, "email": p.email, "phoneNumber": p.phone_number}
 
 
@@ -446,6 +478,30 @@ async def get_config_detail(db: AsyncSession = Depends(get_db_session)):
     return {"categories": by_category}
 
 
+class ConfigUpdateIn(BaseModel):
+    value: str
+
+
+@app.patch("/api/v1/config/{key}", summary="Update a platform config key")
+async def update_config_key(key: str, data: ConfigUpdateIn, db: AsyncSession = Depends(get_db_session)):
+    """Update a single platform config key's value."""
+    result = await db.execute(select(db_models.PlatformConfig).where(db_models.PlatformConfig.key == key))
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail=f"Config key '{key}' not found")
+    entry.value = data.value
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Config Updated",
+        user="admin",
+        details=f"Updated config key '{key}' to '{data.value}'",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
+    return {"key": key, "value": entry.value}
+
+
 @app.get("/api/v1/knowledge/articles", summary="List knowledge base articles")
 async def list_knowledge_articles(
     db: AsyncSession = Depends(get_db_session),
@@ -465,6 +521,37 @@ async def list_knowledge_articles(
         }
         for a in articles
     ]
+
+
+class KnowledgeArticleCreateIn(BaseModel):
+    title: str
+    content: str
+    tenant_id: int = 1
+
+
+@app.post("/api/v1/knowledge/articles", summary="Create a knowledge base article")
+async def create_knowledge_article(data: KnowledgeArticleCreateIn, db: AsyncSession = Depends(get_db_session)):
+    result = await db.execute(select(db_models.Tenant).where(db_models.Tenant.id == data.tenant_id))
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Tenant id {data.tenant_id} not found")
+    article = db_models.KnowledgeBaseArticle(
+        title=data.title,
+        content=data.content,
+        tenant_id=data.tenant_id,
+    )
+    db.add(article)
+    await db.commit()
+    await db.refresh(article)
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Knowledge Article Created",
+        user="admin",
+        details=f"Created article '{article.title}' (id={article.id}) for tenant {article.tenant_id}",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
+    return {"id": article.id, "title": article.title, "content": article.content, "tenantId": article.tenant_id}
 
 
 @app.post("/api/v1/pipelines", response_model=ConversationState, summary="Run an orchestration pipeline")

@@ -134,6 +134,16 @@ export async function getConfigDetail(): Promise<ConfigDetail> {
   return res.json();
 }
 
+export async function updateConfigKey(key: string, value: string): Promise<{ key: string; value: string }> {
+  const res = await fetchApi(`/api/v1/admin/config/${encodeURIComponent(key)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value }),
+  });
+  if (!res.ok) throw new Error("Failed to update config");
+  return res.json();
+}
+
 export interface PerformanceReport {
   overall_metrics: Record<string, { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }>;
   service_metrics: Record<string, Record<string, { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }>>;
@@ -155,10 +165,24 @@ export interface KnowledgeArticle {
 export async function getKnowledgeArticles(tenantId?: number): Promise<KnowledgeArticle[]> {
   const path =
     tenantId != null
-      ? `/api/v1/orchestration/knowledge/articles?tenant_id=${tenantId}`
-      : "/api/v1/orchestration/knowledge/articles";
+      ? `/api/v1/admin/knowledge/articles?tenant_id=${tenantId}`
+      : "/api/v1/admin/knowledge/articles";
   const res = await fetchApi(path, FETCH_OPTS);
   if (!res.ok) throw new Error("Failed to fetch knowledge articles");
+  return res.json();
+}
+
+export async function createKnowledgeArticle(data: {
+  title: string;
+  content: string;
+  tenant_id: number;
+}): Promise<KnowledgeArticle> {
+  const res = await fetchApi("/api/v1/admin/knowledge/articles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create knowledge article");
   return res.json();
 }
 

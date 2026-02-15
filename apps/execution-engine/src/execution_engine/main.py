@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurixa_db import get_db_session
 from aurixa_db.models import (
-    Patient, Appointment, PatientInsurance, Prescription, AvailabilitySlot,
+    Patient, Appointment, PatientInsurance, Prescription, AvailabilitySlot, AuditLog,
 )
 from .models import ExecutionRequest, ExecutionResponse
 
@@ -23,8 +23,6 @@ def _schedule_reminder(params: dict) -> str:
     patient_id = params.get("patient_id", "unknown")
     return f"Reminder scheduled for patient {patient_id}."
 
-def _log_audit(params: dict) -> str:
-    return "Audit entry recorded."
 
 
 # --- DB-backed actions ---
@@ -111,6 +109,15 @@ async def _create_appointment(db: AsyncSession, params: dict) -> str:
     db.add(appointment)
     await db.commit()
     await db.refresh(appointment)
+    audit = AuditLog(
+        service="Execution Engine",
+        action="Appointment Created",
+        user="system",
+        details=f"Created appointment APT-{appointment.id} for patient {pid}: {reason} with {provider_name}",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
     return f"Appointment created for {reason}. Confirmation: APT-{appointment.id}. {start_dt.strftime('%a %b %d at %I:%M %p')} with {provider_name}."
 
 
@@ -170,6 +177,15 @@ async def _request_prescription_refill(db: AsyncSession, params: dict) -> str:
     target.status = "refill_requested"
     target.refill_requested_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     await db.commit()
+    audit = AuditLog(
+        service="Execution Engine",
+        action="Prescription Refill Requested",
+        user="system",
+        details=f"Patient {pid} requested refill for {medication}",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
     return f"Refill request submitted for {medication}. Allow 24-48 hours for processing."
 
 
@@ -213,6 +229,25 @@ async def _get_availability(db: AsyncSession, params: dict) -> str:
     return f"Available slots for {dt}:\n" + "\n".join(lines[:10])
 
 
+async def _log_audit(db: AsyncSession, params: dict) -> str:
+    """Write an audit entry to the database."""
+    service = params.get("service", "Execution Engine")
+    action = params.get("action", "Custom Audit")
+    user = params.get("user", "system")
+    details = params.get("details", str(params))
+    severity = params.get("severity", "info")
+    audit = AuditLog(
+        service=str(service),
+        action=str(action),
+        user=str(user),
+        details=str(details),
+        severity=str(severity),
+    )
+    db.add(audit)
+    await db.commit()
+    return "Audit entry recorded."
+
+
 # Registry: sync callable or async (db, params) -> str
 def _sync_wrap(fn):
     async def _async_wrapper(db, params):
@@ -225,11 +260,11 @@ ASYNC_ACTIONS = {
     "check_insurance": _check_insurance,
     "request_prescription_refill": _request_prescription_refill,
     "get_availability": _get_availability,
+    "log_audit": _log_audit,
 }
 SYNC_ACTIONS = {
     "send_email": _send_email,
     "schedule_reminder": _schedule_reminder,
-    "log_audit": _log_audit,
 }
 
 

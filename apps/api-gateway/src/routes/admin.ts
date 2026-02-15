@@ -42,6 +42,10 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get("/analytics/summary", async (req, reply) => proxyToOrchestration("analytics/summary", req, reply));
   app.get("/config/summary", async (req, reply) => proxyToOrchestration("config/summary", req, reply));
   app.get("/config/detail", async (req, reply) => proxyToOrchestration("config/detail", req, reply));
+  app.patch("/config/:key", async (req, reply) => {
+    const { key } = req.params as { key: string };
+    return proxyToOrchestration(`config/${encodeURIComponent(key)}`, req, reply);
+  });
   app.get("/patients", async (req, reply) => proxyToOrchestration("patients", req, reply));
   app.post("/patients", async (req, reply) => proxyToOrchestration("patients", req, reply));
   app.get("/patients/:id/appointments", async (req, reply) => {
@@ -57,6 +61,7 @@ export async function adminRoutes(app: FastifyInstance) {
     return proxyToOrchestration(`patients/${id}`, req, reply);
   });
   app.get("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
+  app.post("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
 
   app.get("/health", async () => ({
     service: "api-gateway-admin",

@@ -199,12 +199,12 @@ export default function PlaygroundPage() {
       }
       const latencyMs = Math.round(performance.now() - start);
       setServiceResult(data as Record<string, unknown>);
-      setTestResults((r) => [{ id: test.id, label: test.label, status: "pass", latencyMs, at: new Date().toISOString() }, ...r].slice(0, 50));
+      setTestResults((r) => [{ id: test.id, label: test.label, status: "pass" as const, latencyMs, at: new Date().toISOString() }, ...r].slice(0, 50));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed";
       setServiceError(msg);
       const latencyMs = Math.round(performance.now() - start);
-      setTestResults((r) => [{ id: test.id, label: test.label, status: "fail", latencyMs, error: msg, at: new Date().toISOString() }, ...r].slice(0, 50));
+      setTestResults((r) => [{ id: test.id, label: test.label, status: "fail" as const, latencyMs, error: msg, at: new Date().toISOString() }, ...r].slice(0, 50));
     }
   };
 
@@ -272,7 +272,7 @@ export default function PlaygroundPage() {
     const last = results[results.length - 1];
     if (last) {
       setServiceResult(last.status === "pass" ? { summary: `${results.filter((r) => r.status === "pass").length}/${results.length} passed` } : { error: last.error });
-      if (last.status === "fail") setServiceError(last.error);
+      if (last.status === "fail") setServiceError(last.error ?? null);
     }
     await refreshHealthAndMetrics();
   };
