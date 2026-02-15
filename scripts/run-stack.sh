@@ -21,13 +21,21 @@ for port in 3000 3100 3300 3400 8001 8002 8003 8004 8005 8006 8007 8008; do
   done
 done
 
-# Pre-build patient portal while system is idle (avoids build during heavy load; start is instant)
+# Pre-build patient and hospital portals while system is idle (avoids build during heavy load; start is instant)
 echo "Pre-building Patient Portal..."
 if (cd "$ROOT/frontend/patient-portal" && rm -rf .next && pnpm build 2>&1); then
   echo "Patient Portal build complete."
 else
   echo "Warn: Patient Portal build failed; will try dev mode as fallback."
   PATIENT_PORTAL_DEV_FALLBACK=1
+fi
+
+echo "Pre-building Hospital Portal..."
+if (cd "$ROOT/frontend/hospital-portal" && rm -rf .next && pnpm build 2>&1); then
+  echo "Hospital Portal build complete."
+  HOSPITAL_PORTAL_BUILT=1
+else
+  echo "Warn: Hospital Portal build failed; will use dev mode."
 fi
 
 # Load .env if present
@@ -122,6 +130,7 @@ run_python_app apps/safety-guardrails safety_guardrails 8005
 sleep 1
 
 echo "Starting Streaming Voice..."
+(cd "$ROOT/apps/streaming-voice" && uv sync 2>/dev/null) || true
 run_python_app apps/streaming-voice streaming_voice 8006
 sleep 1
 
@@ -140,7 +149,11 @@ else
 fi
 
 echo "Starting Hospital Portal..."
-pnpm --filter @aurixa/hospital-portal dev &
+if [ "${HOSPITAL_PORTAL_BUILT:-}" = "1" ]; then
+  (cd "$ROOT/frontend/hospital-portal" && pnpm start) &
+else
+  pnpm --filter @aurixa/hospital-portal dev &
+fi
 
 echo ""
 echo "Stack running. Endpoints:"

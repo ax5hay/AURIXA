@@ -11,6 +11,7 @@ import {
   type Patient,
   type Appointment,
 } from "./api";
+import { useStaffContext } from "@/context/StaffContext";
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -21,24 +22,46 @@ const formatDate = (iso: string) =>
     minute: "2-digit",
   });
 
+function parseTenantId(s: string): number | undefined {
+  if (!s) return undefined;
+  const n = parseInt(s.replace(/^t-0*/, ""), 10);
+  return isNaN(n) ? undefined : n;
+}
+
 export default function DashboardPage() {
+  const { tenantFilter, tenantId } = useStaffContext();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [articles, setArticles] = useState<{ id: number; title: string }[]>([]);
   const [health, setHealth] = useState<Record<string, { status: string }>>({});
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
+  const [patientMap, setPatientMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
+
+  const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
     Promise.all([
-      getPatients().then(setPatients).catch(() => []),
-      getAppointments({ dateFrom: today, dateTo: tomorrow }).then(setAppointments).catch(() => []),
-      getKnowledgeArticles().then((a) => a.map((x) => ({ id: x.id, title: x.title }))).catch(() => []),
+      getPatients(tid).then(setPatients).catch(() => []),
+      getAppointments({
+        tenantId: tid,
+        dateFrom: today,
+        dateTo: tomorrow,
+      }).then(setAppointments).catch(() => []),
+      getKnowledgeArticles(tid).then((a) => a.map((x) => ({ id: x.id, title: x.title }))).catch(() => []),
       getServiceHealth().then(setHealth).catch(() => ({})),
       getTenants().then(setTenants).catch(() => []),
     ]).finally(() => setLoading(false));
+  }, [tid]);
+
+  useEffect(() => {
+    getPatients().then((ps) => {
+      const m: Record<number, string> = {};
+      ps.forEach((p) => { m[p.id] = p.fullName; });
+      setPatientMap(m);
+    }).catch(() => ({}));
   }, []);
 
   const todayAppts = appointments.filter((a) => a.status === "confirmed");
@@ -62,7 +85,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="glass rounded-2xl p-6 glow-sm">
           <h2 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-1">Staff Dashboard</h2>
-          <p className="text-white/60 text-sm">Overview of patients, appointments, and platform status</p>
+          <p className="text-white/60 text-sm">Overview of patients, appointments, and platform status (from database)</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -101,7 +124,7 @@ export default function DashboardPage() {
                 {todayAppts.slice(0, 5).map((a) => (
                   <div key={a.id} className="flex justify-between items-center border border-white/5 rounded-xl p-3 bg-surface-secondary/40">
                     <div>
-                      <p className="text-white font-medium">Patient #{a.patientId ?? "—"}</p>
+                      <p className="text-white font-medium">{patientMap[a.patientId ?? 0] ?? `Patient #${a.patientId}`}</p>
                       <p className="text-white/50 text-sm">{a.providerName} · {formatDate(a.startTime ?? "")}</p>
                     </div>
                     <span className="px-2 py-1 rounded-lg text-xs bg-hospital-600/20 text-hospital-400 capitalize">{a.status}</span>

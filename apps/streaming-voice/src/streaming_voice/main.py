@@ -6,15 +6,17 @@ import os
 import time
 import uuid
 from contextlib import asynccontextmanager
+
 import httpx
+from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from loguru import logger
 
 from .config import ServiceConfig
+from . import stt
+from . import tts
 
 SERVICE_NAME = "streaming-voice"
-DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
-DEEPGRAM_URL = "https://api.deepgram.com/v1/listen"
 config = ServiceConfig()
 ORCHESTRATION_URL = os.getenv("ORCHESTRATION_URL") or os.getenv("ORCHESTRATION_HOST", "http://localhost:8001")
 if not ORCHESTRATION_URL.startswith("http"):
@@ -78,47 +80,32 @@ async def _process_text_input(
     session_id: str | None,
     patient_id: int | None = None,
 ):
-    """Process text input through the pipeline and send response back."""
+    """Process text input through the pipeline and send response back (text + optional TTS audio)."""
     await websocket.send_json({
         "type": "status",
         "status": "processing",
         "message": "Thinking...",
     })
     response_text = await _run_pipeline(content, session_id, patient_id)
+
+    # TTS: synthesize speech when configured
+    if tts.is_tts_available():
+        audio_bytes, _ = await tts.synthesize(response_text)
+        if audio_bytes:
+            await websocket.send_json({
+                "type": "audio",
+                "data": tts.to_base64(audio_bytes),
+                "mime": "audio/mpeg",
+                "done": True,
+                "session_id": session_id,
+            })
+
     await websocket.send_json({
         "type": "text",
         "content": response_text,
         "done": True,
         "session_id": session_id,
     })
-
-
-async def _transcribe_audio(audio_bytes: bytes) -> str | None:
-    """
-    Transcribe audio via Deepgram. Set DEEPGRAM_API_KEY to enable.
-    Returns transcript or None if not configured / failed.
-    """
-    if not DEEPGRAM_API_KEY:
-        return None
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(
-                DEEPGRAM_URL,
-                content=audio_bytes,
-                headers={"Authorization": f"Token {DEEPGRAM_API_KEY}"},
-                params={"model": "nova-2", "language": "en", "smart_format": "true"},
-            )
-            if r.status_code != 200:
-                logger.warning("Deepgram returned {}", r.status_code)
-                return None
-            data = r.json()
-            channel = data.get("results", {}).get("channels", [{}])[0]
-            alternatives = channel.get("alternatives", [])
-            if alternatives:
-                return (alternatives[0].get("transcript") or "").strip()
-    except Exception as e:
-        logger.warning("Deepgram STT failed: {}", e)
-    return None
 
 
 async def _process_audio_input(
@@ -144,7 +131,7 @@ async def _process_audio_input(
         await websocket.send_json({"type": "error", "message": "Invalid base64 audio data"})
         return
 
-    transcript = await _transcribe_audio(audio_bytes)
+    transcript = await stt.transcribe(audio_bytes)
     if transcript:
         await _process_text_input(websocket, transcript, session_id, patient_id)
         return
@@ -154,6 +141,35 @@ async def _process_audio_input(
         "content": "Audio received. Set DEEPGRAM_API_KEY for speech-to-text, or send text: {\"type\": \"text\", \"content\": \"your message\"}",
         "done": True,
     })
+
+
+@app.get("/capabilities")
+@app.get("/api/v1/voice/capabilities")
+async def capabilities():
+    """Return available STT/TTS capabilities for clients."""
+    return {
+        "stt": stt.is_stt_available(),
+        "stt_providers": stt.configured_providers(),
+        "tts": tts.is_tts_available(),
+        "tts_provider": tts.TTS_PROVIDER if tts.is_tts_available() else None,
+    }
+
+
+class TTSRequest(BaseModel):
+    text: str
+
+
+@app.post("/api/v1/tts")
+@app.post("/api/v1/voice/tts")
+async def tts_synthesize(req: TTSRequest):
+    """REST endpoint for TTS - returns base64 audio. For API/plugin use."""
+    text = (req.text or "").strip()
+    if not text:
+        return {"error": "text required", "audio_b64": None}
+    audio_bytes, mime = await tts.synthesize(text)
+    if not audio_bytes:
+        return {"error": "TTS not configured or failed", "audio_b64": None}
+    return {"audio_b64": tts.to_base64(audio_bytes), "mime": mime}
 
 
 @app.websocket("/ws/stream")

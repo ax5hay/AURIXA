@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { StaffNav } from "@/components/StaffNav";
+import { StaffProvider } from "@/context/StaffContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const metadata: Metadata = {
   title: "AURIXA Hospital Portal",
@@ -15,10 +17,14 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="font-sans bg-background text-white min-h-screen antialiased">
-        <main className="w-full max-w-6xl mx-auto px-4 sm:px-6">
-          <StaffNav />
-          {children}
-        </main>
+        <StaffProvider>
+          <ErrorBoundary>
+            <main className="w-full max-w-6xl mx-auto px-4 sm:px-6">
+              <StaffNav />
+              {children}
+            </main>
+          </ErrorBoundary>
+        </StaffProvider>
       </body>
     </html>
   );

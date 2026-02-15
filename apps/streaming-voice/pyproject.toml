@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "aurixa-streaming-voice"
 version = "0.1.0"
@@ -11,7 +15,16 @@ dependencies = [
     "httpx>=0.28.0",
     "websockets>=14.0",
     "numpy>=2.0.0",
+    "pydub>=0.25.0",
+    "faster-whisper>=1.0.0",
+    "vosk>=0.3.45; sys_platform == 'linux'",
 ]
+# Optional: pip install speechbrain for SpeechBrain ASR (heavy: torch)
+# [project.optional-dependencies]
+# speechbrain = ["speechbrain"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.uv]
 dev-dependencies = [

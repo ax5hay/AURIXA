@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getAppointments, getTenants, getPatients, type Appointment } from "../api";
+import { getAppointments, getTenants, getPatients, updateAppointmentStatus, type Appointment } from "../api";
+import { useStaffContext } from "@/context/StaffContext";
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -13,22 +14,29 @@ const formatDate = (iso: string) =>
     minute: "2-digit",
   });
 
+function parseTenantId(s: string): number | undefined {
+  if (!s) return undefined;
+  const n = parseInt(s.replace(/^t-0*/, ""), 10);
+  return isNaN(n) ? undefined : n;
+}
+
 export default function AppointmentsPage() {
+  const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [patientMap, setPatientMap] = useState<Record<number, string>>({});
-  const [tenantFilter, setTenantFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() => new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+
+  const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
     getTenants().then(setTenants).catch(() => []);
   }, []);
 
   useEffect(() => {
-    const tid = tenantFilter ? parseInt(tenantFilter.replace(/^t-/, ""), 10) : undefined;
-    if (tenantFilter && isNaN(tid as number)) return;
     setLoading(true);
     getAppointments({
       tenantId: tid,
@@ -38,7 +46,7 @@ export default function AppointmentsPage() {
       .then(setAppointments)
       .catch(() => [])
       .finally(() => setLoading(false));
-  }, [tenantFilter, dateFrom, dateTo]);
+  }, [tid, dateFrom, dateTo]);
 
   useEffect(() => {
     getPatients().then((ps) => {
@@ -47,6 +55,30 @@ export default function AppointmentsPage() {
       setPatientMap(m);
     }).catch(() => ({}));
   }, []);
+
+  const handleCancel = async (id: number) => {
+    setCancellingId(id);
+    try {
+      await updateAppointmentStatus(id, "cancelled");
+      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)));
+    } catch {
+      // ignore
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const handleComplete = async (id: number) => {
+    setCancellingId(id);
+    try {
+      await updateAppointmentStatus(id, "completed");
+      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "completed" } : a)));
+    } catch {
+      // ignore
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const confirmed = appointments.filter((a) => a.status === "confirmed");
   const others = appointments.filter((a) => a.status !== "confirmed");
@@ -99,10 +131,26 @@ export default function AppointmentsPage() {
                   <p className="text-white font-medium">{patientMap[a.patientId ?? 0] ?? `Patient #${a.patientId}`}</p>
                   <p className="text-white/50 text-sm">{a.providerName} · {formatDate(a.startTime ?? "")}</p>
                 </div>
-                <span className="px-3 py-1 rounded-lg text-xs bg-hospital-600/20 text-hospital-400">{a.status}</span>
-                {a.patientId && (
-                  <Link href={`/patients/${a.patientId}`} className="text-hospital-400 text-sm hover:underline">View patient</Link>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-lg text-xs bg-hospital-600/20 text-hospital-400">{a.status}</span>
+                  <button
+                    onClick={() => handleComplete(a.id)}
+                    disabled={cancellingId === a.id}
+                    className="px-2 py-1 rounded text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 disabled:opacity-50"
+                  >
+                    Complete
+                  </button>
+                  <button
+                    onClick={() => handleCancel(a.id)}
+                    disabled={cancellingId === a.id}
+                    className="px-2 py-1 rounded text-xs bg-red-600/20 text-red-400 hover:bg-red-600/30 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  {a.patientId && (
+                    <Link href={`/patients/${a.patientId}`} className="text-hospital-400 text-sm hover:underline">View patient</Link>
+                  )}
+                </div>
               </div>
             ))}
             {confirmed.length === 0 && <p className="text-white/50 text-sm">No confirmed appointments in range.</p>}

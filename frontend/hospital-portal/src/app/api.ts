@@ -1,6 +1,6 @@
 /** API client for AURIXA Hospital Portal - staff interface. */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;
 
@@ -44,6 +44,14 @@ export interface Tenant {
   name: string;
   plan: string;
   status: string;
+}
+
+export interface Staff {
+  id: number;
+  fullName: string;
+  email: string;
+  role: string;
+  tenantId: number;
 }
 
 export interface PipelineResponse {
@@ -120,6 +128,47 @@ export async function getKnowledgeArticles(tenantId?: number): Promise<Knowledge
 export async function getTenants(): Promise<Tenant[]> {
   const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/tenants`);
   if (!res.ok) throw new Error("Failed to fetch tenants");
+  return res.json();
+}
+
+export async function getStaff(opts?: { tenantId?: number; role?: string }): Promise<Staff[]> {
+  const params = new URLSearchParams();
+  if (opts?.tenantId) params.set("tenant_id", String(opts.tenantId));
+  if (opts?.role) params.set("role", opts.role);
+  const qs = params.toString();
+  const url = `${API_BASE}/api/v1/admin/staff${qs ? `?${qs}` : ""}`;
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) throw new Error("Failed to fetch staff");
+  return res.json();
+}
+
+export async function createAppointment(data: {
+  patient_id: number;
+  tenant_id?: number;
+  provider_name: string;
+  reason: string;
+  date?: string;
+  start_time?: string;
+}): Promise<Appointment> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/appointments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateAppointmentStatus(
+  appointmentId: number,
+  status: string
+): Promise<{ id: number; status: string }> {
+  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/appointments/${appointmentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 

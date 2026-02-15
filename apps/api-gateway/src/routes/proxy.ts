@@ -9,6 +9,7 @@ const ROUTE_MAP: Record<string, string> = {
   rag: "rag",
   safety: "safety",
   execute: "execution",
+  voice: "voice",
 };
 
 export async function proxyRoutes(app: FastifyInstance) {

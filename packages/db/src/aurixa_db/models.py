@@ -43,6 +43,19 @@ class PipelineStep(Base):
     conversation: Mapped["Conversation"] = relationship(back_populates="pipeline_steps")
 
 
+class Staff(Base):
+    """Hospital staff (reception, nurse, doctor, scheduler, admin)."""
+    __tablename__ = "staff"
+
+    full_name: Mapped[str] = mapped_column(String)
+    email: Mapped[str] = mapped_column(String, nullable=True)
+    role: Mapped[str] = mapped_column(String, default="reception")  # reception, nurse, doctor, scheduler, admin
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
+    is_active: Mapped[bool] = mapped_column(default=True)
+
+    tenant: Mapped["Tenant"] = relationship(back_populates="staff")
+
+
 class Tenant(Base):
     """Represents a single tenant organization (e.g., a hospital or clinic)."""
     __tablename__ = "tenants"
@@ -54,6 +67,7 @@ class Tenant(Base):
     api_key_count: Mapped[int] = mapped_column(Integer, default=0)
 
     users: Mapped[List["User"]] = relationship(back_populates="tenant")
+    staff: Mapped[List["Staff"]] = relationship(back_populates="tenant")
     appointments: Mapped[List["Appointment"]] = relationship(back_populates="tenant")
     knowledge_articles: Mapped[List["KnowledgeBaseArticle"]] = relationship(back_populates="tenant")
 

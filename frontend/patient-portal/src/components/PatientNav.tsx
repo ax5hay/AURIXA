@@ -27,6 +27,14 @@ function IconHelp() {
   );
 }
 
+function IconMic() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v7m0-4a3 3 0 01-3-3V8a3 3 0 013-3h6a3 3 0 013 3v4a3 3 0 01-3 3z" />
+    </svg>
+  );
+}
+
 function IconHome() {
   return (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,6 +47,7 @@ const TABS = [
   { id: "dashboard", href: "/", label: "Dashboard", icon: IconHome },
   { id: "appointments", href: "/appointments", label: "Appointments", icon: IconCalendar },
   { id: "chat", href: "/chat", label: "Chat", icon: IconChat },
+  { id: "voice", href: "/voice", label: "Voice", icon: IconMic },
   { id: "help", href: "/help", label: "Help & FAQ", icon: IconHelp },
 ] as const;
 

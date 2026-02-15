@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getStaff, getTenants } from "../app/api";
+import { useStaffContext } from "@/context/StaffContext";
+import type { Staff } from "../app/api";
 
 const ICONS = {
   home: () => (
@@ -52,26 +55,81 @@ const TABS = [
   { id: "status", href: "/status", label: "System Status", icon: "status" as const },
 ];
 
+function roleLabel(role: string) {
+  const labels: Record<string, string> = {
+    reception: "Reception",
+    nurse: "Nurse",
+    doctor: "Doctor",
+    scheduler: "Scheduler",
+    admin: "Admin",
+  };
+  return labels[role] || role;
+}
+
 export function StaffNav() {
   const pathname = usePathname();
-  const [role, setRole] = useState("reception");
+  const { staff, setStaff, tenantFilter, setTenantFilter } = useStaffContext();
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
+  const [staffError, setStaffError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStaffError(null);
+    getStaff()
+      .then((list) => { setStaffList(list); setStaffError(null); })
+      .catch((err) => {
+        console.warn("Failed to load staff:", err);
+        setStaffList([]);
+        setStaffError(err instanceof Error ? err.message : "Failed to load staff");
+      });
+    getTenants()
+      .then(setTenants)
+      .catch(() => []);
+  }, []);
 
   return (
     <header className="border-b border-white/5 py-6 mb-6">
       <h1 className="text-2xl sm:text-3xl font-bold text-center text-gradient">AURIXA Hospital Portal</h1>
       <p className="text-center text-white/50 text-sm mt-2">Staff interface — patients, scheduling, AI assistant, and system status</p>
-      <div className="flex justify-center gap-2 mt-4">
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="px-3 py-1.5 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm"
-        >
-          <option value="reception">Reception</option>
-          <option value="nurse">Nurse</option>
-          <option value="doctor">Doctor</option>
-          <option value="scheduler">Appointment Scheduler</option>
-          <option value="admin">Clinical Admin</option>
-        </select>
+      <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Logged in as</label>
+          {staffError && <p className="text-amber-400 text-xs mb-1">Check API at localhost:3000</p>}
+          <select
+            value={staff ? String(staff.id) : ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) {
+                setStaff(null);
+                return;
+              }
+              const id = parseInt(val, 10);
+              const s = staffList.find((x) => x.id === id) ?? null;
+              setStaff(s);
+            }}
+            className="px-3 py-2 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm min-w-[180px]"
+          >
+            <option value="">Select staff...</option>
+            {staffList.map((s) => (
+              <option key={s.id} value={String(s.id)}>
+                {s.fullName} ({roleLabel(s.role)})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-white/40 mb-1">Filter by tenant</label>
+          <select
+            value={tenantFilter}
+            onChange={(e) => setTenantFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm min-w-[160px]"
+          >
+            <option value="">All tenants</option>
+            {tenants.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <nav className="flex justify-center gap-2 mt-4 flex-wrap">
         {TABS.map((t) => {

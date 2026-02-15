@@ -443,6 +443,123 @@ async def list_appointments(
     ]
 
 
+@app.get("/api/v1/staff", summary="List hospital staff (optionally by tenant/role)")
+async def list_staff(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+    role: str | None = None,
+):
+    """List staff for hospital portal. Optional filters: tenant_id, role."""
+    q = select(db_models.Staff).where(db_models.Staff.is_active == True)
+    if tenant_id:
+        q = q.where(db_models.Staff.tenant_id == tenant_id)
+    if role:
+        q = q.where(db_models.Staff.role == role)
+    result = await db.execute(q.order_by(db_models.Staff.id))
+    staff = result.scalars().all()
+    return [
+        {
+            "id": s.id,
+            "fullName": s.full_name,
+            "email": s.email or "",
+            "role": s.role,
+            "tenantId": s.tenant_id,
+        }
+        for s in staff
+    ]
+
+
+class CreateApptIn(BaseModel):
+    patient_id: int
+    tenant_id: int | None = None
+    provider_name: str = "Dr. Adams"
+    reason: str = "General visit"
+    date: str | None = None
+    start_time: str = "09:00"
+
+
+@app.post("/api/v1/appointments", summary="Create an appointment (staff booking)")
+async def create_appointment(data: CreateApptIn, db: AsyncSession = Depends(get_db_session)):
+    """Create appointment via DB write."""
+    pt = await db.get(db_models.Patient, data.patient_id)
+    if not pt:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    tenant_id = data.tenant_id or pt.tenant_id or 1
+    dt = datetime.date.today() + datetime.timedelta(days=1)
+    if data.date:
+        try:
+            dt = datetime.datetime.strptime(str(data.date)[:10], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    hour, minute = 9, 0
+    try:
+        parts = str(data.start_time).replace(":", " ").split()[:2]
+        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+    except Exception:
+        pass
+    start_dt = datetime.datetime(dt.year, dt.month, dt.day, hour, minute, 0)
+    end_dt = start_dt + datetime.timedelta(minutes=30)
+    appointment = db_models.Appointment(
+        start_time=start_dt,
+        end_time=end_dt,
+        provider_name=data.provider_name,
+        reason=data.reason,
+        status="confirmed",
+        tenant_id=tenant_id,
+        patient_id=data.patient_id,
+    )
+    db.add(appointment)
+    await db.commit()
+    await db.refresh(appointment)
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Appointment Created",
+        user="staff",
+        details=f"Created appointment APT-{appointment.id} for patient {data.patient_id}: {data.reason} with {data.provider_name}",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
+    return {
+        "id": appointment.id,
+        "startTime": start_dt.isoformat(),
+        "endTime": end_dt.isoformat(),
+        "providerName": data.provider_name,
+        "status": "confirmed",
+        "patientId": data.patient_id,
+        "tenantId": tenant_id,
+    }
+
+
+class AppointmentUpdateIn(BaseModel):
+    status: str  # cancelled, completed, confirmed
+
+
+@app.patch("/api/v1/appointments/{appointment_id}", summary="Update appointment status")
+async def update_appointment(appointment_id: int, data: AppointmentUpdateIn, db: AsyncSession = Depends(get_db_session)):
+    """Update appointment status (e.g. cancel)."""
+    result = await db.execute(select(db_models.Appointment).where(db_models.Appointment.id == appointment_id))
+    apt = result.scalar_one_or_none()
+    if not apt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    apt.status = data.status
+    await db.commit()
+    await db.refresh(apt)
+    audit = db_models.AuditLog(
+        service="Orchestration Engine",
+        action="Appointment Updated",
+        user="staff",
+        details=f"Updated appointment {appointment_id} status to {data.status}",
+        severity="info",
+    )
+    db.add(audit)
+    await db.commit()
+    return {
+        "id": apt.id,
+        "status": apt.status,
+    }
+
+
 @app.get("/api/v1/patients/{patient_id}/appointments", summary="List appointments for a patient")
 async def list_patient_appointments(
     patient_id: int,

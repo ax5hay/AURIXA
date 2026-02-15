@@ -8,7 +8,7 @@ from aurixa_db.database import AsyncSessionLocal, engine
 from aurixa_db.models import (
     Tenant, User, Patient, Appointment, KnowledgeBaseArticle,
     AuditLog, PlatformConfig, Conversation, Base,
-    PatientInsurance, Prescription, AvailabilitySlot,
+    PatientInsurance, Prescription, AvailabilitySlot, Staff,
 )
 
 
@@ -45,6 +45,22 @@ async def seed_database():
         ]
         for u in users:
             db.add(u)
+        await db.commit()
+
+        # Create Staff (hospital workers per tenant)
+        staff_list = [
+            Staff(full_name="Sarah Chen", email="sarah.chen@generalhospital.com", role="reception", tenant_id=tenants[0].id),
+            Staff(full_name="Mike Johnson", email="mike.j@generalhospital.com", role="nurse", tenant_id=tenants[0].id),
+            Staff(full_name="Dr. Adams", email="adam.m@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
+            Staff(full_name="Dr. Bell", email="bell.d@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
+            Staff(full_name="Dr. Chen", email="chen.l@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
+            Staff(full_name="Emma Wilson", email="emma.w@generalhospital.com", role="scheduler", tenant_id=tenants[0].id),
+            Staff(full_name="Admin GH", email="admin@generalhospital.com", role="admin", tenant_id=tenants[0].id),
+            Staff(full_name="Reception DC", email="reception@downtownclinic.org", role="reception", tenant_id=tenants[1].id),
+            Staff(full_name="Dr. Bell", email="bell.d@downtownclinic.org", role="doctor", tenant_id=tenants[1].id),
+        ]
+        for s in staff_list:
+            db.add(s)
         await db.commit()
 
         # Create Conversations (for analytics)

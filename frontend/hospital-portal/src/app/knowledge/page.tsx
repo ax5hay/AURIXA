@@ -2,20 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { getKnowledgeArticles, getTenants } from "../api";
+import { useStaffContext } from "@/context/StaffContext";
 import type { KnowledgeArticle } from "../api";
 
+function parseTenantId(s: string): number | undefined {
+  if (!s) return undefined;
+  const n = parseInt(s.replace(/^t-0*/, ""), 10);
+  return isNaN(n) ? undefined : n;
+}
+
 export default function KnowledgePage() {
+  const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
-  const [tenantFilter, setTenantFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const tid = tenantId ?? parseTenantId(tenantFilter);
+
   useEffect(() => {
-    const tid = tenantFilter ? parseInt(tenantFilter.replace(/^t-/, ""), 10) : undefined;
-    getKnowledgeArticles(isNaN(tid as number) ? undefined : tid).then(setArticles).catch(() => []).finally(() => setLoading(false));
-  }, [tenantFilter]);
+    getKnowledgeArticles(tid).then(setArticles).catch(() => []).finally(() => setLoading(false));
+  }, [tid]);
 
   useEffect(() => {
     getTenants().then(setTenants).catch(() => []);
