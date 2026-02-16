@@ -48,8 +48,14 @@ echo ""
 echo "--- 4. Admin routes ---"
 curl -sf "$GATEWAY/api/v1/admin/tenants" >/dev/null && pass "GET admin/tenants" || fail "admin/tenants"
 curl -sf "$GATEWAY/api/v1/admin/patients" >/dev/null && pass "GET admin/patients" || fail "admin/patients"
-code=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/patients/1")
-[ "$code" = "200" ] && pass "GET admin/patients/1" || [ "$code" = "404" ] && warn "GET admin/patients/1 (404)" || fail "GET admin/patients/1 ($code)"
+E2E_PATIENT_CODE=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/patients/1")
+if [ "$E2E_PATIENT_CODE" = "200" ]; then
+  pass "GET admin/patients/1"
+elif [ "$E2E_PATIENT_CODE" = "404" ]; then
+  warn "GET admin/patients/1 (404)"
+else
+  fail "GET admin/patients/1 ($E2E_PATIENT_CODE)"
+fi
 curl -sf "$GATEWAY/api/v1/admin/appointments" >/dev/null && pass "GET admin/appointments" || fail "admin/appointments"
 curl -sf "$GATEWAY/api/v1/admin/knowledge/articles" >/dev/null && pass "GET admin/knowledge/articles" || fail "admin/knowledge/articles"
 curl -sf "$GATEWAY/api/v1/admin/analytics/summary" >/dev/null && pass "GET admin/analytics/summary" || fail "admin/analytics/summary"
@@ -57,9 +63,11 @@ echo ""
 
 # --- 5. Pipeline (full orchestration; LM Studio can be slow on first token) ---
 echo "--- 5. Pipeline ---"
-if curl -sf --max-time 150 -X POST "$GATEWAY/api/v1/orchestration/pipelines" \
+pipeline_session="e2e-detailed-$(date +%s)"
+pipeline_resp=$(curl -s --max-time 60 -X POST "$GATEWAY/api/v1/orchestration/pipelines" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"What are your operating hours?","session_id":"e2e-test"}' | grep -q "final_response"; then
+  -d "{\"prompt\":\"Hi\",\"session_id\":\"$pipeline_session\"}" 2>/dev/null)
+if [ -n "$pipeline_resp" ] && echo "$pipeline_resp" | grep -q "final_response"; then
   pass "POST /api/v1/orchestration/pipelines (full response)"
 else
   warn "POST /api/v1/orchestration/pipelines (timeout or no final_response)"
