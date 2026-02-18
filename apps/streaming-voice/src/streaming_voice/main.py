@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 import httpx
 from pydantic import BaseModel
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from loguru import logger
 
 from .config import ServiceConfig
@@ -247,7 +247,7 @@ class TTSRequest(BaseModel):
 
 @app.post("/api/v1/voice/process")
 @app.post("/api/v1/process")  # alias for gateway proxy (strips /voice prefix)
-async def voice_process(req: VoiceProcessRequest):
+async def voice_process(req: VoiceProcessRequest, request: Request):
     """
     REST endpoint for voice: upload audio, get transcript + response + optional TTS.
     Use when WebSocket is unreliable; always returns JSON.
@@ -266,7 +266,7 @@ async def voice_process(req: VoiceProcessRequest):
             "audio_b64": None,
         }
 
-    response_text = await _run_pipeline(transcript, None, req.patient_id, app=req.app)
+    response_text = await _run_pipeline(transcript, None, req.patient_id, app=request.app)
     audio_b64: str | None = None
     if req.want_tts and tts.is_tts_available():
         audio_bytes_out, _ = await tts.synthesize(response_text)
