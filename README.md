@@ -11,15 +11,409 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![turborepo](https://img.shields.io/badge/monorepo-turborepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
 
-> **Enterprise-grade conversational AI orchestration platform** — Multi-tenant, modular, horizontally scalable microservices infrastructure for building sophisticated real-time conversational experiences with cost-aware LLM routing and integrated safety guardrails.
+> **Conversational care operations platform** — A multi-tenant foundation for patient self-service,
+> staff workflows, governed AI assistance, and observable healthcare automation.
 
 <p align="center">
+  <a href="#product--business-overview">Product Overview</a> •
+  <a href="#how-the-aurixa-assistant-works">Assistant Use Cases</a> •
+  <a href="#experiences-for-every-side-of-care">User Experiences</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
-  <a href="#services">Services</a> •
-  <a href="#development">Development</a> •
+  <a href="#service-architecture--responsibilities">Services</a> •
+  <a href="#development-workflow">Development</a> •
   <a href="#deployment">Deployment</a>
 </p>
+
+---
+
+## Product & Business Overview
+
+**AURIXA is a conversational care operations platform for healthcare organizations.** It gives
+patients a calm self-service experience, gives staff a shared clinical operations workspace, and
+gives platform teams the controls required to operate the underlying automation safely.
+
+Instead of deploying a disconnected chatbot, scheduling tool, knowledge search, and service
+dashboard, an organization can use AURIXA as one coordinated layer across the care journey:
+
+```mermaid
+flowchart LR
+    Patient["Patient<br/>asks, speaks, reviews care"] --> CareAssistant["AURIXA care assistant"]
+    Staff["Clinical and coordination staff<br/>manage daily work"] --> ClinicalWorkspace["Clinical workspace"]
+    Operator["Platform operator<br/>monitors and configures"] --> OperatorConsole["Operator console"]
+
+    CareAssistant --> Orchestration["Shared orchestration and safety"]
+    ClinicalWorkspace --> Orchestration
+    OperatorConsole --> Orchestration
+
+    Orchestration --> Knowledge["Organization knowledge"]
+    Orchestration --> Workflows["Scheduling, insurance, refill workflows"]
+    Orchestration --> Models["Configured language models"]
+    Orchestration --> Telemetry["Audit, health, cost, and latency"]
+```
+
+> [!IMPORTANT]
+> AURIXA is a decision-support and workflow platform, not a clinician. Patient-facing responses
+> clearly state that the assistant does not diagnose conditions or provide emergency care.
+> Organizations remain responsible for clinical review, privacy controls, integrations, and local
+> regulatory requirements.
+
+### The product in one view
+
+| Product surface        | Primary users                                                | What it enables                                                                                          | Business value                                                                       |
+| ---------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Patient Portal**     | Patients and caregivers                                      | Appointment visibility, practical care questions, voice interaction, provider-authored help              | Reduces avoidable calls and makes routine information available outside office hours |
+| **Clinical Workspace** | Clinicians, nurses, schedulers, reception, support staff     | Patient lookup, appointment coordination, scheduling, contextual assistance, knowledge access            | Creates a shared operational view and reduces repeated manual lookup                 |
+| **Operator Console**   | Platform admins, support engineers, analysts, content owners | Service health, audit activity, tenant management, knowledge curation, analytics, configuration, testing | Makes the automation observable, testable, and supportable                           |
+| **Assistant Runtime**  | Embedded across all experiences                              | Routes requests through knowledge retrieval, tools, safety checks, and model providers                   | Reuses one governed automation layer across multiple teams and channels              |
+
+### Who AURIXA is for
+
+<details open>
+<summary><strong>Healthcare organizations and care networks</strong></summary>
+
+- Offer one digital front door for routine patient questions and care navigation.
+- Keep organization-specific guidance separate by tenant.
+- Give staff a coordinated view of patients, appointments, and support workflows.
+- Operate local or cloud language models according to deployment and cost requirements.
+
+</details>
+
+<details>
+<summary><strong>Hospitals, clinics, and scheduling teams</strong></summary>
+
+- Look up patient records and recent appointment context.
+- Coordinate bookings and update appointment states with confirmation steps.
+- Check availability, insurance information, and refill-request workflows through registered tools.
+- Search approved organizational knowledge without leaving the active workflow.
+
+</details>
+
+<details>
+<summary><strong>Platform, support, and AI operations teams</strong></summary>
+
+- Inspect the health and latency of the complete service mesh.
+- Review recorded actions and errors through the audit experience.
+- Measure traffic, model cost, service performance, and platform activity.
+- Test the complete pipeline or an individual service before releasing a configuration change.
+- Copy privacy-redacted diagnostic bundles for incident triage.
+
+</details>
+
+---
+
+## How the AURIXA Assistant Works
+
+The assistant is the conversational entry point to the platform. It is available as **patient
+webchat**, **patient voice**, and a **staff-facing contextual assistant**. The same request pipeline
+can answer a knowledge question, look up operational data, or initiate a supported workflow.
+
+### Functional bot use cases
+
+| User intent                                | What the assistant does                                                                               | Typical result                                                   |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| “When is my next appointment?”             | Detects appointment intent, selects the agent path, and calls `get_appointments` with patient context | Returns the relevant appointment information                     |
+| “Do you have anything available tomorrow?” | Routes to `get_availability` through the execution layer                                              | Returns available slots from the configured data source          |
+| “I need to schedule a visit”               | Collects or receives patient context and invokes `create_appointment`                                 | Creates an appointment record when required fields are available |
+| “Can I request a refill?”                  | Uses `request_prescription_refill` for an active prescription workflow                                | Records the refill request for staff follow-up                   |
+| “What will my insurance cover?”            | Invokes `check_insurance` with the selected patient context                                           | Returns the stored coverage and copay information                |
+| “What is your billing policy?”             | Searches tenant-scoped knowledge with hybrid retrieval, then generates a grounded response            | Returns an answer based on organization-authored content         |
+| “Explain my next step”                     | Combines intent routing, available context, retrieval, and response generation                        | Produces a plain-language care-navigation answer                 |
+| Spoken patient question                    | Converts audio to text, runs the same assistant pipeline, and optionally produces speech              | Displays a transcript and response, with optional audio playback |
+| Staff question about an active patient     | Keeps patient context visible while the staff member queries workflows or knowledge                   | Returns a contextual answer without leaving the patient workflow |
+
+### Request lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as Patient or Staff UI
+    participant Gateway as API Gateway
+    participant Orchestrator as Orchestration Engine
+    participant Router as Intent and Model Router
+    participant Agent as Agent Runtime
+    participant RAG as Knowledge Retrieval
+    participant Execution as Execution Engine
+    participant Safety as Safety Guardrails
+    participant Observability as Observability Core
+
+    User->>UI: Ask or speak a question
+    UI->>Gateway: Prompt, session, and optional patient context
+    Gateway->>Orchestrator: Start request pipeline
+    Orchestrator->>Router: Classify intent and select route
+
+    alt Workflow or patient-data request
+        Router-->>Orchestrator: Agent route
+        Orchestrator->>Agent: Select registered tool
+        Agent->>Execution: Execute supported action
+        Execution-->>Agent: Structured result
+        Agent-->>Orchestrator: Workflow response
+    else Organization knowledge request
+        Router-->>Orchestrator: Retrieval route
+        Orchestrator->>RAG: Search tenant knowledge
+        RAG-->>Orchestrator: Ranked supporting context
+        Orchestrator->>Router: Generate grounded answer
+        Router-->>Orchestrator: Draft response
+    end
+
+    Orchestrator->>Safety: Validate response and escalation signals
+    Safety-->>Orchestrator: Safe response or flagged result
+    Orchestrator-->>Gateway: Final response and session ID
+    Gateway-->>UI: Text and optional audio
+    Orchestrator-->>Observability: Latency, route, cost, and status telemetry
+    UI-->>User: Clear answer or next action
+```
+
+### Why the assistant is more than a chat interface
+
+1. **It distinguishes questions from actions.** A policy question can use retrieval while an
+   appointment request can use a registered tool.
+2. **It preserves tenant context.** Knowledge and operational data can be scoped to the selected
+   organization.
+3. **It supports patient context.** Patient-aware requests can reach appointment, insurance,
+   availability, and refill workflows.
+4. **It validates responses before delivery.** Safety checks can redact detected PII, reject banned
+   content, and flag configured emergency language.
+5. **It records operational evidence.** Sessions, audit activity, pipeline steps, model use, cost,
+   and latency can be inspected by authorized operators.
+6. **It supports multiple model strategies.** Organizations can configure local OpenAI-compatible
+   models or supported cloud providers.
+7. **It degrades explicitly.** The interfaces distinguish unavailable, stale, partial, and empty
+   states instead of presenting missing data as a confident answer.
+
+> [!NOTE]
+> A valid local or cloud model provider must be configured for generated responses. Database-backed
+> screens and health checks can still run without a cloud model, but conversational generation
+> cannot produce a useful answer without an available provider.
+
+---
+
+## Experiences for Every Side of Care
+
+### Patient experience
+
+The Patient Portal is designed around one question: **“What do you need today?”**
+
+```mermaid
+flowchart TD
+    PatientHome["Patient opens care home"] --> NextVisit{"Upcoming visit?"}
+    NextVisit -->|Yes| VisitDetails["Review clinician, date, and preparation guidance"]
+    NextVisit -->|No| SupportChoice["Choose a support path"]
+    PatientHome --> SupportChoice
+    SupportChoice --> Messages["Ask a practical question"]
+    SupportChoice --> Voice["Speak or type a question"]
+    SupportChoice --> Appointments["Review care schedule"]
+    SupportChoice --> Help["Read provider-authored guidance"]
+    Messages --> Limitation["Visible medical and emergency limitations"]
+    Voice --> Transcript["Transcript, response, optional playback"]
+```
+
+#### What patients can do
+
+- See the next confirmed appointment and preparation guidance immediately.
+- Review upcoming and previous appointments in a plain-language timeline.
+- Ask about appointments, billing, prescription refills, insurance, or care navigation.
+- Speak a request or type it, then read the transcript and optionally hear the response.
+- Browse provider-authored help content through an accessible support hub.
+- Understand when the assistant is unavailable, when information is incomplete, and when a person
+  or emergency service is the correct next step.
+- Keep conversation previews minimized on the home page to reduce accidental disclosure.
+
+#### Patient-facing design principles
+
+- Warm, low-anxiety visual language with clear primary actions.
+- Large touch targets and keyboard-visible focus states.
+- No diagnosis claims and no hidden emergency limitations.
+- Plain language instead of internal service or model terminology.
+- Reduced-motion support and non-color status labels.
+
+### Clinical and coordination experience
+
+The Clinical Workspace helps staff move from **today’s work** to the relevant patient or action
+without navigating through unrelated platform controls.
+
+#### What staff can do
+
+- Select the acting staff member and organization context for the current workspace.
+- View a ranked daily appointment queue with freshness information.
+- Search and filter the patient directory.
+- Open a patient view with identity and appointment history kept visible.
+- Add patients through a validated, accessible workflow.
+- Review appointments by date and organization.
+- Confirm completion or cancellation before updating an appointment.
+- Schedule a patient with provider, date, time, and reason, then review the booking before submission.
+- Ask the contextual assistant about scheduling, insurance, availability, or approved knowledge.
+- Search tenant-scoped knowledge articles.
+- Review platform status and copy a privacy-redacted support bundle.
+
+#### Role-aware workspace behavior
+
+| Staff context                           | Prioritized experience                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| **Clinician / nurse**                   | Today, patients, appointments, knowledge, contextual assistant           |
+| **Scheduler / coordinator / reception** | Today, appointments, scheduling, patients                                |
+| **Admin / operations / support**        | Today, organization context, status, diagnostics, and broader navigation |
+
+The role selection changes information priority and navigation order in the interface. It is a
+workspace preference for the current implementation—not a replacement for production identity and
+authorization enforcement.
+
+### Platform operator experience
+
+The Operator Console is the control surface for running AURIXA as a product.
+
+#### What operators can do
+
+- See returned service checks, degraded services, and data freshness at a glance.
+- Switch between operator, support, analyst, and administrator views.
+- Navigate with grouped desktop navigation, a focused mobile dock, or `⌘/Ctrl + K`.
+- Inspect service status, latency, telemetry, and privacy-redacted diagnostics.
+- Filter and export audit activity.
+- Review usage, performance, event volume, and estimated model cost.
+- Create and maintain tenant organizations.
+- Curate tenant-specific knowledge articles used by retrieval.
+- Separate read-only runtime facts from editable behavior settings.
+- Run a full request, a service test suite, individual service checks, or execution actions in the
+  focused Playground.
+
+```mermaid
+flowchart LR
+    Observe["Observe<br/>health, latency, cost"] --> Investigate["Investigate<br/>services and audit"]
+    Investigate --> Test["Test<br/>pipeline or individual service"]
+    Test --> Configure["Configure<br/>knowledge and behavior"]
+    Configure --> Verify["Verify<br/>health and recorded activity"]
+    Verify --> Observe
+```
+
+---
+
+## Business Value & Operating Model
+
+### Problems the platform is designed to address
+
+- **Repetitive administrative demand** — routine appointment, billing, insurance, and policy
+  questions consume staff time.
+- **Fragmented patient access** — patients often move between phone calls, static FAQs, portals, and
+  scheduling teams to complete one task.
+- **Disconnected automation** — a chatbot that cannot retrieve approved knowledge or execute a
+  workflow creates another dead end.
+- **Unobservable model usage** — healthcare organizations need to understand which services and
+  models were used, what they cost, and where failures occurred.
+- **Tenant complexity** — multi-organization platforms need separate content, configuration, and
+  operational context.
+- **Unsafe certainty** — missing or stale data must be communicated explicitly rather than turned
+  into a confident-looking response.
+
+### Expected value by stakeholder
+
+| Stakeholder                 | Operational value                                                     | Suggested measures                                                                      |
+| --------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Patients**                | Faster access to routine information and clearer next steps           | Self-service completion, response time, appointment visibility, support escalation rate |
+| **Care teams**              | Less repeated lookup and better shared context                        | Time per routine request, manual handoffs, knowledge-search time                        |
+| **Scheduling teams**        | One path for availability, bookings, and appointment states           | Booking completion, abandoned requests, correction rate                                 |
+| **Support teams**           | Reproducible diagnostics and centralized service evidence             | Time to triage, incident recurrence, unresolved service checks                          |
+| **Platform owners**         | Provider flexibility, cost visibility, and tenant-scoped operations   | Cost per conversation, cache use, model mix, p95 latency, error rate                    |
+| **Organization leadership** | A reusable digital service layer across patient and staff experiences | Digital adoption, call deflection, staff capacity, service availability                 |
+
+These are **measurement categories**, not guaranteed outcomes. Results depend on workflow design,
+source-system quality, model configuration, adoption, staffing, and production integrations.
+
+### Business workflow map
+
+```mermaid
+flowchart TB
+    subgraph Demand["Patient and staff demand"]
+        Questions["Routine questions"]
+        Scheduling["Scheduling requests"]
+        Insurance["Insurance and refill requests"]
+        KnowledgeNeed["Policy and care guidance"]
+    end
+
+    subgraph Automation["AURIXA automation layer"]
+        Route["Intent and route selection"]
+        Retrieve["Tenant knowledge retrieval"]
+        Execute["Registered workflow execution"]
+        Validate["Safety and response validation"]
+    end
+
+    subgraph Outcomes["Operational outcomes"]
+        SelfService["Patient self-service"]
+        StaffQueue["Structured staff follow-up"]
+        AuditEvidence["Audit and diagnostic evidence"]
+        Improvement["Performance and cost insight"]
+    end
+
+    Questions --> Route
+    Scheduling --> Route
+    Insurance --> Route
+    KnowledgeNeed --> Route
+    Route --> Retrieve
+    Route --> Execute
+    Retrieve --> Validate
+    Execute --> Validate
+    Validate --> SelfService
+    Validate --> StaffQueue
+    Validate --> AuditEvidence
+    AuditEvidence --> Improvement
+```
+
+### Deployment and commercialization paths
+
+<details open>
+<summary><strong>1. Demonstration or workflow-discovery environment</strong></summary>
+
+Use the seeded Docker stack to demonstrate patient, staff, and operator journeys. The Playground can
+verify service behavior and show where organization-specific integrations would connect.
+
+</details>
+
+<details>
+<summary><strong>2. Controlled internal pilot</strong></summary>
+
+Connect approved knowledge, configure one model provider, define a limited set of workflows, and
+measure self-service completion, escalations, latency, and staff feedback with a small user group.
+
+</details>
+
+<details>
+<summary><strong>3. Organization-integrated deployment</strong></summary>
+
+Replace seeded workflow data with adapters for the organization’s scheduling, EHR, billing,
+insurance, identity, and communications systems. Apply tenant policies, production secrets,
+retention rules, and audit requirements.
+
+</details>
+
+<details>
+<summary><strong>4. Multi-tenant platform offering</strong></summary>
+
+Use the organization, knowledge, configuration, analytics, and service-control surfaces as the
+foundation for a managed product. Commercial packaging can be based on organizations, seats,
+conversations, enabled channels, model consumption, or supported workflows.
+
+> Billing, subscriptions, customer provisioning, and entitlement enforcement are product
+> integration points; they are not implemented as a complete commercial billing system in this
+> repository.
+
+</details>
+
+### Product readiness boundaries
+
+The repository provides a complete demonstrable application stack and working database-backed
+workflows. Production use still requires organization-specific hardening and integrations.
+
+| Capability                                                 | Current position                                                                                   |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Patient webchat, REST voice, staff assistant               | Implemented; generated answers require a configured model/STT/TTS provider as applicable           |
+| Appointment, availability, insurance, and refill workflows | Database-backed demonstration workflows; replace with production source-system adapters            |
+| Tenant knowledge and hybrid retrieval                      | Implemented with tenant-scoped articles, BM25/vector retrieval, and fallback documents             |
+| Safety and PII controls                                    | Implemented baseline checks; not a substitute for clinical governance or a full compliance program |
+| Observability and audit views                              | Implemented for service health, recorded activity, latency, event, and model-cost telemetry        |
+| Role-aware navigation                                      | Implemented as UI context; production RBAC and identity enforcement require deployment integration |
+| Telephony, SMS, WhatsApp, native mobile SDK                | Planned integration surfaces; not complete channels in the current repository                      |
+| Commercial billing and subscriptions                       | Not implemented                                                                                    |
+| Production EHR and payer connectivity                      | Adapter scaffolding/demonstration data; organization integration required                          |
 
 ---
 
