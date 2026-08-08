@@ -12,8 +12,14 @@ type OperatorContextValue = {
 
 const OperatorContext = createContext<OperatorContextValue | null>(null);
 
-export function OperatorProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<OperatorRole>("operator");
+export function OperatorProvider({
+  children,
+  initialRole = "operator",
+}: {
+  children: React.ReactNode;
+  initialRole?: OperatorRole;
+}) {
+  const [role, setRole] = useState<OperatorRole>(initialRole);
   const value = useMemo(
     () => ({
       role,

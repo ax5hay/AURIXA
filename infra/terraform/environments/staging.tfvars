@@ -1,0 +1,11 @@
+environment                 = "staging"
+region                      = "us-east-1"
+vpc_cidr                    = "10.20.0.0/16"
+cluster_public_access_cidrs = ["203.0.113.0/24"] # Replace with the CI/VPN egress CIDR.
+node_instance_types         = ["m6i.large"]
+min_nodes                   = 2
+desired_nodes               = 3
+max_nodes                   = 8
+db_instance_class           = "db.t4g.large"
+redis_node_type             = "cache.t4g.small"
+secrets_manager_arns        = []

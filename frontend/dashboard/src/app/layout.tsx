@@ -1,21 +1,30 @@
 import type { Metadata } from "next";
+import { getServerSession } from "next-auth";
 import { ToastProvider } from "@aurixa/ui-kit";
+import { authOptions, authSessionConfigured } from "@/auth";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import CommandPalette from "@/components/CommandPalette";
 import ContextBar from "@/components/ContextBar";
 import { OperatorProvider } from "@/context/OperatorContext";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "AURIXA Dashboard",
   description: "AURIXA platform operator console",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = authSessionConfigured ? await getServerSession(authOptions) : null;
+  const initialRole = session?.user.roles.includes("deployment-admin")
+    ? "administrator"
+    : "operator";
+
   return (
     <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
       <body className="font-sans antialiased">
-        <OperatorProvider>
+        <OperatorProvider initialRole={initialRole}>
           <ToastProvider>
             <a
               href="#main-content"

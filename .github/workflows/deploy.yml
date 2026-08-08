@@ -1,0 +1,523 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target GitHub Environment
+        required: true
+        type: choice
+        options: [staging, production]
+        default: staging
+      release_or_artifact:
+        description: Immutable image tag/source SHA (or artifact run ID)
+        required: true
+        type: string
+      service_scope:
+        description: Comma-separated allowlisted services, or all
+        required: true
+        type: string
+        default: all
+      deployment_id:
+        description: Deployment controller identifier
+        required: true
+        type: string
+      strategy:
+        description: Deployment strategy
+        required: true
+        type: choice
+        options: [rolling, canary, blue-green]
+        default: rolling
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.release.outputs.environment }}
+      release: ${{ steps.release.outputs.release }}
+      artifact_run_id: ${{ steps.release.outputs.artifact_run_id }}
+      service_scope: ${{ steps.release.outputs.service_scope }}
+      deployment_id: ${{ steps.release.outputs.deployment_id }}
+      strategy: ${{ steps.release.outputs.strategy }}
+    steps:
+      - name: Resolve deployment request
+        id: release
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          INPUT_RELEASE: ${{ inputs.release_or_artifact }}
+          INPUT_SCOPE: ${{ inputs.service_scope }}
+          INPUT_DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+          INPUT_STRATEGY: ${{ inputs.strategy }}
+        run: |
+          environment="$INPUT_ENVIRONMENT"
+          release="$INPUT_RELEASE"
+          artifact_run_id=""
+          service_scope="$INPUT_SCOPE"
+          deployment_id="$INPUT_DEPLOYMENT_ID"
+          strategy="$INPUT_STRATEGY"
+          if [[ "$release" =~ ^run:([0-9]+)$ ]]; then
+            artifact_run_id="${BASH_REMATCH[1]}"
+            release=""
+          elif [[ "$release" =~ ^sha-([0-9a-fA-F]{40})$ ]]; then
+            release="sha-${BASH_REMATCH[1],,}"
+          elif [[ "$release" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            release="sha-${release,,}"
+          elif [[ "$release" =~ ^[0-9]+$ ]]; then
+            artifact_run_id="$release"
+            release=""
+          else
+            echo "::error::Artifact-less releases must be a full 40-character Git SHA."
+            exit 1
+          fi
+          [[ "$deployment_id" =~ ^[A-Za-z0-9._-]+$ ]] || {
+            echo "::error::deployment_id contains unsupported characters."
+            exit 1
+          }
+          allowed=(
+            api-gateway orchestration-engine llm-router agent-runtime
+            rag-service safety-guardrails streaming-voice execution-engine
+            observability-core dashboard patient-portal hospital-portal
+            deployment-controller
+          )
+          if [[ "$service_scope" != "all" ]]; then
+            normalized=()
+            IFS=',' read -ra requested <<< "$service_scope"
+            for raw_service in "${requested[@]}"; do
+              service="${raw_service//[[:space:]]/}"
+              [[ -n "$service" ]] || {
+                echo "::error::service_scope contains an empty service."
+                exit 1
+              }
+              supported=false
+              for allowed_service in "${allowed[@]}"; do
+                [[ "$service" == "$allowed_service" ]] && supported=true
+              done
+              if [[ "$supported" != "true" ]]; then
+                echo "::error::Unsupported service in service_scope: $service"
+                exit 1
+              fi
+              for selected_service in "${normalized[@]}"; do
+                if [[ "$service" == "$selected_service" ]]; then
+                  echo "::error::Duplicate service in service_scope: $service"
+                  exit 1
+                fi
+              done
+              normalized+=("$service")
+            done
+            [[ ${#normalized[@]} -gt 0 ]] || {
+              echo "::error::service_scope must contain at least one service."
+              exit 1
+            }
+            service_scope=$(IFS=,; echo "${normalized[*]}")
+          fi
+          {
+            echo "environment=$environment"
+            echo "release=$release"
+            echo "artifact_run_id=$artifact_run_id"
+            echo "service_scope=$service_scope"
+            echo "deployment_id=$deployment_id"
+            echo "strategy=$strategy"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.prepare.outputs.environment }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      CONTROLLER_AUDIENCE: ${{ vars.DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE }}
+      CONTROLLER_URL: ${{ vars.DEPLOYMENT_CONTROLLER_URL }}
+      DEPLOYMENT_ID: ${{ needs.prepare.outputs.deployment_id }}
+      ECR_REPOSITORY_PREFIX: ${{ vars.ECR_REPOSITORY_PREFIX }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+      HELM_CHART_PATH: ${{ vars.HELM_CHART_PATH }}
+      HELM_RELEASE: ${{ vars.HELM_RELEASE }}
+      KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.release }}
+      SERVICE_SCOPE: ${{ needs.prepare.outputs.service_scope }}
+      SMOKE_URL: ${{ vars.SMOKE_URL }}
+      STRATEGY: ${{ needs.prepare.outputs.strategy }}
+      TARGET_ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install controller callback client
+        run: |
+          cat > "$RUNNER_TEMP/controller-callback" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          event="$1"
+          step_name="${2:-}"
+          details="${3:-{}}"
+          error_message="${4:-}"
+          services="${5:-{}}"
+          oidc_token=$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${CONTROLLER_AUDIENCE}" | jq -r .value)
+          jq -n \
+            --arg job_id "$DEPLOYMENT_ID" \
+            --arg event "$event" \
+            --arg github_run_id "$GITHUB_RUN_ID" \
+            --arg step_name "$step_name" \
+            --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+            --argjson details "$details" \
+            --arg error_message "$error_message" \
+            --argjson services "$services" \
+            '{
+              job_id: $job_id,
+              event: $event,
+              github_run_id: $github_run_id,
+              attempt: $attempt,
+              details: $details,
+              services: $services
+            }
+            + if $step_name == "" then {} else {step_name: $step_name} end
+            + if $error_message == "" then {} else {error_message: $error_message} end' \
+            > "$RUNNER_TEMP/controller-callback.json"
+          curl --fail-with-body --retry 3 \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" \
+            --data @"$RUNNER_TEMP/controller-callback.json" \
+            "${CONTROLLER_URL%/}/api/v1/callbacks/github-actions"
+          EOF
+          chmod +x "$RUNNER_TEMP/controller-callback"
+
+      - name: Report deployment started
+        run: |
+          details=$(jq -n \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg release_or_artifact "${{ inputs.release_or_artifact }}" \
+            --arg service_scope "$SERVICE_SCOPE" \
+            --arg strategy "$STRATEGY" \
+            '{environment: $environment, release_or_artifact: $release_or_artifact,
+              service_scope: $service_scope, strategy: $strategy}')
+          "$RUNNER_TEMP/controller-callback" job_started "" "$details"
+
+      - name: Download image manifest
+        if: needs.prepare.outputs.artifact_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: image-manifest
+          path: release-artifact
+          run-id: ${{ needs.prepare.outputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve release from artifact
+        if: needs.prepare.outputs.artifact_run_id != ''
+        run: |
+          source_sha=$(jq -r \
+            '[.[] | select(.status == "published") | .source_sha] | unique | .[0] // empty' \
+            release-artifact/image-manifest.json)
+          [[ -n "$source_sha" ]] || {
+            echo "::error::The image manifest has no published images."
+            exit 1
+          }
+          [[ "$source_sha" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo "::error::The image manifest source SHA is not a full Git SHA."
+            exit 1
+          }
+          echo "RELEASE_TAG=sha-${source_sha,,}" >> "$GITHUB_ENV"
+
+      - name: Report preflight started
+        run: |
+          "$RUNNER_TEMP/controller-callback" step_started preflight \
+            '{"phase":"configuration and release validation"}'
+
+      - name: Validate deployment configuration
+        id: preflight
+        continue-on-error: true
+        run: |
+          required=(AWS_REGION CONTROLLER_AUDIENCE CONTROLLER_URL EKS_CLUSTER_NAME
+            ECR_REPOSITORY_PREFIX HELM_CHART_PATH HELM_RELEASE KUBE_NAMESPACE
+            RELEASE_TAG SMOKE_URL TARGET_ENVIRONMENT)
+          for name in "${required[@]}"; do
+            [[ -n "${!name}" ]] || {
+              echo "::error::Required variable $name is not configured."
+              exit 1
+            }
+          done
+          [[ -f "$HELM_CHART_PATH/Chart.yaml" ]] || {
+            echo "::error::No Helm chart found at $HELM_CHART_PATH."
+            exit 1
+          }
+
+      - name: Report preflight result
+        env:
+          PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+        run: |
+          if [[ "$PREFLIGHT_OUTCOME" == "success" ]]; then
+            "$RUNNER_TEMP/controller-callback" step_succeeded preflight \
+              '{"phase":"configuration and release validation"}'
+          else
+            "$RUNNER_TEMP/controller-callback" step_failed preflight \
+              '{"phase":"configuration and release validation"}' \
+              "Deployment preflight validation failed."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure cluster access
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Capture current revision
+        id: previous
+        run: |
+          revision=$(helm history "$HELM_RELEASE" \
+            --namespace "$KUBE_NAMESPACE" \
+            --output json 2>/dev/null |
+            jq -r '[.[] | select(.status == "deployed")] | last | .revision // empty')
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Report rollout started
+        run: |
+          "$RUNNER_TEMP/controller-callback" step_started rollout \
+            "$(jq -n --arg service_scope "$SERVICE_SCOPE" --arg strategy "$STRATEGY" \
+              '{service_scope: $service_scope, strategy: $strategy}')"
+
+      - name: Deploy and wait for rollout
+        id: rollout
+        continue-on-error: true
+        run: |
+          if [[ "$SERVICE_SCOPE" != "all" &&
+                -z "${{ steps.previous.outputs.revision }}" ]]; then
+            echo "::error::A scoped deployment requires an existing Helm release."
+            exit 1
+          fi
+
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          image_registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY_PREFIX}"
+          chart_environment="$TARGET_ENVIRONMENT"
+          [[ "$chart_environment" != "production" ]] || chart_environment="prod"
+          values_file="$HELM_CHART_PATH/values-${chart_environment}.yaml"
+          [[ -f "$values_file" ]] || {
+            echo "::error::Missing environment values file $values_file."
+            exit 1
+          }
+
+          services=(
+            api-gateway orchestration-engine llm-router agent-runtime
+            rag-service safety-guardrails streaming-voice execution-engine
+            observability-core dashboard patient-portal hospital-portal
+            deployment-controller
+          )
+          image_args=()
+          for service in "${services[@]}"; do
+            if [[ "$SERVICE_SCOPE" == "all" ||
+                  ",$SERVICE_SCOPE," == *",$service,"* ]]; then
+              digest=""
+              if [[ -f release-artifact/image-manifest.json ]]; then
+                digest=$(jq -r \
+                  --arg service "$service" \
+                  '.[] | select(.service == $service and .status == "published") | .digest' \
+                  release-artifact/image-manifest.json)
+                [[ -n "$digest" ]] || {
+                  echo "::error::No published digest found for $service in the release artifact."
+                  exit 1
+                }
+              fi
+              image_args+=(--set-string "services.${service}.image.tag=${RELEASE_TAG}")
+              image_args+=(--set-string "services.${service}.image.digest=${digest}")
+            fi
+          done
+          migration_digest=""
+          if [[ -f release-artifact/image-manifest.json ]]; then
+            migration_digest=$(jq -r \
+              '.[] | select(.service == "db-migrations" and .status == "published") | .digest' \
+              release-artifact/image-manifest.json)
+            [[ "$migration_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+              echo "::error::No valid published digest found for db-migrations in the release artifact."
+              exit 1
+            }
+          fi
+          image_args+=(--set-string "migration.image.tag=${RELEASE_TAG}")
+          image_args+=(--set-string "migration.image.digest=${migration_digest}")
+
+          helm upgrade --install "$HELM_RELEASE" "$HELM_CHART_PATH" \
+            --namespace "$KUBE_NAMESPACE" \
+            --create-namespace \
+            --values "$values_file" \
+            --reuse-values \
+            --atomic \
+            --wait \
+            --timeout 15m \
+            --set-string "global.environment=$chart_environment" \
+            --set-string "global.imageRegistry=$image_registry" \
+            --set-string "global.release.commit=${RELEASE_TAG#sha-}" \
+            --set-string "global.release.revision=$DEPLOYMENT_ID" \
+            --set-string "deployment.serviceScope=$SERVICE_SCOPE" \
+            --set-string "deployment.strategy=$STRATEGY" \
+            "${image_args[@]}"
+
+          mapfile -t deployments < <(
+            kubectl get deployments \
+              --namespace "$KUBE_NAMESPACE" \
+              --selector "app.kubernetes.io/instance=$HELM_RELEASE" \
+              --output name
+          )
+          [[ ${#deployments[@]} -gt 0 ]] || {
+            echo "::error::The release owns no Kubernetes Deployments."
+            exit 1
+          }
+          for deployment in "${deployments[@]}"; do
+            kubectl rollout status "$deployment" \
+              --namespace "$KUBE_NAMESPACE" \
+              --timeout=10m
+          done
+
+      - name: Report rollout result
+        if: always()
+        env:
+          ROLLOUT_OUTCOME: ${{ steps.rollout.outcome }}
+        run: |
+          if [[ "$ROLLOUT_OUTCOME" == "success" ]]; then
+            "$RUNNER_TEMP/controller-callback" step_succeeded rollout \
+              '{"phase":"helm upgrade and Kubernetes rollout"}'
+          else
+            "$RUNNER_TEMP/controller-callback" step_failed rollout \
+              '{"phase":"helm upgrade and Kubernetes rollout"}' \
+              "Helm upgrade or Kubernetes rollout failed."
+          fi
+
+      - name: Report verification started
+        if: steps.rollout.outcome == 'success'
+        run: |
+          "$RUNNER_TEMP/controller-callback" step_started verification \
+            '{"phase":"Helm tests and smoke checks"}'
+
+      - name: Verify deployment
+        if: steps.rollout.outcome == 'success'
+        id: verification
+        continue-on-error: true
+        run: |
+          helm test "$HELM_RELEASE" \
+            --namespace "$KUBE_NAMESPACE" \
+            --timeout 5m
+          curl --fail-with-body --retry 5 --retry-all-errors \
+            --max-time 30 "$SMOKE_URL"
+
+      - name: Report verification result
+        if: steps.rollout.outcome == 'success'
+        env:
+          VERIFICATION_OUTCOME: ${{ steps.verification.outcome }}
+        run: |
+          if [[ "$VERIFICATION_OUTCOME" == "success" ]]; then
+            "$RUNNER_TEMP/controller-callback" step_succeeded verification \
+              '{"phase":"Helm tests and smoke checks"}'
+          else
+            "$RUNNER_TEMP/controller-callback" step_failed verification \
+              '{"phase":"Helm tests and smoke checks"}' \
+              "Helm tests or smoke checks failed."
+          fi
+
+      - name: Collect failure diagnostics
+        if: steps.rollout.outcome != 'success' || steps.verification.outcome == 'failure'
+        run: |
+          mkdir -p diagnostics
+          kubectl get all,events \
+            --namespace "$KUBE_NAMESPACE" \
+            --output wide > diagnostics/resources-and-events.txt 2>&1 || true
+          kubectl describe pods \
+            --namespace "$KUBE_NAMESPACE" > diagnostics/pods.txt 2>&1 || true
+          kubectl logs \
+            --namespace "$KUBE_NAMESPACE" \
+            --selector "app.kubernetes.io/instance=$HELM_RELEASE" \
+            --all-containers \
+            --prefix \
+            --tail=500 > diagnostics/logs.txt 2>&1 || true
+          helm history "$HELM_RELEASE" \
+            --namespace "$KUBE_NAMESPACE" \
+            --output yaml > diagnostics/helm-history.yaml 2>&1 || true
+
+      - name: Upload failure diagnostics
+        if: steps.rollout.outcome != 'success' || steps.verification.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-diagnostics-${{ needs.prepare.outputs.deployment_id }}
+          path: diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Roll back failed deployment
+        if: >-
+          (steps.rollout.outcome != 'success' || steps.verification.outcome == 'failure') &&
+          steps.previous.outputs.revision != ''
+        run: |
+          helm rollback "$HELM_RELEASE" "${{ steps.previous.outputs.revision }}" \
+            --namespace "$KUBE_NAMESPACE" \
+            --wait \
+            --timeout 15m
+
+      - name: Report final deployment status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          ROLLOUT_OUTCOME: ${{ steps.rollout.outcome }}
+          VERIFICATION_OUTCOME: ${{ steps.verification.outcome }}
+        run: |
+          if [[ ! -x "$RUNNER_TEMP/controller-callback" ]]; then
+            echo "::error::Controller callback client was not installed."
+            exit 1
+          fi
+          if [[ "$JOB_STATUS" == "cancelled" ]]; then
+            "$RUNNER_TEMP/controller-callback" job_cancelled "" \
+              '{"phase":"deployment"}' "GitHub Actions run was cancelled."
+          elif [[ "$ROLLOUT_OUTCOME" == "success" &&
+                  "$VERIFICATION_OUTCOME" == "success" ]]; then
+            services=()
+            if [[ "$SERVICE_SCOPE" == "all" ]]; then
+              services=(
+                api-gateway orchestration-engine llm-router agent-runtime
+                rag-service safety-guardrails streaming-voice execution-engine
+                observability-core dashboard patient-portal hospital-portal
+                deployment-controller
+              )
+            else
+              IFS=',' read -ra services <<< "$SERVICE_SCOPE"
+            fi
+            revisions='{}'
+            for service in "${services[@]}"; do
+              revision=$(kubectl get deployment \
+                --namespace "$KUBE_NAMESPACE" \
+                --selector "app.kubernetes.io/instance=$HELM_RELEASE,app.kubernetes.io/name=$service" \
+                --output json |
+                jq -r '.items[0].spec.template.spec.containers[0].image // empty')
+              [[ -n "$revision" ]] || {
+                echo "::error::No deployed revision found for $service."
+                exit 1
+              }
+              revisions=$(jq -c --arg service "$service" --arg revision "$revision" \
+                '. + {($service): $revision}' <<< "$revisions")
+            done
+            "$RUNNER_TEMP/controller-callback" job_succeeded "" \
+              '{"phase":"deployment complete"}' "" "$revisions"
+          else
+            "$RUNNER_TEMP/controller-callback" job_failed "" \
+              '{"phase":"deployment"}' \
+              "Deployment preflight, rollout, or verification failed."
+          fi
+
+      - name: Enforce deployment result
+        if: steps.rollout.outcome != 'success' || steps.verification.outcome != 'success'
+        run: |
+          echo "::error::Deployment failed; diagnostics were collected and rollback was attempted."
+          exit 1

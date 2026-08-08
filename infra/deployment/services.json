@@ -1,0 +1,123 @@
+{
+  "$schema": "./services.schema.json",
+  "version": 1,
+  "services": [
+    {
+      "name": "api-gateway",
+      "kind": "backend",
+      "port": 3000,
+      "healthPath": "/health",
+      "dockerfile": "apps/api-gateway/Dockerfile",
+      "image": "api-gateway",
+      "enabled": true
+    },
+    {
+      "name": "orchestration-engine",
+      "kind": "backend",
+      "port": 8001,
+      "healthPath": "/health",
+      "dockerfile": "apps/orchestration-engine/Dockerfile",
+      "image": "orchestration-engine",
+      "enabled": true
+    },
+    {
+      "name": "llm-router",
+      "kind": "backend",
+      "port": 8002,
+      "healthPath": "/health",
+      "dockerfile": "apps/llm-router/Dockerfile",
+      "image": "llm-router",
+      "enabled": true
+    },
+    {
+      "name": "agent-runtime",
+      "kind": "backend",
+      "port": 8003,
+      "healthPath": "/health",
+      "dockerfile": "apps/agent-runtime/Dockerfile",
+      "image": "agent-runtime",
+      "enabled": true
+    },
+    {
+      "name": "rag-service",
+      "kind": "backend",
+      "port": 8004,
+      "healthPath": "/health",
+      "dockerfile": "apps/rag-service/Dockerfile",
+      "image": "rag-service",
+      "enabled": true
+    },
+    {
+      "name": "safety-guardrails",
+      "kind": "backend",
+      "port": 8005,
+      "healthPath": "/health",
+      "dockerfile": "apps/safety-guardrails/Dockerfile",
+      "image": "safety-guardrails",
+      "enabled": true
+    },
+    {
+      "name": "streaming-voice",
+      "kind": "backend",
+      "port": 8006,
+      "healthPath": "/health",
+      "dockerfile": "apps/streaming-voice/Dockerfile",
+      "image": "streaming-voice",
+      "enabled": true
+    },
+    {
+      "name": "execution-engine",
+      "kind": "backend",
+      "port": 8007,
+      "healthPath": "/health",
+      "dockerfile": "apps/execution-engine/Dockerfile",
+      "image": "execution-engine",
+      "enabled": true
+    },
+    {
+      "name": "observability-core",
+      "kind": "backend",
+      "port": 8008,
+      "healthPath": "/health",
+      "dockerfile": "apps/observability-core/Dockerfile",
+      "image": "observability-core",
+      "enabled": true
+    },
+    {
+      "name": "deployment-controller",
+      "kind": "backend",
+      "port": 8009,
+      "healthPath": "/health",
+      "dockerfile": "apps/deployment-controller/Dockerfile",
+      "image": "deployment-controller",
+      "enabled": true
+    },
+    {
+      "name": "dashboard",
+      "kind": "frontend",
+      "port": 3100,
+      "healthPath": "/",
+      "dockerfile": "frontend/dashboard/Dockerfile",
+      "image": "dashboard",
+      "enabled": true
+    },
+    {
+      "name": "patient-portal",
+      "kind": "frontend",
+      "port": 3300,
+      "healthPath": "/",
+      "dockerfile": "frontend/patient-portal/Dockerfile",
+      "image": "patient-portal",
+      "enabled": true
+    },
+    {
+      "name": "hospital-portal",
+      "kind": "frontend",
+      "port": 3400,
+      "healthPath": "/",
+      "dockerfile": "frontend/hospital-portal/Dockerfile",
+      "image": "hospital-portal",
+      "enabled": true
+    }
+  ]
+}

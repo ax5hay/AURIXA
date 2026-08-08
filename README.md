@@ -274,6 +274,9 @@ The Operator Console is the control surface for running AURIXA as a product.
 - Create and maintain tenant organizations.
 - Curate tenant-specific knowledge articles used by retrieval.
 - Separate read-only runtime facts from editable behavior settings.
+- Use `/deployments` to inspect environment health and drift, compose staged
+  releases, follow approvals and rollout checks, cancel active jobs, and request
+  audited rollback.
 - Run a full request, a service test suite, individual service checks, or execution actions in the
   focused Playground.
 
@@ -419,7 +422,32 @@ workflows. Production use still requires organization-specific hardening and int
 
 ## Architecture
 
-The AURIXA platform follows a **microservices-first** architecture with clear separation of concerns. All services are **stateless** and communicate asynchronously through the API Gateway, enabling independent scaling and deployment.
+AURIXA uses a microservices data plane and a separate, auditable deployment
+control plane. The canonical inventory contains **13 deployable applications**:
+ten backend services and three frontends. `db-migrations` is an additional
+release artifact, not a long-running service.
+
+```mermaid
+flowchart TB
+    subgraph Access["Authorized operator access"]
+        User["GitHub org/team member"] --> Dashboard["Dashboard /deployments"]
+        Dashboard --> Proxy["Same-origin JWT proxy"]
+    end
+    Proxy --> Gateway["API gateway :3000"]
+    Gateway --> Controller["Deployment controller :8009"]
+    Controller --> State[(Deployment state and audit)]
+    Controller -->|GitHub App dispatch| Actions["GitHub Actions"]
+    Actions -->|OIDC callbacks| Controller
+    Actions -->|AWS OIDC after environment approval| Helm["Helm on EKS"]
+    Main["Push to main"] --> Images["Immutable ECR SHA/digest images"]
+    Images -->|automatic promotion request| Controller
+    Helm --> Services["13 applications + migration hook"]
+```
+
+The application services are stateless where practical; persistent application
+and deployment state lives in PostgreSQL, with Redis used for caching. Requests
+enter through the API gateway, while cloud mutations are owned by approved
+GitHub Actions workflows.
 
 <details open>
 <summary><b>System Architecture Diagram</b></summary>
@@ -543,7 +571,7 @@ The Tenants page uses Add Tenant to create new organizations. Execution Engine h
 
 The **Playground** at http://localhost:3100/playground provides:
 
-- **Service Health & Metrics** — Live health status and latency for all 8 services; telemetry (conversations, tenants, patients, event counts, avg latency); auto-loads on open
+- **Service Health & Metrics** — Live backend health and latency; telemetry (conversations, tenants, patients, event counts, avg latency); auto-loads on open
 - **Run All Tests** — One-click verification of all services; shows pass/fail and latency per test
 - **Full pipeline test** — Run E2E with patient context and sample prompts
 - **Service API tests** — Route, RAG, Safety, Agent, Execution, Knowledge Articles, LLM Providers, LLM Models, Audit Log, Service Health
@@ -596,7 +624,8 @@ aurixa/
 │   ├── safety-guardrails/         Python/FastAPI (Port 8005)
 │   ├── streaming-voice/           Python/FastAPI (Port 8006)
 │   ├── execution-engine/          Python/FastAPI (Port 8007)
-│   └── observability-core/        Python/FastAPI (Port 8008)
+│   ├── observability-core/        Python/FastAPI (Port 8008)
+│   └── deployment-controller/     Python/FastAPI (Port 8009)
 │
 ├── packages/                      Shared libraries & utilities
 │   ├── llm-clients/               AI provider abstraction layer
@@ -650,16 +679,11 @@ aurixa/
 │   └── hospital-portal/           Hospital staff interface (Next.js 15, Port 3400)
 │
 ├── infra/                         Infrastructure as Code
-│   ├── docker/                    Docker Compose (local development)
-│   │   └── docker-compose.yml     Full stack orchestration
-│   ├── k8s/                       Kubernetes manifests
-│   │   ├── namespace.yaml
-│   │   ├── api-gateway.yaml
-│   │   └── python-service-template.yaml
-│   └── terraform/                 AWS infrastructure
-│       ├── main.tf                VPC, EKS, RDS, ElastiCache
-│       ├── variables.tf
-│       └── outputs.tf
+│   ├── deployment/                Canonical service inventory and schema
+│   ├── docker/                    Local Compose and migration images
+│   ├── helm/aurixa/               Production deployment chart and overlays
+│   ├── k8s/                       Legacy/reference manifests; not the release path
+│   └── terraform/                 AWS bootstrap and reusable modules
 │
 ├── .env.example                   Example environment configuration
 ├── package.json                   Root workspace configuration
@@ -676,17 +700,18 @@ aurixa/
 
 ## Service Architecture & Responsibilities
 
-| Service                  |  Port  |  Language  | Key Features                                                                                                                                                   |
-| ------------------------ | :----: | :--------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **API Gateway**          | `3000` | TypeScript | Request routing, WebSocket proxy, Rate limiting, CORS, Security headers                                                                                        |
-| **Orchestration Engine** | `8001` |   Python   | Conversation state management, Pipeline orchestration, Database persistence                                                                                    |
-| **LLM Router**           | `8002` |   Python   | Cost-aware provider routing, FAISS embeddings, Intelligent model selection                                                                                     |
-| **Agent Runtime**        | `8003` |   Python   | Tool invocation, Multi-step planning, Function calling, Async execution                                                                                        |
-| **RAG Service**          | `8004` |   Python   | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking                                                                             |
-| **Safety Guardrails**    | `8005` |   Python   | Risk classification, Policy enforcement, Response filtering, Escalation logic                                                                                  |
-| **Streaming Voice**      | `8006` |   Python   | Voice I/O: STT, TTS (OSS first). REST: full response; WebSocket: status + **LLM token stream** + TTS. Orchestration pipeline (and `/pipelines/stream` for WS). |
-| **Execution Engine**     | `8007` |   Python   | External API calls, Retry logic, Idempotency, Task scheduling                                                                                                  |
-| **Observability Core**   | `8008` |   Python   | Telemetry aggregation, Performance reports (`/api/v1/reports/performance`), Metrics, Cost analysis                                                             |
+| Service                   |  Port  |  Language  | Key Features                                                                                                                                                   |
+| ------------------------- | :----: | :--------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API Gateway**           | `3000` | TypeScript | Request routing, WebSocket proxy, Rate limiting, CORS, Security headers                                                                                        |
+| **Orchestration Engine**  | `8001` |   Python   | Conversation state management, Pipeline orchestration, Database persistence                                                                                    |
+| **LLM Router**            | `8002` |   Python   | Cost-aware provider routing, FAISS embeddings, Intelligent model selection                                                                                     |
+| **Agent Runtime**         | `8003` |   Python   | Tool invocation, Multi-step planning, Function calling, Async execution                                                                                        |
+| **RAG Service**           | `8004` |   Python   | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking                                                                             |
+| **Safety Guardrails**     | `8005` |   Python   | Risk classification, Policy enforcement, Response filtering, Escalation logic                                                                                  |
+| **Streaming Voice**       | `8006` |   Python   | Voice I/O: STT, TTS (OSS first). REST: full response; WebSocket: status + **LLM token stream** + TTS. Orchestration pipeline (and `/pipelines/stream` for WS). |
+| **Execution Engine**      | `8007` |   Python   | External API calls, Retry logic, Idempotency, Task scheduling                                                                                                  |
+| **Observability Core**    | `8008` |   Python   | Telemetry aggregation, Performance reports (`/api/v1/reports/performance`), Metrics, Cost analysis                                                             |
+| **Deployment Controller** | `8009` |   Python   | Audited release state, approvals, GitHub App dispatch, OIDC callbacks, cancellation, and rollback                                                              |
 
 ---
 
@@ -793,26 +818,27 @@ The stack will:
 
 1. Start Postgres and Redis
 2. Run db-seed to populate the database
-3. Build and start API Gateway, Orchestration, LLM Router, Agent Runtime, RAG, Safety, Streaming Voice, Execution Engine, Observability Core
+3. Build and start API Gateway, Orchestration, LLM Router, Agent Runtime, RAG, Safety, Streaming Voice, Execution Engine, Observability Core, and Deployment Controller
 4. Build and start Dashboard, Patient Portal, Hospital Portal
 
 **Endpoints after startup:**
 
-| Service            | URL                              |
-| ------------------ | -------------------------------- |
-| API Gateway        | http://localhost:3000            |
-| Dashboard          | http://localhost:3100            |
-| **Playground**     | http://localhost:3100/playground |
-| Patient Portal     | http://localhost:3300            |
-| Hospital Portal    | http://localhost:3400            |
-| Orchestration      | http://localhost:8001            |
-| LLM Router         | http://localhost:8002            |
-| Agent Runtime      | http://localhost:8003            |
-| RAG Service        | http://localhost:8004            |
-| Safety Guardrails  | http://localhost:8005            |
-| Streaming Voice    | http://localhost:8006            |
-| Execution Engine   | http://localhost:8007            |
-| Observability Core | http://localhost:8008            |
+| Service               | URL                              |
+| --------------------- | -------------------------------- |
+| API Gateway           | http://localhost:3000            |
+| Dashboard             | http://localhost:3100            |
+| **Playground**        | http://localhost:3100/playground |
+| Patient Portal        | http://localhost:3300            |
+| Hospital Portal       | http://localhost:3400            |
+| Orchestration         | http://localhost:8001            |
+| LLM Router            | http://localhost:8002            |
+| Agent Runtime         | http://localhost:8003            |
+| RAG Service           | http://localhost:8004            |
+| Safety Guardrails     | http://localhost:8005            |
+| Streaming Voice       | http://localhost:8006            |
+| Execution Engine      | http://localhost:8007            |
+| Observability Core    | http://localhost:8008            |
+| Deployment Controller | http://localhost:8009            |
 
 **Stop the stack:**
 
@@ -877,7 +903,9 @@ pnpm db:seed
 - **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
 - **Tenants** (`/tenants`): List tenants; Add Tenant creates new tenants (DB write)
 - **Patient Portal — Voice** (`/voice`): Mic or text input; REST-based voice processing (STT → pipeline → optional TTS); user toggle for "Play aloud" (TTS on/off)
-- Both apps fetch from API Gateway (port 3000). Telemetry data is provided by Observability Core (port 8008).
+- All frontends use the API Gateway (port 3000). Deployment administration is
+  available at `/deployments` in the dashboard and is backed by the
+  Deployment Controller (port 8009).
 
 ---
 
@@ -1016,60 +1044,35 @@ curl http://localhost:8001/health
 
 ## CI/CD Pipeline
 
-AURIXA uses **GitHub Actions** for continuous integration and deployment. All workflows are defined in `.github/workflows/`.
+GitHub Actions owns cloud image publication, promotion, deployment, callbacks,
+and rollback. The local deploy utility cannot mutate cloud environments.
 
 ### Workflows Overview
 
-| Workflow                | Trigger                 | Purpose                                                 |
-| ----------------------- | ----------------------- | ------------------------------------------------------- |
-| **Docker Build**        | Push/PR to main/develop | Builds Docker images for all services                   |
-| **Docker Build & Push** | Push to main or tags    | Builds and pushes to registries (GHCR, Docker Hub)      |
-| **Tests**               | Push/PR                 | Runs TypeScript and Python test suites                  |
-| **Lint & Security**     | Push/PR                 | ESLint, type checking, SAST scanning, dependency checks |
+| Workflow                  | Trigger                      | Purpose                                                             |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| **Image Build & Publish** | Push to `main` or manual     | Builds/scans 13 apps plus migrations, publishes ECR digest manifest |
+| **Deploy**                | Controller workflow dispatch | Atomic Helm deploy, migration, rollout, tests, smoke, callbacks     |
+| **Production Rollback**   | Approved manual dispatch     | Restores and verifies a selected Helm revision                      |
+| **Docker Build**          | Push/PR                      | Build validation without cloud deployment                           |
+| **Tests**                 | Push/PR                      | TypeScript and Python tests                                         |
+| **Lint & Security**       | Push/PR                      | Formatting, lint, type, and security checks                         |
 
-### Docker Build Workflow
+### Image and deployment workflow
 
-Automatically builds Docker images for all services when code is pushed:
+Each successful `main` build publishes an immutable
+`sha-<40-character-git-sha>` image to Amazon ECR for every application and the
+`db-migrations` hook. The workflow records exact digests in an artifact,
+publishes SBOM/provenance attestations, scans HIGH/CRITICAL findings, and then
+requests automatic staging promotion through an OIDC-authenticated controller
+callback. Optional GHCR mirroring is digest-preserving. **Docker Hub is not
+part of the implemented release path.**
 
-```yaml
-# Triggered on:
-# - Push to main/develop branches
-# - Pull requests to main/develop
-# - Changes to apps/, packages/, or infra/docker/
-
-# Builds images for:
-# - api-gateway
-# - orchestration-engine
-# - llm-router
-# - agent-runtime
-# - rag-service
-# - safety-guardrails
-# - streaming-voice
-# - execution-engine
-# - observability-core
-```
-
-**Output:** Images are cached in GitHub Container Registry for faster builds.
-
-### Docker Build & Push Workflow
-
-Builds and pushes Docker images to registries:
-
-```bash
-# GitHub Container Registry
-ghcr.io/${{ owner }}/aurixa-api-gateway:latest
-ghcr.io/${{ owner }}/aurixa-api-gateway:v1.0.0
-
-# Docker Hub (if configured)
-docker.io/${{ owner }}/aurixa-api-gateway:latest
-docker.io/${{ owner }}/aurixa-api-gateway:v1.0.0
-```
-
-**Configuration:**
-Add GitHub secrets for Docker Hub (optional):
-
-- `DOCKERHUB_USERNAME` - Your Docker Hub username
-- `DOCKERHUB_TOKEN` - Your Docker Hub token
+The controller uses a GitHub App installation token to dispatch `deploy.yml`.
+Actions assumes AWS roles with OIDC, while callbacks to the controller use a
+separate audience-restricted Actions OIDC token. Production is never
+automatically promoted: configure required reviewers on the `production`
+GitHub Environment.
 
 ### Test Workflow
 
@@ -1115,45 +1118,17 @@ pnpm prettier --write .
 pnpm typecheck
 ```
 
-### Setting Up Registries
+### Deployment configuration
 
-**GitHub Container Registry (automatic):**
+AWS/GitHub variables, controller/OAuth secrets, first-time provisioning, cost
+drivers, and incident procedures are documented in
+[Deployment infrastructure](./infra/DEPLOYMENT.md) and the
+[Deployment runbook](./docs/DEPLOYMENT_RUNBOOK.md).
 
-- Uses `GITHUB_TOKEN` - no additional setup needed
-
-**Docker Hub (optional):**
-
-```bash
-# Create GitHub secrets
-gh secret set DOCKERHUB_USERNAME --body "your_docker_username"
-gh secret set DOCKERHUB_TOKEN --body "your_docker_token"
-```
-
-### Deployment from Images
-
-**Pull and run images:**
-
-```bash
-# From GHCR
-docker pull ghcr.io/${{ owner }}/aurixa-api-gateway:latest
-docker run -p 3000:3000 ghcr.io/${{ owner }}/aurixa-api-gateway:latest
-
-# From Docker Hub
-docker pull docker.io/${{ owner }}/aurixa-api-gateway:latest
-docker run -p 3000:3000 docker.io/${{ owner }}/aurixa-api-gateway:latest
-```
-
-**Using in docker-compose:**
-
-```yaml
-services:
-  api-gateway:
-    image: ghcr.io/your-org/aurixa-api-gateway:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-```
+> [!IMPORTANT]
+> No workflow automatically runs Terraform, and no AWS resources are created
+> until an operator configures credentials and inputs, reviews a plan, and
+> explicitly runs `terraform apply`.
 
 ---
 
@@ -1161,31 +1136,20 @@ services:
 
 ### Local Development (Docker Compose)
 
-Full-stack deployment with all services, databases, and caches. Compose file is in `infra/docker/`; build context is the **monorepo root** (parent of `infra/`).
+Use the repository deploy utility for the local full stack:
 
 ```bash
-cd infra/docker
-docker compose up --build -d   # Build and start all (first time or after changes)
-# or
-docker compose up -d            # Start existing images only
-
-# Verify all services
-docker compose ps -a
-
-# Check service logs
-docker compose logs -f api-gateway
-docker compose logs observability-core   # Telemetry service
-
-# Stop all services
-docker compose down
+pnpm run deploy validate
+pnpm run deploy build
+pnpm run deploy up
+pnpm run deploy verify
+pnpm run deploy status
+pnpm run deploy down
 ```
 
-**Services started:**
-
-- PostgreSQL 16 (localhost:5432), Redis 7 (localhost:6379)
-- db-seed (one-off, then exits)
-- API Gateway (3000), Orchestration (8001), LLM Router (8002), Agent Runtime (8003), RAG (8004), Safety (8005), Streaming Voice (8006), Execution Engine (8007), Observability Core (8008)
-- Dashboard (3100), Patient Portal (3300), Hospital Portal (3400)
+The utility validates the canonical 13-application inventory and Compose
+configuration. A service name can follow `build`, `up`, or `verify`. Cloud
+deploy, promote, and rollback commands are intentionally refused locally.
 
 ### Docker Images
 
@@ -1207,59 +1171,35 @@ docker build -f apps/api-gateway/Dockerfile -t aurixa/api-gateway:latest .
 
 ### Kubernetes Deployment
 
-Manifests available in `infra/k8s/`:
-
-```bash
-# Create namespace
-kubectl apply -f infra/k8s/namespace.yaml
-
-# Deploy services
-kubectl apply -f infra/k8s/api-gateway.yaml
-kubectl apply -f infra/k8s/python-service-template.yaml
-
-# Check deployment status
-kubectl get pods -n aurixa
-kubectl logs -n aurixa deployment/api-gateway
-
-# View service endpoint
-kubectl get svc -n aurixa
-```
-
-**Kubernetes features:**
-
-- Health check probes (liveness & readiness)
-- Auto-scaling policies
-- Service discovery
-- Network policies
-- Persistent volumes for PostgreSQL
+The old files under `infra/k8s/` are legacy/reference manifests and are not a
+complete deployment template. The implemented release path is the umbrella Helm
+chart at `infra/helm/aurixa`, executed by the approved Deploy workflow. It
+provides probes, autoscaling, network policy, disruption budgets, security
+contexts, external secrets, ingress, migration hooks, and an in-cluster Helm
+test.
 
 ### Cloud Deployment (AWS/Terraform)
 
-Infrastructure as Code templates in `infra/terraform/`:
+Terraform provides state bootstrap and modules for networking, private EKS
+nodes, immutable ECR repositories, encrypted RDS/ElastiCache, EKS add-ons, and
+OIDC/IRSA. It does not apply itself.
 
 ```bash
-# Initialize Terraform
-cd infra/terraform
+cd infra/terraform/bootstrap
 terraform init
+terraform plan -var='state_bucket_name=<globally-unique-name>'
+# Explicitly apply only after review.
 
-# Review planned changes
-terraform plan
-
-# Apply infrastructure
-terraform apply
-
-# Outputs include RDS endpoint, EKS cluster, etc.
-terraform output
+cd ..
+terraform init -backend-config=/secure/path/backend.hcl
+terraform plan -var-file=environments/staging.tfvars
+# Explicitly apply only after replacing example CIDRs and reviewing the plan.
 ```
 
-**Provisions:**
-
-- VPC with public/private subnets
-- EKS Kubernetes cluster (3 nodes)
-- RDS PostgreSQL 16 database
-- ElastiCache Redis cluster
-- Application Load Balancer
-- Auto-scaling groups
+See [Deployment infrastructure](./infra/DEPLOYMENT.md) for architecture and
+required variables/secrets, and [Deployment runbook](./docs/DEPLOYMENT_RUNBOOK.md)
+for provisioning, production approval, rollback, incidents, disaster recovery,
+and cost controls.
 
 ---
 
@@ -1465,13 +1405,15 @@ open coverage/index.html
 
 ## Documentation
 
+- [Deployment Infrastructure](./infra/DEPLOYMENT.md) — Control-plane architecture, release flow, Terraform/Helm, authorization, variables, secrets, and costs
+- [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) — First-time provisioning, staging/production operation, rollback, incidents, and disaster recovery
 - [Streaming Service & End-User Flows](./docs/STREAMING_AND_END_USER_FLOWS.md) — Streaming-voice (REST + WebSocket with **LLM token streaming** over WS), channel layer, and full layman flows for AURIXA admin, patient, and hospital tenants
 - [End-User Flow & Telephony](./docs/END_USER_FLOW_AND_TELEPHONY.md) — Webchat, WebSocket voice, REST voice, STT/TTS providers (OSS first), telephony integration points
 - [Performance Report](./performance_report.md) — System metrics and benchmarks
 - [Architecture Audit](./docs/ARCHITECTURE_AUDIT.md) — Architecture review
 - [Feature Gap Analysis](./docs/FEATURE_GAP_ANALYSIS.md) — Capability gaps and roadmap
 - [API Reference](./docs/api/) — Endpoint documentation (if present)
-- Deployment: see [Quick Start](#quick-start) and [Deployment](#deployment) above
+- Local setup: see [Quick Start](#quick-start)
 
 ---
 

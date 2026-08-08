@@ -1,0 +1,77 @@
+{{- if .Values.global.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "aurixa.serviceAccountName" . }}
+  labels:
+    {{- include "aurixa.labels" . | nindent 4 }}
+  {{- with .Values.global.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ .Values.global.serviceAccount.automountServiceAccountToken }}
+{{- end }}
+{{- if .Values.global.externalSecrets.enabled }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" . "name" "runtime") }}
+  labels:
+    {{- include "aurixa.labels" . | nindent 4 }}
+spec:
+  refreshInterval: {{ .Values.global.externalSecrets.refreshInterval }}
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: {{ .Values.global.externalSecrets.secretStoreName }}
+  target:
+    name: {{ include "aurixa.fullname" (dict "root" . "name" "runtime") }}
+    creationPolicy: Owner
+  dataFrom:
+    - extract:
+        key: {{ .Values.global.externalSecrets.remoteSecretKey }}
+{{- end }}
+{{- if .Values.global.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" . "name" "default") }}
+  labels:
+    {{- include "aurixa.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {app.kubernetes.io/part-of: aurixa}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/part-of: aurixa}
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+        {{- range .Values.global.networkPolicy.ingressCidrs }}
+        - ipBlock: {cidr: {{ . | quote }}}
+        {{- end }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {app.kubernetes.io/part-of: aurixa}
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - ipBlock: {cidr: 0.0.0.0/0, except: ["169.254.169.254/32"]}
+      ports:
+        - {protocol: TCP, port: 443}
+    {{- if .Values.global.networkPolicy.egressPrivateCidrs }}
+    - to:
+        {{- range .Values.global.networkPolicy.egressPrivateCidrs }}
+        - ipBlock: {cidr: {{ . | quote }}}
+        {{- end }}
+      ports:
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 6379}
+    {{- end }}
+{{- end }}

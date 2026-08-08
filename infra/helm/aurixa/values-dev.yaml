@@ -1,0 +1,29 @@
+global:
+  environment: dev
+  ingress:
+    enabled: true
+    routes:
+      api: { host: api.dev.aurixa.example }
+      dashboard: { host: dashboard.dev.aurixa.example }
+      patient: { host: patient.dev.aurixa.example }
+      hospital: { host: hospital.dev.aurixa.example }
+  frontend:
+    apiGatewayUrl: https://api.dev.aurixa.example
+  externalSecrets:
+    enabled: true
+    remoteSecretKey: aurixa/dev/application
+  networkPolicy:
+    ingressCidrs: ["10.10.0.0/16"]
+    egressPrivateCidrs: ["10.10.0.0/16"]
+defaults:
+  replicas: 1
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: false
+    minAvailable: 1
+migration:
+  enabled: false

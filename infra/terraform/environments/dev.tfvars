@@ -1,0 +1,11 @@
+environment                 = "dev"
+region                      = "us-east-1"
+vpc_cidr                    = "10.10.0.0/16"
+cluster_public_access_cidrs = ["203.0.113.0/24"] # Replace with the CI/VPN egress CIDR.
+node_instance_types         = ["t3.large"]
+min_nodes                   = 1
+desired_nodes               = 2
+max_nodes                   = 4
+db_instance_class           = "db.t4g.medium"
+redis_node_type             = "cache.t4g.micro"
+secrets_manager_arns        = [] # Populate with ARNs, never secret values.

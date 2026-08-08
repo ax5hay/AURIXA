@@ -12,7 +12,9 @@
   "dependencies": {
     "@aurixa/ui-kit": "workspace:*",
     "framer-motion": "^11.15.0",
+    "jose": "^6.2.8",
     "next": "^15.1.0",
+    "next-auth": "^4.24.15",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "recharts": "^3.7.0"

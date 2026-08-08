@@ -1,0 +1,37 @@
+{{- if .Values.global.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" . "name" "public") }}
+  labels:
+    {{- include "aurixa.labels" . | nindent 4 }}
+  {{- with .Values.global.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.global.ingress.className }}
+  {{- with .Values.global.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range $routeName, $route := .Values.global.ingress.routes }}
+    {{- $service := index $.Values.services $route.service }}
+    {{- if not $service }}
+    {{- fail (printf "ingress route %s references unknown service %s" $routeName $route.service) }}
+    {{- end }}
+    {{- if ne $service.enabled false }}
+    - host: {{ required (printf "host is required for ingress route %s" $routeName) $route.host | quote }}
+      http:
+        paths:
+          - path: {{ $route.path | default "/" | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "aurixa.fullname" (dict "root" $ "name" $route.service) }}
+                port:
+                  number: {{ $service.port }}
+    {{- end }}
+    {{- end }}
+{{- end }}

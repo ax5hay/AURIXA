@@ -1,0 +1,43 @@
+{{- if .Values.tests.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" . "name" "test-api") }}
+  labels:
+    {{- include "aurixa.labels" . | nindent 4 }}
+    app.kubernetes.io/name: aurixa-test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "aurixa.serviceAccountName" . }}
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile: {type: RuntimeDefault}
+  containers:
+    - name: api-health
+      image: {{ printf "%s%s" .Values.tests.image.repository (ternary (printf "@%s" .Values.tests.image.digest) (printf ":%s" .Values.tests.image.tag) (ne .Values.tests.image.digest "")) | quote }}
+      command: [curl]
+      args:
+        - --fail
+        - --silent
+        - --show-error
+        - --retry
+        - "10"
+        - --retry-connrefused
+        - http://{{ include "aurixa.fullname" (dict "root" . "name" "api-gateway") }}:{{ (index .Values.services "api-gateway").port }}/health
+      resources:
+        requests: {cpu: 10m, memory: 16Mi}
+        limits: {cpu: 100m, memory: 64Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: {drop: ["ALL"]}
+      volumeMounts:
+        - {name: tmp, mountPath: /tmp}
+  volumes:
+    - name: tmp
+      emptyDir: {}
+{{- end }}

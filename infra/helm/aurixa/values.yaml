@@ -1,0 +1,189 @@
+global:
+  environment: dev
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+  release:
+    revision: ""
+    commit: ""
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+    annotations: {}
+  externalSecrets:
+    enabled: false
+    secretStoreName: aurixa
+    refreshInterval: 1h
+    remoteSecretKey: aurixa/dev/application
+  ingress:
+    enabled: false
+    className: alb
+    annotations: {}
+    tls: []
+    routes:
+      api:
+        host: api.aurixa.local
+        service: api-gateway
+      dashboard:
+        host: dashboard.aurixa.local
+        service: dashboard
+      patient:
+        host: patient.aurixa.local
+        service: patient-portal
+      hospital:
+        host: hospital.aurixa.local
+        service: hospital-portal
+  frontend:
+    apiGatewayUrl: http://api.aurixa.local
+  networkPolicy:
+    enabled: true
+    ingressCidrs: []
+    egressPrivateCidrs: []
+
+defaults:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  probes:
+    readiness:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3
+    liveness:
+      initialDelaySeconds: 15
+      periodSeconds: 20
+      timeoutSeconds: 3
+      failureThreshold: 3
+    startup:
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 30
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 1000m, memory: 1Gi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+  pdb:
+    enabled: true
+    minAvailable: 1
+
+deployment:
+  serviceScope: all
+  strategy: rolling
+
+services:
+  api-gateway:
+    {
+      port: 3000,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: api-gateway, tag: latest, digest: "" },
+    }
+  orchestration-engine:
+    {
+      port: 8001,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: orchestration-engine, tag: latest, digest: "" },
+    }
+  llm-router:
+    {
+      port: 8002,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: llm-router, tag: latest, digest: "" },
+    }
+  agent-runtime:
+    {
+      port: 8003,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: agent-runtime, tag: latest, digest: "" },
+    }
+  rag-service:
+    {
+      port: 8004,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: rag-service, tag: latest, digest: "" },
+    }
+  safety-guardrails:
+    {
+      port: 8005,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: safety-guardrails, tag: latest, digest: "" },
+    }
+  streaming-voice:
+    {
+      port: 8006,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: streaming-voice, tag: latest, digest: "" },
+    }
+  execution-engine:
+    {
+      port: 8007,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: execution-engine, tag: latest, digest: "" },
+    }
+  observability-core:
+    {
+      port: 8008,
+      kind: backend,
+      healthPath: /health,
+      image: { repository: observability-core, tag: latest, digest: "" },
+    }
+  deployment-controller:
+    enabled: true
+    port: 8009
+    kind: backend
+    healthPath: /health
+    image: { repository: deployment-controller, tag: latest, digest: "" }
+  dashboard:
+    {
+      port: 3100,
+      kind: frontend,
+      healthPath: /,
+      image: { repository: dashboard, tag: latest, digest: "" },
+      writablePaths: ["/app/frontend/dashboard/.next/cache"],
+    }
+  patient-portal:
+    {
+      port: 3300,
+      kind: frontend,
+      healthPath: /,
+      image: { repository: patient-portal, tag: latest, digest: "" },
+      writablePaths: ["/app/frontend/patient-portal/.next/cache"],
+    }
+  hospital-portal:
+    {
+      port: 3400,
+      kind: frontend,
+      healthPath: /,
+      image: { repository: hospital-portal, tag: latest, digest: "" },
+      writablePaths: ["/app/frontend/hospital-portal/.next/cache"],
+    }
+
+migration:
+  enabled: false
+  image:
+    repository: db-migrations
+    tag: latest
+    digest: ""
+  command: ["alembic", "-c", "/app/packages/db/alembic.ini", "upgrade", "head"]
+
+tests:
+  enabled: true
+  image:
+    repository: curlimages/curl
+    tag: "8.10.1"
+    digest: ""

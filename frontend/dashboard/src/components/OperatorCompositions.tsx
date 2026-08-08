@@ -28,11 +28,29 @@ export function MetricStrip({
 export function StatusBadge({ status, label }: { status?: string; label?: string }) {
   const normalized = status?.toLowerCase() ?? "unknown";
   const tone: BadgeTone =
-    normalized === "healthy" || normalized === "active" || normalized === "pass"
+    normalized === "healthy" ||
+    normalized === "active" ||
+    normalized === "pass" ||
+    normalized === "approved" ||
+    normalized === "succeeded" ||
+    normalized === "rolled_back"
       ? "success"
-      : normalized === "degraded" || normalized === "pending" || normalized === "warning"
+      : normalized === "degraded" ||
+          normalized === "pending" ||
+          normalized === "queued" ||
+          normalized === "running" ||
+          normalized === "rolling_back" ||
+          normalized === "awaiting_approval" ||
+          normalized === "warning"
         ? "warning"
-        : normalized === "down" || normalized === "error" || normalized === "suspended"
+        : normalized === "down" ||
+            normalized === "error" ||
+            normalized === "fail" ||
+            normalized === "failed" ||
+            normalized === "rejected" ||
+            normalized === "cancelled" ||
+            normalized === "unavailable" ||
+            normalized === "suspended"
           ? "danger"
           : "neutral";
   return (

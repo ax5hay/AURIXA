@@ -8,6 +8,11 @@ import { proxyRoutes } from "./routes/proxy.js";
 import { wsRoutes } from "./routes/websocket.js";
 import { adminRoutes } from "./routes/admin.js";
 import { observeRoutes } from "./routes/observe.js";
+import {
+  deploymentCallbackRoutes,
+  deploymentRoutes,
+  legacyDeploymentRoutes,
+} from "./routes/deployments.js";
 import { requestLogger } from "./middleware/request-logger.js";
 import { SERVICE_REGISTRY } from "./config.js";
 
@@ -56,6 +61,9 @@ async function main() {
   await app.register(healthRoutes, { prefix: "/" });
   await app.register(adminRoutes, { prefix: "/api/v1/admin" });
   await app.register(observeRoutes, { prefix: "/api/v1/observe" });
+  await app.register(deploymentRoutes, { prefix: "/api/v1/admin/deployments" });
+  await app.register(legacyDeploymentRoutes, { prefix: "/api/v1/deployments" });
+  await app.register(deploymentCallbackRoutes, { prefix: "/api/v1/callbacks" });
   await app.register(proxyRoutes, { prefix: "/api/v1" });
   await app.register(wsRoutes, { prefix: "/ws" });
 

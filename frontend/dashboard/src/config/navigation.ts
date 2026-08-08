@@ -91,13 +91,22 @@ export const navigation: NavigationItem[] = [
     priority: 8,
   },
   {
+    route: "/deployments",
+    label: "Deployments",
+    group: "System",
+    description: "Coordinate and inspect controlled platform releases",
+    iconKey: "deploy",
+    roles: ["administrator"],
+    priority: 9,
+  },
+  {
     route: "/settings",
     label: "Behavior settings",
     group: "System",
     description: "Edit persisted platform behavior",
     iconKey: "settings",
     roles: ["administrator"],
-    priority: 9,
+    priority: 10,
   },
   {
     route: "/guide",
@@ -106,7 +115,7 @@ export const navigation: NavigationItem[] = [
     description: "Short operator orientation",
     iconKey: "help",
     roles: allRoles,
-    priority: 10,
+    priority: 11,
   },
 ];
 

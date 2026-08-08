@@ -1,0 +1,121 @@
+{{- range $name, $service := .Values.services }}
+{{- if ne $service.enabled false }}
+{{- $probes := $service.probes | default $.Values.defaults.probes }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "aurixa.serviceLabels" (dict "root" $ "name" $name) | nindent 4 }}
+  annotations:
+    aurixa.io/revision: {{ $.Values.global.release.revision | quote }}
+    aurixa.io/commit: {{ $.Values.global.release.commit | quote }}
+    aurixa.io/service-scope: {{ $.Values.deployment.serviceScope | quote }}
+    aurixa.io/deployment-strategy: {{ $.Values.deployment.strategy | quote }}
+spec:
+  replicas: {{ $service.replicas | default $.Values.defaults.replicas }}
+  strategy:
+    {{- toYaml ($service.strategy | default $.Values.defaults.strategy) | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "aurixa.selectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "aurixa.serviceLabels" (dict "root" $ "name" $name) | nindent 8 }}
+      annotations:
+        aurixa.io/revision: {{ $.Values.global.release.revision | quote }}
+        aurixa.io/commit: {{ $.Values.global.release.commit | quote }}
+        aurixa.io/service-scope: {{ $.Values.deployment.serviceScope | quote }}
+        aurixa.io/deployment-strategy: {{ $.Values.deployment.strategy | quote }}
+    spec:
+      serviceAccountName: {{ include "aurixa.serviceAccountName" $ }}
+      automountServiceAccountToken: {{ $.Values.global.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "aurixa.image" (dict "root" $ "service" $service) | quote }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          ports: [{name: http, containerPort: {{ $service.port }}, protocol: TCP}]
+          env:
+            - {name: AURIXA_ENVIRONMENT, value: {{ $.Values.global.environment | quote }}}
+            - {name: HOME, value: /tmp}
+            - {name: PYTHONDONTWRITEBYTECODE, value: "1"}
+            {{- if eq $name "api-gateway" }}
+            - {name: ORCHESTRATION_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "orchestration-engine") | quote }}}
+            - {name: LLM_ROUTER_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "llm-router") | quote }}}
+            - {name: AGENT_RUNTIME_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "agent-runtime") | quote }}}
+            - {name: RAG_SERVICE_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "rag-service") | quote }}}
+            - {name: SAFETY_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "safety-guardrails") | quote }}}
+            - {name: VOICE_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "streaming-voice") | quote }}}
+            - {name: EXECUTION_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "execution-engine") | quote }}}
+            - {name: OBSERVABILITY_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "observability-core") | quote }}}
+            - {name: DEPLOYMENT_CONTROLLER_HOST, value: {{ include "aurixa.fullname" (dict "root" $ "name" "deployment-controller") | quote }}}
+            {{- else if eq $service.kind "frontend" }}
+            - {name: NEXT_PUBLIC_API_GATEWAY_URL, value: {{ $.Values.global.frontend.apiGatewayUrl | quote }}}
+            {{- else }}
+            - {name: ORCHESTRATION_URL, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "orchestration-engine") | quote }}}
+            - {name: LLM_ROUTER_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "llm-router") | quote }}}
+            - {name: AGENT_RUNTIME_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "agent-runtime") | quote }}}
+            - {name: RAG_SERVICE_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "rag-service") | quote }}}
+            - {name: SAFETY_GUARDRAILS_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "safety-guardrails") | quote }}}
+            - {name: EXECUTION_ENGINE_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "execution-engine") | quote }}}
+            - {name: OBSERVABILITY_CORE_HOST, value: {{ include "aurixa.serviceUrl" (dict "root" $ "name" "observability-core") | quote }}}
+            {{- end }}
+            {{- range $key, $value := $service.env }}
+            - name: {{ $key }}
+              value: {{ tpl ($value | toString) $ | quote }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "aurixa.fullname" (dict "root" $ "name" "runtime") }}
+                optional: true
+          readinessProbe:
+            httpGet: {path: {{ $service.healthPath }}, port: http}
+            {{- toYaml $probes.readiness | nindent 12 }}
+          livenessProbe:
+            httpGet: {path: {{ $service.healthPath }}, port: http}
+            {{- toYaml $probes.liveness | nindent 12 }}
+          startupProbe:
+            httpGet: {path: {{ $service.healthPath }}, port: http}
+            {{- toYaml $probes.startup | nindent 12 }}
+          resources:
+            {{- toYaml ($service.resources | default $.Values.defaults.resources) | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            {{- range $index, $mountPath := $service.writablePaths }}
+            - name: writable-{{ $index }}
+              mountPath: {{ $mountPath }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- range $index, $_ := $service.writablePaths }}
+        - name: writable-{{ $index }}
+          emptyDir: {}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "aurixa.serviceLabels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "aurixa.selectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
+  ports:
+    - {name: http, port: {{ $service.port }}, targetPort: http, protocol: TCP}
+{{- end }}
+{{- end }}

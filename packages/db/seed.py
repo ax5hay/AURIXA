@@ -1,14 +1,17 @@
 """Script to seed the database with mock data."""
 
 import asyncio
-from loguru import logger
 import datetime
+import os
+
+from loguru import logger
 
 from aurixa_db.database import AsyncSessionLocal, engine
 from aurixa_db.models import (
     Tenant, User, Patient, Appointment, KnowledgeBaseArticle,
     AuditLog, PlatformConfig, Conversation, Base,
     PatientInsurance, Prescription, AvailabilitySlot, Staff,
+    DeploymentEnvironment,
 )
 
 
@@ -36,6 +39,31 @@ async def seed_database():
         ]
         for t in tenants:
             db.add(t)
+        await db.commit()
+
+        # Local/demo deployment targets. Cloud environments should be provisioned
+        # through the authenticated deployment API with the real repository name.
+        deployment_repository = os.getenv("GITHUB_REPOSITORY", "aurixa/aurixa")
+        db.add_all(
+            [
+                DeploymentEnvironment(
+                    name="staging",
+                    display_name="Staging",
+                    repository=deployment_repository,
+                    github_environment="staging",
+                    requires_approval=False,
+                    configuration={"source": "local-seed"},
+                ),
+                DeploymentEnvironment(
+                    name="production",
+                    display_name="Production",
+                    repository=deployment_repository,
+                    github_environment="production",
+                    requires_approval=True,
+                    configuration={"source": "local-seed"},
+                ),
+            ]
+        )
         await db.commit()
 
         # Create Users

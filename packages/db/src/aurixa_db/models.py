@@ -2,7 +2,7 @@
 
 from .base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, JSON, ForeignKey, Text, Integer, Index
+from sqlalchemy import String, JSON, ForeignKey, Text, Integer, Index, UniqueConstraint, Boolean
 from typing import List, Dict, Any
 import datetime
 
@@ -172,3 +172,135 @@ class PlatformConfig(Base):
     key: Mapped[str] = mapped_column(String, unique=True, index=True)
     value: Mapped[str] = mapped_column(Text)
     category: Mapped[str] = mapped_column(String, default="general")  # general, rate_limit, feature, api
+
+
+class DeploymentEnvironment(Base):
+    """A named deployment target controlled by the deployment service."""
+    __tablename__ = "deployment_environments"
+
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(255))
+    repository: Mapped[str] = mapped_column(String(255))
+    github_environment: Mapped[str] = mapped_column(String(255))
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    configuration: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    releases: Mapped[List["DeploymentRelease"]] = relationship(back_populates="environment")
+
+
+class DeploymentRelease(Base):
+    """An immutable release candidate for one environment."""
+    __tablename__ = "deployment_releases"
+    __table_args__ = (
+        UniqueConstraint("environment_id", "idempotency_key", name="uq_deployment_release_idempotency"),
+    )
+
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
+    environment_id: Mapped[int] = mapped_column(ForeignKey("deployment_environments.id"))
+    version: Mapped[str] = mapped_column(String(255))
+    git_sha: Mapped[str] = mapped_column(String(64))
+    requested_by: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    idempotency_key: Mapped[str] = mapped_column(String(255))
+    request_fingerprint: Mapped[str] = mapped_column(String(64))
+    metadata_json: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    rollback_of_id: Mapped[int] = mapped_column(ForeignKey("deployment_releases.id"), nullable=True)
+
+    environment: Mapped["DeploymentEnvironment"] = relationship(back_populates="releases")
+    jobs: Mapped[List["DeploymentJob"]] = relationship(back_populates="release")
+
+
+class DeploymentJob(Base):
+    """Execution record for a release, cancel, or rollback request."""
+    __tablename__ = "deployment_jobs"
+
+    public_id: Mapped[str] = mapped_column(String(36), unique=True, index=True)
+    release_id: Mapped[int] = mapped_column(ForeignKey("deployment_releases.id"))
+    kind: Mapped[str] = mapped_column(String(32), default="deploy")
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    github_run_id: Mapped[str] = mapped_column(String(64), nullable=True, index=True)
+    workflow_ref: Mapped[str] = mapped_column(String(512), nullable=True)
+    cancel_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+    error_message: Mapped[str] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+
+    release: Mapped["DeploymentRelease"] = relationship(back_populates="jobs")
+    steps: Mapped[List["DeploymentStep"]] = relationship(back_populates="job")
+    approvals: Mapped[List["DeploymentApproval"]] = relationship(back_populates="job")
+    artifacts: Mapped[List["DeploymentArtifact"]] = relationship(back_populates="job")
+
+
+class DeploymentStep(Base):
+    """A workflow step reported by GitHub Actions."""
+    __tablename__ = "deployment_steps"
+    __table_args__ = (
+        UniqueConstraint("job_id", "name", "attempt", name="uq_deployment_step_attempt"),
+    )
+
+    job_id: Mapped[int] = mapped_column(ForeignKey("deployment_jobs.id"))
+    name: Mapped[str] = mapped_column(String(255))
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(String(32))
+    details: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+    started_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+    completed_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+
+    job: Mapped["DeploymentJob"] = relationship(back_populates="steps")
+
+
+class DeploymentApproval(Base):
+    """Approval decision associated with a deployment job."""
+    __tablename__ = "deployment_approvals"
+
+    job_id: Mapped[int] = mapped_column(ForeignKey("deployment_jobs.id"))
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    requested_by: Mapped[str] = mapped_column(String(255))
+    decided_by: Mapped[str] = mapped_column(String(255), nullable=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+
+    job: Mapped["DeploymentJob"] = relationship(back_populates="approvals")
+
+
+class DeploymentArtifact(Base):
+    """Artifact metadata reported by a trusted workflow."""
+    __tablename__ = "deployment_artifacts"
+
+    job_id: Mapped[int] = mapped_column(ForeignKey("deployment_jobs.id"))
+    name: Mapped[str] = mapped_column(String(255))
+    uri: Mapped[str] = mapped_column(Text)
+    digest: Mapped[str] = mapped_column(String(255), nullable=True)
+    media_type: Mapped[str] = mapped_column(String(255), nullable=True)
+    metadata_json: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    job: Mapped["DeploymentJob"] = relationship(back_populates="artifacts")
+
+
+class ServiceRevision(Base):
+    """Last known service revision in an environment."""
+    __tablename__ = "service_revisions"
+    __table_args__ = (
+        UniqueConstraint("environment_id", "service_name", name="uq_service_revision_environment"),
+    )
+
+    environment_id: Mapped[int] = mapped_column(ForeignKey("deployment_environments.id"))
+    release_id: Mapped[int] = mapped_column(ForeignKey("deployment_releases.id"))
+    service_name: Mapped[str] = mapped_column(String(255))
+    revision: Mapped[str] = mapped_column(String(255))
+    image_digest: Mapped[str] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    deployed_at: Mapped[datetime.datetime] = mapped_column(nullable=True)
+
+
+class DeploymentAudit(Base):
+    """Append-only deployment control-plane audit event."""
+    __tablename__ = "deployment_audit"
+
+    actor: Mapped[str] = mapped_column(String(255), index=True)
+    action: Mapped[str] = mapped_column(String(128), index=True)
+    resource_type: Mapped[str] = mapped_column(String(64))
+    resource_id: Mapped[str] = mapped_column(String(64), index=True)
+    request_id: Mapped[str] = mapped_column(String(128), nullable=True)
+    details: Mapped[Dict[str, Any]] = mapped_column(JSON, default=dict)

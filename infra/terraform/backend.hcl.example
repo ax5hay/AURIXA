@@ -1,0 +1,5 @@
+bucket         = "replace-with-globally-unique-state-bucket"
+key            = "aurixa/dev/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "aurixa-terraform-locks"
+encrypt        = true

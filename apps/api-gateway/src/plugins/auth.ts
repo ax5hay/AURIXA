@@ -5,21 +5,18 @@
  */
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import fp from "fastify-plugin";
+import type { TokenPayload } from "@aurixa/auth";
 
 export interface AuthPluginOptions {
   /** Route prefixes that skip auth (e.g. /health, /auth/login) */
   publicPrefixes?: string[];
 }
 
-export interface AuthenticatedUser {
-  sub: string;
-  tenantId: string;
-  roles: string[];
-}
+export type AuthenticatedUser = TokenPayload;
 
 declare module "fastify" {
   interface FastifyRequest {
-    user?: AuthenticatedUser;
+    user?: TokenPayload;
   }
 }
 

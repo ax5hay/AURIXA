@@ -48,6 +48,20 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
     depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - aurixa
+    restart: "no"
+
+  db-migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.db-migrate
+    env_file: ../../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+    depends_on:
       postgres:
         condition: service_healthy
     networks:
@@ -72,6 +86,7 @@ services:
       VOICE_HOST: streaming-voice
       EXECUTION_HOST: execution-engine
       OBSERVABILITY_HOST: observability-core
+      DEPLOYMENT_CONTROLLER_HOST: deployment-controller
     healthcheck:
       test:
         [
@@ -86,6 +101,8 @@ services:
       orchestration-engine:
         condition: service_healthy
       llm-router:
+        condition: service_healthy
+      deployment-controller:
         condition: service_healthy
     networks:
       - aurixa
@@ -117,8 +134,8 @@ services:
       retries: 3
       start_period: 30s
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
     networks:
       - aurixa
 
@@ -268,8 +285,8 @@ services:
       retries: 3
       start_period: 10s
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
     networks:
       - aurixa
 
@@ -295,6 +312,32 @@ services:
     networks:
       - aurixa
 
+  deployment-controller:
+    build:
+      context: ../..
+      dockerfile: apps/deployment-controller/Dockerfile
+    ports:
+      - "8009:8009"
+    env_file: ../../.env
+    environment:
+      DEPLOYMENT_CONTROLLER_PORT: 8009
+      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8009/health'')" || exit 1',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      db-seed:
+        condition: service_completed_successfully
+    networks:
+      - aurixa
+
   # ---------- Frontend ----------
   dashboard:
     build:
@@ -302,8 +345,14 @@ services:
       dockerfile: frontend/dashboard/Dockerfile
     ports:
       - "3100:3100"
+    env_file: ../../.env
     environment:
+      NODE_ENV: production
       NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+      DEPLOYMENT_GATEWAY_URL: http://api-gateway:3000/api/v1/admin/deployments
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     networks:
       - aurixa
 

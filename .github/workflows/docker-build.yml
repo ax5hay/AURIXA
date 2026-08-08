@@ -2,21 +2,16 @@ name: Docker Build
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [develop]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: docker-build-${{ github.ref }}
+  group: docker-build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  REGISTRY: ghcr.io
-  GITHUB_OWNER: ${{ github.repository_owner }}
 
 jobs:
   build-matrix:
@@ -25,7 +20,7 @@ jobs:
       services: ${{ steps.set-matrix.outputs.services }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - id: set-matrix
         name: Generate service matrix
         run: |
@@ -38,21 +33,22 @@ jobs:
             {"name": "safety-guardrails", "path": "apps/safety-guardrails"},
             {"name": "streaming-voice", "path": "apps/streaming-voice"},
             {"name": "execution-engine", "path": "apps/execution-engine"},
-            {"name": "observability-core", "path": "apps/observability-core"}
+            {"name": "observability-core", "path": "apps/observability-core"},
+            {"name": "deployment-controller", "path": "apps/deployment-controller"},
+            {"name": "dashboard", "path": "frontend/dashboard"},
+            {"name": "patient-portal", "path": "frontend/patient-portal"},
+            {"name": "hospital-portal", "path": "frontend/hospital-portal"}
           ]')
-          echo "services=$services" >> $GITHUB_OUTPUT
+          echo "services=$services" >> "$GITHUB_OUTPUT"
 
   build:
     needs: build-matrix
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     strategy:
       matrix:
         service: ${{ fromJson(needs.build-matrix.outputs.services) }}
       fail-fast: false
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,41 +57,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
-        if: github.event_name == 'push'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.GITHUB_OWNER }}/aurixa-${{ matrix.service.name }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: build
         with:
           context: .
           file: ${{ matrix.service.path }}/Dockerfile
           push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: aurixa/${{ matrix.service.name }}:ci-${{ github.sha }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=min
-          load: false
 
       - name: Image digest
-        run: echo "Built image with digest: ${{ steps.build.outputs.digest }}"
+        run: echo "Built image with digest ${{ steps.build.outputs.digest }}"
 
   build-status:
     if: always()
@@ -104,8 +80,8 @@ jobs:
     steps:
       - name: Check build status
         run: |
-          if [ "${{ needs.build.result }}" == "failure" ]; then
-            echo "Docker build failed"
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "One or more Docker builds did not succeed."
             exit 1
           fi
-          echo "All Docker images built successfully"
+          echo "All Docker images built successfully."

@@ -1,0 +1,219 @@
+name: Production Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Helm revision to restore
+        required: true
+        type: number
+      deployment_id:
+        description: Deployment controller identifier
+        required: true
+        type: string
+      reason:
+        description: Reason for rollback
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      CONTROLLER_AUDIENCE: ${{ vars.DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE }}
+      CONTROLLER_URL: ${{ vars.DEPLOYMENT_CONTROLLER_URL }}
+      DEPLOYMENT_ID: ${{ inputs.deployment_id }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+      HELM_RELEASE: ${{ vars.HELM_RELEASE }}
+      KUBE_NAMESPACE: ${{ vars.KUBE_NAMESPACE }}
+      REVISION: ${{ inputs.revision }}
+      SMOKE_URL: ${{ vars.SMOKE_URL }}
+    steps:
+      - name: Install controller callback client
+        run: |
+          cat > "$RUNNER_TEMP/controller-callback" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          event="$1"
+          step_name="${2:-}"
+          details="${3:-{}}"
+          error_message="${4:-}"
+          services="${5:-{}}"
+          oidc_token=$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${CONTROLLER_AUDIENCE}" | jq -r .value)
+          jq -n \
+            --arg job_id "$DEPLOYMENT_ID" \
+            --arg event "$event" \
+            --arg github_run_id "$GITHUB_RUN_ID" \
+            --arg step_name "$step_name" \
+            --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+            --argjson details "$details" \
+            --arg error_message "$error_message" \
+            --argjson services "$services" \
+            '{
+              job_id: $job_id,
+              event: $event,
+              github_run_id: $github_run_id,
+              attempt: $attempt,
+              details: $details,
+              services: $services
+            }
+            + if $step_name == "" then {} else {step_name: $step_name} end
+            + if $error_message == "" then {} else {error_message: $error_message} end' \
+            > "$RUNNER_TEMP/controller-callback.json"
+          curl --fail-with-body --retry 3 \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" \
+            --data @"$RUNNER_TEMP/controller-callback.json" \
+            "${CONTROLLER_URL%/}/api/v1/callbacks/github-actions"
+          EOF
+          chmod +x "$RUNNER_TEMP/controller-callback"
+
+      - name: Report rollback started
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          details=$(jq -n --arg revision "$REVISION" --arg reason "$REASON" \
+            '{revision: $revision, reason: $reason}')
+          "$RUNNER_TEMP/controller-callback" job_started "" "$details"
+          "$RUNNER_TEMP/controller-callback" step_started rollback "$details"
+
+      - name: Validate rollback request
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          required=(AWS_REGION CONTROLLER_AUDIENCE CONTROLLER_URL EKS_CLUSTER_NAME
+            HELM_RELEASE KUBE_NAMESPACE REVISION SMOKE_URL REASON)
+          for name in "${required[@]}"; do
+            [[ -n "${!name}" ]] || {
+              echo "::error::Required value $name is not configured."
+              exit 1
+            }
+          done
+          [[ "$DEPLOYMENT_ID" =~ ^[A-Za-z0-9._-]+$ ]] || {
+            echo "::error::deployment_id contains unsupported characters."
+            exit 1
+          }
+          [[ "$REVISION" =~ ^[1-9][0-9]*$ ]] || {
+            echo "::error::revision must be a positive Helm revision."
+            exit 1
+          }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure cluster access
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Roll back and verify
+        id: rollback
+        continue-on-error: true
+        run: |
+          helm rollback "$HELM_RELEASE" "$REVISION" \
+            --namespace "$KUBE_NAMESPACE" \
+            --wait \
+            --timeout 15m
+
+          mapfile -t deployments < <(
+            kubectl get deployments \
+              --namespace "$KUBE_NAMESPACE" \
+              --selector "app.kubernetes.io/instance=$HELM_RELEASE" \
+              --output name
+          )
+          [[ ${#deployments[@]} -gt 0 ]] || {
+            echo "::error::The release owns no Kubernetes Deployments."
+            exit 1
+          }
+          for deployment in "${deployments[@]}"; do
+            kubectl rollout status "$deployment" \
+              --namespace "$KUBE_NAMESPACE" \
+              --timeout=10m
+          done
+          helm test "$HELM_RELEASE" \
+            --namespace "$KUBE_NAMESPACE" \
+            --timeout 5m
+          curl --fail-with-body --retry 5 --retry-all-errors \
+            --max-time 30 "$SMOKE_URL"
+
+      - name: Collect rollback diagnostics
+        if: steps.rollback.outcome != 'success'
+        run: |
+          mkdir -p diagnostics
+          kubectl get all,events \
+            --namespace "$KUBE_NAMESPACE" \
+            --output wide > diagnostics/resources-and-events.txt 2>&1 || true
+          kubectl describe pods \
+            --namespace "$KUBE_NAMESPACE" > diagnostics/pods.txt 2>&1 || true
+          kubectl logs \
+            --namespace "$KUBE_NAMESPACE" \
+            --selector "app.kubernetes.io/instance=$HELM_RELEASE" \
+            --all-containers \
+            --prefix \
+            --tail=500 > diagnostics/logs.txt 2>&1 || true
+          helm history "$HELM_RELEASE" \
+            --namespace "$KUBE_NAMESPACE" \
+            --output yaml > diagnostics/helm-history.yaml 2>&1 || true
+
+      - name: Upload rollback diagnostics
+        if: steps.rollback.outcome != 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-diagnostics-${{ inputs.deployment_id }}
+          path: diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Report rollback status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          REASON: ${{ inputs.reason }}
+          ROLLBACK_OUTCOME: ${{ steps.rollback.outcome }}
+        run: |
+          details=$(jq -n --arg revision "$REVISION" --arg reason "$REASON" \
+            '{revision: $revision, reason: $reason}')
+          if [[ "$JOB_STATUS" == "cancelled" ]]; then
+            "$RUNNER_TEMP/controller-callback" job_cancelled "" "$details" \
+              "Rollback run was cancelled."
+          elif [[ "$ROLLBACK_OUTCOME" == "success" ]]; then
+            "$RUNNER_TEMP/controller-callback" step_succeeded rollback "$details"
+            revisions=$(kubectl get deployments \
+              --namespace "$KUBE_NAMESPACE" \
+              --selector "app.kubernetes.io/instance=$HELM_RELEASE" \
+              --output json |
+              jq -c 'reduce .items[] as $item ({};
+                . + {($item.metadata.labels["app.kubernetes.io/name"]):
+                  $item.spec.template.spec.containers[0].image})')
+            "$RUNNER_TEMP/controller-callback" job_succeeded "" "$details" "" "$revisions"
+          else
+            "$RUNNER_TEMP/controller-callback" step_failed rollback "$details" \
+              "Rollback or post-rollback verification failed."
+            "$RUNNER_TEMP/controller-callback" job_failed "" "$details" \
+              "Rollback or post-rollback verification failed."
+          fi
+
+      - name: Enforce rollback result
+        if: steps.rollback.outcome != 'success'
+        run: |
+          echo "::error::Rollback failed; diagnostics were collected."
+          exit 1

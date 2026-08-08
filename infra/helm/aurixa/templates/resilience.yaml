@@ -1,0 +1,41 @@
+{{- range $name, $service := .Values.services }}
+{{- if ne $service.enabled false }}
+{{- $autoscaling := $service.autoscaling | default $.Values.defaults.autoscaling }}
+{{- if $autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "aurixa.serviceLabels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "aurixa.fullname" (dict "root" $ "name" $name) }}
+  minReplicas: {{ $autoscaling.minReplicas }}
+  maxReplicas: {{ $autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: {{ $autoscaling.targetCPUUtilizationPercentage }}}
+{{- end }}
+{{- $pdb := $service.pdb | default $.Values.defaults.pdb }}
+{{- if $pdb.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "aurixa.fullname" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "aurixa.serviceLabels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  minAvailable: {{ $pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "aurixa.selectorLabels" (dict "root" $ "name" $name) | nindent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -12,7 +12,14 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:seed": "cd packages/db && python seed.py"
+    "db:seed": "cd packages/db && python seed.py",
+    "deploy": "node scripts/deploy.js",
+    "deploy:validate": "node scripts/deploy.js validate",
+    "deploy:build": "node scripts/deploy.js build",
+    "deploy:verify": "node scripts/deploy.js verify",
+    "deploy:up": "node scripts/deploy.js up",
+    "deploy:down": "node scripts/deploy.js down",
+    "deploy:status": "node scripts/deploy.js status"
   },
   "devDependencies": {
     "prettier": "^3.5.0",

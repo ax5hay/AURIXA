@@ -1,0 +1,10 @@
+apiVersion: v2
+name: aurixa
+description: Umbrella deployment chart for the Aurixa platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+annotations:
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial control-plane managed release

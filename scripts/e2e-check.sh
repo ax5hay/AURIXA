@@ -54,6 +54,24 @@ curl -sf "$GATEWAY/api/v1/observe/reports/performance" > /dev/null && pass "GET 
 # Voice service health (direct)
 curl -sf "http://localhost:8006/health" > /dev/null && pass "Voice service GET /health" || warn "Voice service GET /health (voice may be down)"
 
+# Deployment controller and protected control-plane API
+curl -sf "http://localhost:8009/health" > /dev/null && pass "Deployment controller GET /health" || warn "Deployment controller GET /health (controller may be down)"
+if [ -n "${DEPLOYMENT_ADMIN_TOKEN:-}" ]; then
+  curl -sf \
+    -H "Authorization: Bearer $DEPLOYMENT_ADMIN_TOKEN" \
+    "$GATEWAY/api/v1/admin/deployments" > /dev/null \
+    && pass "GET /api/v1/admin/deployments (authorized)" \
+    || fail "GET /api/v1/admin/deployments (authorized)"
+else
+  DEPLOYMENT_UNAUTH_CODE=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/deployments")
+  if [ "$DEPLOYMENT_UNAUTH_CODE" = "401" ]; then
+    pass "GET /api/v1/admin/deployments rejects unauthenticated access"
+  else
+    fail "GET /api/v1/admin/deployments expected 401, received $DEPLOYMENT_UNAUTH_CODE"
+  fi
+  warn "Set DEPLOYMENT_ADMIN_TOKEN to exercise the authorized deployment overview"
+fi
+
 # Pipeline (orchestration) - allow 90s for LLM response
 curl -sf --max-time 90 -X POST "$GATEWAY/api/v1/orchestration/pipelines" -H "Content-Type: application/json" -d '{"prompt":"Hi"}' > /dev/null && pass "POST /api/v1/orchestration/pipelines" || warn "POST /api/v1/orchestration/pipelines (pipeline/LLM may be down)"
 

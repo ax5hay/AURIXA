@@ -1,134 +1,333 @@
-name: Docker Build & Push
+name: Image Build & Publish
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish images to ECR
+        required: true
+        type: boolean
+        default: true
+      mirror_ghcr:
+        description: Mirror published images to GHCR
+        required: true
+        type: boolean
+        default: false
+      commit_sha:
+        description: Commit SHA to build (defaults to the triggering SHA)
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      publish:
+        description: Publish images to ECR
+        required: false
+        type: boolean
+        default: false
+      mirror_ghcr:
+        description: Mirror published images to GHCR
+        required: false
+        type: boolean
+        default: false
+      commit_sha:
+        description: Commit SHA to build
+        required: false
+        type: string
+
+permissions:
+  contents: read
 
 concurrency:
-  group: docker-push-${{ github.ref }}
+  group: image-publish-${{ github.ref }}-${{ inputs.commit_sha || github.sha }}
   cancel-in-progress: false
 
-env:
-  REGISTRY: ghcr.io
-  DOCKER_HUB_REGISTRY: docker.io
-  GITHUB_OWNER: ${{ github.repository_owner }}
-
 jobs:
-  build-and-push:
+  build-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write
     strategy:
+      fail-fast: false
       matrix:
         service:
-          - { name: "api-gateway", path: "apps/api-gateway", type: "typescript" }
-          - { name: "orchestration-engine", path: "apps/orchestration-engine", type: "python" }
-          - { name: "llm-router", path: "apps/llm-router", type: "python" }
-          - { name: "agent-runtime", path: "apps/agent-runtime", type: "python" }
-          - { name: "rag-service", path: "apps/rag-service", type: "python" }
-          - { name: "safety-guardrails", path: "apps/safety-guardrails", type: "python" }
-          - { name: "streaming-voice", path: "apps/streaming-voice", type: "python" }
-          - { name: "execution-engine", path: "apps/execution-engine", type: "python" }
-          - { name: "observability-core", path: "apps/observability-core", type: "python" }
-      fail-fast: false
-
+          - {name: api-gateway, path: apps/api-gateway}
+          - {name: orchestration-engine, path: apps/orchestration-engine}
+          - {name: llm-router, path: apps/llm-router}
+          - {name: agent-runtime, path: apps/agent-runtime}
+          - {name: rag-service, path: apps/rag-service}
+          - {name: safety-guardrails, path: apps/safety-guardrails}
+          - {name: streaming-voice, path: apps/streaming-voice}
+          - {name: execution-engine, path: apps/execution-engine}
+          - {name: observability-core, path: apps/observability-core}
+          - {name: dashboard, path: frontend/dashboard}
+          - {name: patient-portal, path: frontend/patient-portal}
+          - {name: hospital-portal, path: frontend/hospital-portal}
+          - {name: deployment-controller, path: apps/deployment-controller}
+          - {name: db-migrations, path: infra/docker, dockerfile: infra/docker/Dockerfile.db-migrate}
+    env:
+      SOURCE_SHA: ${{ inputs.commit_sha || github.sha }}
+      SHOULD_PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY_PREFIX }}/${{ matrix.service.name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: ${{ env.SOURCE_SHA }}
 
-      - name: Determine version
-        id: version
+      - name: Validate service source
+        id: source
+        env:
+          DOCKERFILE: ${{ matrix.service.dockerfile || format('{0}/Dockerfile', matrix.service.path) }}
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          else
-            VERSION=latest
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::commit_sha must resolve to a full lowercase Git SHA."
+            exit 1
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          if [[ -f "$DOCKERFILE" ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Missing Dockerfile $DOCKERFILE for ${{ matrix.service.name }}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.source.outputs.exists == 'true' && env.SHOULD_PUBLISH == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        if: steps.source.outputs.exists == 'true' && env.SHOULD_PUBLISH == 'true'
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify immutable ECR repository
+        if: steps.source.outputs.exists == 'true' && env.SHOULD_PUBLISH == 'true'
+        run: |
+          mutability=$(aws ecr describe-repositories \
+            --repository-names "$ECR_REPOSITORY" \
+            --query 'repositories[0].imageTagMutability' \
+            --output text)
+          if [[ "$mutability" != "IMMUTABLE" ]]; then
+            echo "::error::ECR repository $ECR_REPOSITORY must use immutable tags."
+            exit 1
+          fi
+
+      - name: Set image reference
+        if: steps.source.outputs.exists == 'true'
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          tag="sha-${SOURCE_SHA}"
+          if [[ "$SHOULD_PUBLISH" == "true" ]]; then
+            image="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+          else
+            image="aurixa/${{ matrix.service.name }}"
+          fi
+          {
+            echo "name=$image"
+            echo "tag=$tag"
+            echo "reference=$image:$tag"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
+        if: steps.source.outputs.exists == 'true'
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        if: github.event_name == 'push' && (secrets.DOCKERHUB_USERNAME != null && secrets.DOCKERHUB_USERNAME != '')
-        continue-on-error: true
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.DOCKER_HUB_REGISTRY }}
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.GITHUB_OWNER }}/aurixa-${{ matrix.service.name }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=${{ steps.version.outputs.version }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - name: Build and publish image
+        if: steps.source.outputs.exists == 'true'
+        id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.service.path }}/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            VCS_REF=${{ steps.version.outputs.short_sha }}
-            VERSION=${{ steps.version.outputs.version }}
+          file: ${{ matrix.service.dockerfile || format('{0}/Dockerfile', matrix.service.path) }}
+          push: ${{ env.SHOULD_PUBLISH == 'true' }}
+          tags: ${{ steps.image.outputs.reference }}
+          labels: |
+            org.opencontainers.image.revision=${{ env.SOURCE_SHA }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  create-release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-and-push
+      - name: Scan published image
+        if: steps.source.outputs.exists == 'true' && env.SHOULD_PUBLISH == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.image.outputs.reference }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Write image manifest entry
+        if: always()
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          EXISTS: ${{ steps.source.outputs.exists }}
+          IMAGE: ${{ steps.image.outputs.name }}
+          TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          mkdir -p manifest
+          status="published"
+          [[ "$SHOULD_PUBLISH" == "true" ]] || status="built"
+          jq -n \
+            --arg service "${{ matrix.service.name }}" \
+            --arg image "$IMAGE" \
+            --arg tag "$TAG" \
+            --arg digest "$DIGEST" \
+            --arg source_sha "$SOURCE_SHA" \
+            --arg status "$status" \
+            '{service: $service, image: $image, tag: $tag, digest: $digest,
+              source_sha: $source_sha, status: $status}' \
+            > "manifest/${{ matrix.service.name }}.json"
+
+      - name: Upload manifest entry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-manifest-${{ matrix.service.name }}
+          path: manifest/${{ matrix.service.name }}.json
+          if-no-files-found: error
+          retention-days: 30
+
+  manifest:
+    if: always()
+    needs: build-and-publish
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Download image entries
+        uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ github.ref }}
-          name: Release ${{ github.ref }}
-          body: |
-            Docker images for all services have been built and pushed.
+          pattern: image-manifest-*
+          path: entries
+          merge-multiple: true
 
-            Available at:
-            - GitHub Container Registry: `ghcr.io/${{ github.repository_owner }}/aurixa-*:${{ github.ref }}`
+      - name: Assemble digest manifest
+        run: jq -s 'sort_by(.service)' entries/*.json > image-manifest.json
 
-            Services:
-            - api-gateway
-            - orchestration-engine
-            - llm-router
-            - agent-runtime
-            - rag-service
-            - safety-guardrails
-            - streaming-voice
-            - execution-engine
-            - observability-core
-          draft: false
-          prerelease: false
+      - name: Upload digest manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-manifest
+          path: image-manifest.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce build result
+        run: |
+          if [[ "${{ needs.build-and-publish.result }}" != "success" ]]; then
+            echo "::error::One or more image builds, scans, or publications failed."
+            exit 1
+          fi
+
+      - name: Validate automatic promotion configuration
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOYMENT_CONTROLLER_URL: ${{ vars.DEPLOYMENT_CONTROLLER_URL }}
+          DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE: ${{ vars.DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE }}
+        run: |
+          missing=()
+          [[ -n "$DEPLOYMENT_CONTROLLER_URL" ]] || missing+=("DEPLOYMENT_CONTROLLER_URL")
+          [[ -n "$DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE" ]] ||
+            missing+=("DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE")
+          if (( ${#missing[@]} )); then
+            echo "::error::Automatic staging promotion requires: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Promote published images to staging
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DEPLOYMENT_CONTROLLER_URL: ${{ vars.DEPLOYMENT_CONTROLLER_URL }}
+          DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE: ${{ vars.DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE }}
+          GIT_SHA: ${{ github.sha }}
+          ARTIFACT_RUN_ID: ${{ github.run_id }}
+        run: |
+          audience=$(jq -rn \
+            --arg audience "$DEPLOYMENT_CONTROLLER_OIDC_AUDIENCE" \
+            '$audience | @uri')
+          oidc_token=$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${audience}" |
+            jq -er '.value')
+          echo "::add-mask::$oidc_token"
+
+          payload=$(jq -n \
+            --arg environment "staging" \
+            --arg version "sha-${GIT_SHA}" \
+            --arg git_sha "$GIT_SHA" \
+            --arg artifact_run_id "$ARTIFACT_RUN_ID" \
+            --arg services "all" \
+            --arg strategy "rolling" \
+            '{
+              environment: $environment,
+              version: $version,
+              git_sha: $git_sha,
+              artifact_run_id: $artifact_run_id,
+              services: $services,
+              strategy: $strategy
+            }')
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" \
+            --data "$payload" \
+            "${DEPLOYMENT_CONTROLLER_URL%/}/api/v1/callbacks/github-actions/promote"
+
+  mirror-ghcr:
+    if: >-
+      needs.manifest.result == 'success' &&
+      (github.event_name == 'push' || inputs.publish) &&
+      (inputs.mirror_ghcr || vars.MIRROR_GHCR == 'true')
+    needs: manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_IMAGE_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+
+      - name: Download digest manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: image-manifest
+
+      - name: Mirror immutable images
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          owner=$(tr '[:upper:]' '[:lower:]' <<< "$OWNER")
+          jq -c '.[] | select(.status == "published")' image-manifest.json |
+            while read -r entry; do
+              service=$(jq -r .service <<< "$entry")
+              source=$(jq -r '"\(.image)@\(.digest)"' <<< "$entry")
+              tag=$(jq -r .tag <<< "$entry")
+              crane copy "$source" "ghcr.io/${owner}/aurixa-${service}:${tag}"
+            done

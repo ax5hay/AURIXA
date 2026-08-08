@@ -1,0 +1,26 @@
+global:
+  environment: staging
+  ingress:
+    enabled: true
+    routes:
+      api: { host: api.staging.aurixa.example }
+      dashboard: { host: dashboard.staging.aurixa.example }
+      patient: { host: patient.staging.aurixa.example }
+      hospital: { host: hospital.staging.aurixa.example }
+  frontend:
+    apiGatewayUrl: https://api.staging.aurixa.example
+  externalSecrets:
+    enabled: true
+    remoteSecretKey: aurixa/staging/application
+  networkPolicy:
+    ingressCidrs: ["10.20.0.0/16"]
+    egressPrivateCidrs: ["10.20.0.0/16"]
+defaults:
+  replicas: 2
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 65
+migration:
+  enabled: true

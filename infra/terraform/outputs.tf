@@ -1,5 +1,5 @@
 output "vpc_id" {
-  value = module.vpc.vpc_id
+  value = module.network.vpc_id
 }
 
 output "eks_cluster_name" {
@@ -11,10 +11,19 @@ output "eks_cluster_endpoint" {
 }
 
 output "rds_endpoint" {
-  value     = module.rds.db_instance_endpoint
+  value     = module.rds.endpoint
   sensitive = true
 }
 
 output "redis_endpoint" {
-  value = aws_elasticache_cluster.redis.cache_nodes[0].address
+  value     = module.elasticache.endpoint
+  sensitive = true
+}
+
+output "ecr_repository_urls" {
+  value = module.ecr.repository_urls
+}
+
+output "external_secrets_role_arn" {
+  value = module.platform.external_secrets_role_arn
 }

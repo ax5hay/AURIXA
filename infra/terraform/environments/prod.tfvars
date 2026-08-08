@@ -1,0 +1,11 @@
+environment                 = "prod"
+region                      = "us-east-1"
+vpc_cidr                    = "10.30.0.0/16"
+cluster_public_access_cidrs = ["203.0.113.0/24"] # Replace with the CI/VPN egress CIDR.
+node_instance_types         = ["m6i.xlarge"]
+min_nodes                   = 3
+desired_nodes               = 4
+max_nodes                   = 20
+db_instance_class           = "db.r6g.large"
+redis_node_type             = "cache.r6g.large"
+secrets_manager_arns        = []

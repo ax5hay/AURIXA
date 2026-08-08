@@ -21,6 +21,7 @@ export const SERVICE_REGISTRY: Record<string, ServiceEndpoint> = {
   voice: svc("VOICE", 8006),
   execution: svc("EXECUTION", 8007),
   observability: svc("OBSERVABILITY", 8008),
+  "deployment-controller": svc("DEPLOYMENT_CONTROLLER", 8009),
 };
 
 export function getServiceUrl(name: string): string {
