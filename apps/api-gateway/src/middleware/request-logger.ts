@@ -10,7 +10,7 @@ export function requestLogger(app: FastifyInstance) {
         tenantId: req.headers["x-tenant-id"],
         userAgent: req.headers["user-agent"],
       },
-      "incoming request"
+      "incoming request",
     );
     done();
   });
@@ -24,7 +24,7 @@ export function requestLogger(app: FastifyInstance) {
         requestId: req.id,
         responseTimeMs: Math.round(reply.elapsedTime),
       },
-      "request completed"
+      "request completed",
     );
     done();
   });

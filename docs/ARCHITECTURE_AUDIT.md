@@ -4,17 +4,17 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 ## Summary
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| Channel Layer | Partial | Voice, Webchat; SMS/WhatsApp/Mobile SDK/IVR not implemented |
-| Streaming Layer | Partial | Text WebSocket; no streaming ASR, duplex, interrupt handling |
-| Conversation Intelligence | Partial | LLM routing + keyword rules; no hybrid NLU, semantic routing |
-| Agent Orchestration | Partial | Agent runtime with tool calls; no LangGraph/CrewAI planners |
-| Knowledge (RAG) | Implemented | Vector + keyword boost, FAISS, DB fallback |
-| Clinical/Compliance Safety | Implemented | Banned words, PII detection + redaction |
-| Execution Layer | Partial | send_email, schedule_reminder, log_audit; no EHR/billing/insurance |
-| Observability | Partial | Mock telemetry, performance reports; no AI metrics |
-| Infrastructure | Partial | Microservices; no GPU/vLLM, K8s scaling, WebRTC |
+| Layer                      | Status      | Notes                                                              |
+| -------------------------- | ----------- | ------------------------------------------------------------------ |
+| Channel Layer              | Partial     | Voice, Webchat; SMS/WhatsApp/Mobile SDK/IVR not implemented        |
+| Streaming Layer            | Partial     | Text WebSocket; no streaming ASR, duplex, interrupt handling       |
+| Conversation Intelligence  | Partial     | LLM routing + keyword rules; no hybrid NLU, semantic routing       |
+| Agent Orchestration        | Partial     | Agent runtime with tool calls; no LangGraph/CrewAI planners        |
+| Knowledge (RAG)            | Implemented | Vector + keyword boost, FAISS, DB fallback                         |
+| Clinical/Compliance Safety | Implemented | Banned words, PII detection + redaction                            |
+| Execution Layer            | Partial     | send_email, schedule_reminder, log_audit; no EHR/billing/insurance |
+| Observability              | Partial     | Mock telemetry, performance reports; no AI metrics                 |
+| Infrastructure             | Partial     | Microservices; no GPU/vLLM, K8s scaling, WebRTC                    |
 
 ---
 
@@ -22,14 +22,14 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR fallback
 
-| Channel | Status | Location |
-|---------|--------|----------|
-| Voice | ✅ Implemented | `streaming-voice` WebSocket `/ws/stream` |
-| Webchat | ✅ Implemented | Patient portal chat, Playground |
-| SMS | ❌ Not implemented | — |
-| WhatsApp | ❌ Not implemented | — |
-| Mobile SDK | ❌ Not implemented | — |
-| Smart IVR fallback | ❌ Not implemented | — |
+| Channel            | Status             | Location                                 |
+| ------------------ | ------------------ | ---------------------------------------- |
+| Voice              | ✅ Implemented     | `streaming-voice` WebSocket `/ws/stream` |
+| Webchat            | ✅ Implemented     | Patient portal chat, Playground          |
+| SMS                | ❌ Not implemented | —                                        |
+| WhatsApp           | ❌ Not implemented | —                                        |
+| Mobile SDK         | ❌ Not implemented | —                                        |
+| Smart IVR fallback | ❌ Not implemented | —                                        |
 
 ---
 
@@ -37,13 +37,13 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Streaming ASR, partial transcripts, early intent, duplex, interrupt handling (<800ms)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Real-time audio ingestion | ✅ | Voice accepts base64 audio |
-| Streaming ASR (Deepgram) | ✅ Partial | When DEEPGRAM_API_KEY set |
-| Duplex audio | ❌ | Response is text only |
-| Interrupt handling | ❌ | — |
-| Latency target (<800ms) | ❌ | Pipeline is request-response |
+| Feature                   | Status     | Notes                        |
+| ------------------------- | ---------- | ---------------------------- |
+| Real-time audio ingestion | ✅         | Voice accepts base64 audio   |
+| Streaming ASR (Deepgram)  | ✅ Partial | When DEEPGRAM_API_KEY set    |
+| Duplex audio              | ❌         | Response is text only        |
+| Interrupt handling        | ❌         | —                            |
+| Latency target (<800ms)   | ❌         | Pipeline is request-response |
 
 ---
 
@@ -51,14 +51,14 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Intent classifier, embedding similarity, context reasoning, semantic routing, confidence scoring
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| Intent classifier | ✅ Partial | LLM Router keyword rules |
-| LLM fallback | ✅ | LLM Router with LOCAL/cloud fallback |
-| Semantic routing | ✅ | RAG /embed + cosine similarity to intent embeddings |
-| Context reasoning | ❌ | No conversation history in route |
-| Confidence scoring | ✅ | RouteResponse.confidence from semantic match |
-| Cost reduction (intent-based) | ✅ Partial | Keyword routing avoids LLM for simple cases |
+| Feature                       | Status     | Location                                            |
+| ----------------------------- | ---------- | --------------------------------------------------- |
+| Intent classifier             | ✅ Partial | LLM Router keyword rules                            |
+| LLM fallback                  | ✅         | LLM Router with LOCAL/cloud fallback                |
+| Semantic routing              | ✅         | RAG /embed + cosine similarity to intent embeddings |
+| Context reasoning             | ❌         | No conversation history in route                    |
+| Confidence scoring            | ✅         | RouteResponse.confidence from semantic match        |
+| Cost reduction (intent-based) | ✅ Partial | Keyword routing avoids LLM for simple cases         |
 
 ---
 
@@ -66,14 +66,14 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Tool-using agents, multi-step workflows, LangGraph/CrewAI/Semantic Kernel
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| Tool calling LLMs | ✅ Partial | Agent runtime TOOL_REGISTRY |
-| RAG tool integration | ✅ | `search_knowledge_base` calls RAG |
-| Pipeline integration | ✅ | Orchestration calls agent when prompt suggests tool use |
-| Function execution chains | ❌ | Single-tool dispatch only |
-| Agent planners | ❌ | No LangGraph/CrewAI |
-| Multi-step state machine | ❌ | — |
+| Feature                   | Status     | Location                                                |
+| ------------------------- | ---------- | ------------------------------------------------------- |
+| Tool calling LLMs         | ✅ Partial | Agent runtime TOOL_REGISTRY                             |
+| RAG tool integration      | ✅         | `search_knowledge_base` calls RAG                       |
+| Pipeline integration      | ✅         | Orchestration calls agent when prompt suggests tool use |
+| Function execution chains | ❌         | Single-tool dispatch only                               |
+| Agent planners            | ❌         | No LangGraph/CrewAI                                     |
+| Multi-step state machine  | ❌         | —                                                       |
 
 ---
 
@@ -81,15 +81,15 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Hybrid retrieval (BM25 + vector), domain rerankers, context injection
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| Vector search | ✅ | FAISS + sentence-transformers |
-| Keyword boost | ✅ | `apps/rag-service` relevance scoring |
-| BM25 hybrid | ✅ | rank-bm25 + Reciprocal Rank Fusion |
-| Embed API | ✅ | POST `/api/v1/embed` for semantic routing |
-| Medical/domain rerankers | ❌ | — |
-| Chunk lineage | ❌ | — |
-| DB + fallback docs | ✅ | `documents.py` |
+| Feature                  | Status | Location                                  |
+| ------------------------ | ------ | ----------------------------------------- |
+| Vector search            | ✅     | FAISS + sentence-transformers             |
+| Keyword boost            | ✅     | `apps/rag-service` relevance scoring      |
+| BM25 hybrid              | ✅     | rank-bm25 + Reciprocal Rank Fusion        |
+| Embed API                | ✅     | POST `/api/v1/embed` for semantic routing |
+| Medical/domain rerankers | ❌     | —                                         |
+| Chunk lineage            | ❌     | —                                         |
+| DB + fallback docs       | ✅     | `documents.py`                            |
 
 ---
 
@@ -97,14 +97,14 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Risk classifiers, response validators, emergency detection, PHI leakage
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| Banned words | ✅ | `safety-guardrails` configurable |
-| PII detection | ✅ | SSN, email, phone, credit card |
-| PII redaction | ✅ | Pattern substitution |
-| Emergency symptoms | ✅ | `SAFETY_EMERGENCY_KEYWORDS` env; chest pain, stroke, etc. |
-| Unsafe advice detection | ❌ | — |
-| Escalation triggers | ✅ | `requires_escalation` in ValidateResponse |
+| Feature                 | Status | Location                                                  |
+| ----------------------- | ------ | --------------------------------------------------------- |
+| Banned words            | ✅     | `safety-guardrails` configurable                          |
+| PII detection           | ✅     | SSN, email, phone, credit card                            |
+| PII redaction           | ✅     | Pattern substitution                                      |
+| Emergency symptoms      | ✅     | `SAFETY_EMERGENCY_KEYWORDS` env; chest pain, stroke, etc. |
+| Unsafe advice detection | ❌     | —                                                         |
+| Escalation triggers     | ✅     | `requires_escalation` in ValidateResponse                 |
 
 ---
 
@@ -112,15 +112,15 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** EHR, billing, scheduling, insurance verification, prescriptions
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| send_email | ✅ | `execution-engine` |
-| schedule_reminder | ✅ | — |
-| log_audit | ✅ | — |
-| get_appointments, create_appointment | ✅ Stub | Execution + agent wiring |
-| check_insurance, get_availability | ✅ Stub | — |
-| request_prescription_refill | ✅ Stub | — |
-| EHR integration | Stub | Scaffolding for real APIs |
+| Feature                              | Status  | Location                  |
+| ------------------------------------ | ------- | ------------------------- |
+| send_email                           | ✅      | `execution-engine`        |
+| schedule_reminder                    | ✅      | —                         |
+| log_audit                            | ✅      | —                         |
+| get_appointments, create_appointment | ✅ Stub | Execution + agent wiring  |
+| check_insurance, get_availability    | ✅ Stub | —                         |
+| request_prescription_refill          | ✅ Stub | —                         |
+| EHR integration                      | Stub    | Scaffolding for real APIs |
 
 ---
 
@@ -128,14 +128,14 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** Intent accuracy, hallucination rate, retrieval precision, voice metrics (silence, talk ratio)
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| Performance reports | ✅ | `observability-core` |
-| Conversation telemetry | ✅ | Orchestration stores steps |
-| Live pipeline telemetry | ✅ | Orchestration emits pipeline_step to observability |
-| Intent accuracy | ❌ | Not tracked |
-| Voice metrics | ❌ | — |
-| Retrieval precision | ❌ | — |
+| Feature                 | Status | Location                                           |
+| ----------------------- | ------ | -------------------------------------------------- |
+| Performance reports     | ✅     | `observability-core`                               |
+| Conversation telemetry  | ✅     | Orchestration stores steps                         |
+| Live pipeline telemetry | ✅     | Orchestration emits pipeline_step to observability |
+| Intent accuracy         | ❌     | Not tracked                                        |
+| Voice metrics           | ❌     | —                                                  |
+| Retrieval precision     | ❌     | —                                                  |
 
 ---
 
@@ -143,13 +143,13 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** GPU clusters, vLLM, Kubernetes, WebRTC
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Microservices | ✅ | 10+ services |
-| LM Studio (local LLM) | ✅ | OpenAI-compatible |
-| vLLM / GPU inference | ❌ | — |
-| Kubernetes | Partial | k8s templates exist |
-| WebRTC | ❌ | — |
+| Feature               | Status  | Notes               |
+| --------------------- | ------- | ------------------- |
+| Microservices         | ✅      | 10+ services        |
+| LM Studio (local LLM) | ✅      | OpenAI-compatible   |
+| vLLM / GPU inference  | ❌      | —                   |
+| Kubernetes            | Partial | k8s templates exist |
+| WebRTC                | ❌      | —                   |
 
 ---
 
@@ -157,13 +157,13 @@ Maps the production-grade conversational AI platform requirements to current imp
 
 **Required:** When a user calls, updates appear on their profile page
 
-| Feature | Status | Location |
-|---------|--------|----------|
-| patient_id in pipeline | ✅ | PipelineRequest, voice WS |
-| Conversation storage | ✅ | Conversation meta_data |
-| GET /patients/:id/conversations | ✅ | Orchestration + gateway |
-| Patient portal "Recent conversations" | ✅ | Dashboard tab |
-| Chat sends patient_id | ✅ | Patient portal sendMessage |
+| Feature                               | Status | Location                   |
+| ------------------------------------- | ------ | -------------------------- |
+| patient_id in pipeline                | ✅     | PipelineRequest, voice WS  |
+| Conversation storage                  | ✅     | Conversation meta_data     |
+| GET /patients/:id/conversations       | ✅     | Orchestration + gateway    |
+| Patient portal "Recent conversations" | ✅     | Dashboard tab              |
+| Chat sends patient_id                 | ✅     | Patient portal sendMessage |
 
 ---
 

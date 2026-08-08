@@ -53,9 +53,7 @@ export interface AuthMiddlewareOptions {
 function resolveSecret(explicit?: string): string {
   const secret = explicit ?? process.env.JWT_SECRET;
   if (!secret) {
-    throw new Error(
-      "JWT secret is not configured. Set the JWT_SECRET environment variable.",
-    );
+    throw new Error("JWT secret is not configured. Set the JWT_SECRET environment variable.");
   }
   return secret;
 }
@@ -157,51 +155,44 @@ export function signJWT(
  * ```
  */
 export const createAuthMiddleware = fp(
-  async function authMiddleware(
-    fastify: FastifyInstance,
-    options: AuthMiddlewareOptions,
-  ) {
+  async function authMiddleware(fastify: FastifyInstance, options: AuthMiddlewareOptions) {
     const {
       secret,
       issuer,
       publicPrefixes = ["/health", "/healthz", "/ready", "/metrics"],
     } = options;
 
-    fastify.addHook(
-      "onRequest",
-      async (request: FastifyRequest, reply: FastifyReply) => {
-        // Skip public routes
-        if (publicPrefixes.some((prefix) => request.url.startsWith(prefix))) {
-          return;
-        }
+    fastify.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
+      // Skip public routes
+      if (publicPrefixes.some((prefix) => request.url.startsWith(prefix))) {
+        return;
+      }
 
-        const authHeader = request.headers.authorization;
-        if (!authHeader) {
-          reply.code(401).send({ error: "Missing Authorization header" });
-          return;
-        }
+      const authHeader = request.headers.authorization;
+      if (!authHeader) {
+        reply.code(401).send({ error: "Missing Authorization header" });
+        return;
+      }
 
-        const parts = authHeader.split(" ");
-        if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
-          reply.code(401).send({ error: "Invalid Authorization header format (expected: Bearer <token>)" });
-          return;
-        }
+      const parts = authHeader.split(" ");
+      if (parts.length !== 2 || parts[0].toLowerCase() !== "bearer") {
+        reply
+          .code(401)
+          .send({ error: "Invalid Authorization header format (expected: Bearer <token>)" });
+        return;
+      }
 
-        try {
-          request.user = await verifyJWT(parts[1], secret, issuer);
-        } catch (err) {
-          const authErr =
-            err instanceof AuthError
-              ? err
-              : new AuthError("UNKNOWN", String(err));
+      try {
+        request.user = await verifyJWT(parts[1], secret, issuer);
+      } catch (err) {
+        const authErr = err instanceof AuthError ? err : new AuthError("UNKNOWN", String(err));
 
-          reply.code(401).send({
-            error: authErr.code,
-            message: authErr.message,
-          });
-        }
-      },
-    );
+        reply.code(401).send({
+          error: authErr.code,
+          message: authErr.message,
+        });
+      }
+    });
   },
   {
     name: "@aurixa/auth",
@@ -291,11 +282,7 @@ export function hasAllRoles(user: TokenPayload, roles: string[]): boolean {
 // ---------------------------------------------------------------------------
 
 export type AuthErrorCode =
-  | "TOKEN_EXPIRED"
-  | "INVALID_TOKEN"
-  | "TOKEN_NOT_ACTIVE"
-  | "MISSING_TOKEN"
-  | "UNKNOWN";
+  "TOKEN_EXPIRED" | "INVALID_TOKEN" | "TOKEN_NOT_ACTIVE" | "MISSING_TOKEN" | "UNKNOWN";
 
 export class AuthError extends Error {
   public readonly code: AuthErrorCode;

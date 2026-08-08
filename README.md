@@ -11,7 +11,6 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![turborepo](https://img.shields.io/badge/monorepo-turborepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
 
-
 > **Enterprise-grade conversational AI orchestration platform** — Multi-tenant, modular, horizontally scalable microservices infrastructure for building sophisticated real-time conversational experiences with cost-aware LLM routing and integrated safety guardrails.
 
 <p align="center">
@@ -121,13 +120,13 @@ Orchestration Engine (:8001)
 
 ### Execution Engine (DB-Backed)
 
-| Action | Description |
-|--------|-------------|
-| `get_appointments` | List upcoming appointments for a patient |
-| `create_appointment` | Create appointment (patient, date, reason) |
-| `check_insurance` | Verify insurance coverage and copay |
-| `get_availability` | List available slots by date |
-| `request_prescription_refill` | Submit refill for active prescriptions |
+| Action                        | Description                                |
+| ----------------------------- | ------------------------------------------ |
+| `get_appointments`            | List upcoming appointments for a patient   |
+| `create_appointment`          | Create appointment (patient, date, reason) |
+| `check_insurance`             | Verify insurance coverage and copay        |
+| `get_availability`            | List available slots by date               |
+| `request_prescription_refill` | Submit refill for active prescriptions     |
 
 ### Database Schema
 
@@ -139,10 +138,10 @@ Orchestration Engine (:8001)
 
 ### Admin API (DB Writes)
 
-| Endpoint | Method | Description |
-|----------|--------|--------------|
-| `/api/v1/admin/tenants` | POST | Create tenant |
-| `/api/v1/admin/patients` | POST | Create patient |
+| Endpoint                 | Method | Description    |
+| ------------------------ | ------ | -------------- |
+| `/api/v1/admin/tenants`  | POST   | Create tenant  |
+| `/api/v1/admin/patients` | POST   | Create patient |
 
 The Tenants page uses Add Tenant to create new organizations. Execution Engine handles appointment creation and prescription refill requests.
 
@@ -283,17 +282,17 @@ aurixa/
 
 ## Service Architecture & Responsibilities
 
-| Service | Port | Language | Key Features |
-|---------|:----:|:--------:|----------|
-| **API Gateway** | `3000` | TypeScript | Request routing, WebSocket proxy, Rate limiting, CORS, Security headers |
-| **Orchestration Engine** | `8001` | Python | Conversation state management, Pipeline orchestration, Database persistence |
-| **LLM Router** | `8002` | Python | Cost-aware provider routing, FAISS embeddings, Intelligent model selection |
-| **Agent Runtime** | `8003` | Python | Tool invocation, Multi-step planning, Function calling, Async execution |
-| **RAG Service** | `8004` | Python | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking |
-| **Safety Guardrails** | `8005` | Python | Risk classification, Policy enforcement, Response filtering, Escalation logic |
-| **Streaming Voice** | `8006` | Python | Voice I/O: STT, TTS (OSS first). REST: full response; WebSocket: status + **LLM token stream** + TTS. Orchestration pipeline (and `/pipelines/stream` for WS). |
-| **Execution Engine** | `8007` | Python | External API calls, Retry logic, Idempotency, Task scheduling |
-| **Observability Core** | `8008` | Python | Telemetry aggregation, Performance reports (`/api/v1/reports/performance`), Metrics, Cost analysis |
+| Service                  |  Port  |  Language  | Key Features                                                                                                                                                   |
+| ------------------------ | :----: | :--------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API Gateway**          | `3000` | TypeScript | Request routing, WebSocket proxy, Rate limiting, CORS, Security headers                                                                                        |
+| **Orchestration Engine** | `8001` |   Python   | Conversation state management, Pipeline orchestration, Database persistence                                                                                    |
+| **LLM Router**           | `8002` |   Python   | Cost-aware provider routing, FAISS embeddings, Intelligent model selection                                                                                     |
+| **Agent Runtime**        | `8003` |   Python   | Tool invocation, Multi-step planning, Function calling, Async execution                                                                                        |
+| **RAG Service**          | `8004` |   Python   | Hybrid retrieval (BM25 + vectors), Reranking, Context compression, Source tracking                                                                             |
+| **Safety Guardrails**    | `8005` |   Python   | Risk classification, Policy enforcement, Response filtering, Escalation logic                                                                                  |
+| **Streaming Voice**      | `8006` |   Python   | Voice I/O: STT, TTS (OSS first). REST: full response; WebSocket: status + **LLM token stream** + TTS. Orchestration pipeline (and `/pipelines/stream` for WS). |
+| **Execution Engine**     | `8007` |   Python   | External API calls, Retry logic, Idempotency, Task scheduling                                                                                                  |
+| **Observability Core**   | `8008` |   Python   | Telemetry aggregation, Performance reports (`/api/v1/reports/performance`), Metrics, Cost analysis                                                             |
 
 ---
 
@@ -306,12 +305,12 @@ The AURIXA platform provides a **pluggable, provider-agnostic LLM abstraction** 
 
 ### Supported Providers
 
-| Provider | Models | Status | Features |
-|----------|--------|:------:|----------|
-| **OpenAI** | GPT-4o, GPT-4 Turbo, o1, o3-mini | Active | Tool calling, Vision, Streaming |
-| **Anthropic** | Claude 3 Opus, Sonnet, Haiku | Active | Extended context (200K), Native tools |
-| **Google Gemini** | 2.0 Flash, 1.5 Pro, 1.5 Flash | Active | Multimodal, Real-time streaming |
-| **Local** | Any OpenAI-compatible | Active | LM Studio, Ollama, vLLM |
+| Provider          | Models                           | Status | Features                              |
+| ----------------- | -------------------------------- | :----: | ------------------------------------- |
+| **OpenAI**        | GPT-4o, GPT-4 Turbo, o1, o3-mini | Active | Tool calling, Vision, Streaming       |
+| **Anthropic**     | Claude 3 Opus, Sonnet, Haiku     | Active | Extended context (200K), Native tools |
+| **Google Gemini** | 2.0 Flash, 1.5 Pro, 1.5 Flash    | Active | Multimodal, Real-time streaming       |
+| **Local**         | Any OpenAI-compatible            | Active | LM Studio, Ollama, vLLM               |
 
 ### Standard LLM Client Interface
 
@@ -323,11 +322,11 @@ class LLMClient(ABC):
     async def generate(request: LLMRequest) -> LLMResponse:
         """Generate text with optional tool calling."""
         ...
-    
+
     async def health_check() -> bool:
         """Check provider availability."""
         ...
-    
+
     def estimate_cost(prompt_tokens: int, completion_tokens: int) -> float:
         """Calculate estimated cost for a request."""
         ...
@@ -346,6 +345,7 @@ LM_STUDIO_BASE_URL=http://127.0.0.1:1234/v1  # LM Studio (local, cost-free)
 ```
 
 **Automatic Provider Selection:**
+
 - Detects available providers at startup
 - Health checks run continuously
 - Cost-aware routing prefers cheaper models for simple queries
@@ -396,6 +396,7 @@ docker compose up --build -d # Build and start all services in background
 ```
 
 The stack will:
+
 1. Start Postgres and Redis
 2. Run db-seed to populate the database
 3. Build and start API Gateway, Orchestration, LLM Router, Agent Runtime, RAG, Safety, Streaming Voice, Execution Engine, Observability Core
@@ -403,23 +404,24 @@ The stack will:
 
 **Endpoints after startup:**
 
-| Service            | URL |
-|--------------------|-----|
-| API Gateway        | http://localhost:3000 |
-| Dashboard          | http://localhost:3100 |
+| Service            | URL                              |
+| ------------------ | -------------------------------- |
+| API Gateway        | http://localhost:3000            |
+| Dashboard          | http://localhost:3100            |
 | **Playground**     | http://localhost:3100/playground |
-| Patient Portal     | http://localhost:3300 |
-| Hospital Portal    | http://localhost:3400 |
-| Orchestration      | http://localhost:8001 |
-| LLM Router         | http://localhost:8002 |
-| Agent Runtime      | http://localhost:8003 |
-| RAG Service        | http://localhost:8004 |
-| Safety Guardrails  | http://localhost:8005 |
-| Streaming Voice    | http://localhost:8006 |
-| Execution Engine   | http://localhost:8007 |
-| Observability Core | http://localhost:8008 |
+| Patient Portal     | http://localhost:3300            |
+| Hospital Portal    | http://localhost:3400            |
+| Orchestration      | http://localhost:8001            |
+| LLM Router         | http://localhost:8002            |
+| Agent Runtime      | http://localhost:8003            |
+| RAG Service        | http://localhost:8004            |
+| Safety Guardrails  | http://localhost:8005            |
+| Streaming Voice    | http://localhost:8006            |
+| Execution Engine   | http://localhost:8007            |
+| Observability Core | http://localhost:8008            |
 
 **Stop the stack:**
+
 ```bash
 cd infra/docker && docker compose down
 ```
@@ -444,6 +446,7 @@ The script will start Postgres/Redis (Docker), seed the DB, then run API Gateway
 Or use the **Playground** at http://localhost:3100/playground — click **Run All Tests** to verify services.
 
 Manually:
+
 ```bash
 curl http://localhost:3000/health
 curl http://localhost:8008/health   # Observability Core (telemetry)
@@ -471,10 +474,10 @@ pnpm db:seed
 
 ### Frontend Applications
 
-| App             | Port | Purpose                                                       |
-|-----------------|------|---------------------------------------------------------------|
-| Dashboard       | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit |
-| Patient Portal  | 3300 | Patient chat & appointments, help articles, AI assistant      |
+| App             | Port | Purpose                                                                                                                                   |
+| --------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard       | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit   |
+| Patient Portal  | 3300 | Patient chat & appointments, help articles, AI assistant                                                                                  |
 | Hospital Portal | 3400 | Staff dashboard (reception, nurses, doctors, schedulers), patients, appointments, scheduling, AI assistant, knowledge base, system status |
 
 - **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
@@ -514,6 +517,7 @@ pnpm clean
 ### Service-Specific Development
 
 **API Gateway (TypeScript):**
+
 ```bash
 cd apps/api-gateway
 pnpm dev            # Hot-reload with tsx
@@ -522,6 +526,7 @@ pnpm test           # Run tests with Vitest
 ```
 
 **Orchestration Engine (Python):**
+
 ```bash
 cd apps/orchestration-engine
 uvicorn orchestration_engine.main:app --reload --port 8001
@@ -529,6 +534,7 @@ pytest tests/       # Run pytest
 ```
 
 **LLM Router (Python):**
+
 ```bash
 cd apps/llm-router
 uvicorn llm_router.main:app --reload --port 8002
@@ -572,6 +578,7 @@ Every service emits **JSON-formatted logs** with automatic correlation:
 **Log Levels:** `debug` | `info` | `warning` | `error` | `critical`
 
 **Access logs with correlation:**
+
 ```bash
 # Filter logs by request ID
 docker-compose logs | grep "550e8400-e29b-41d4-a716-446655440000"
@@ -611,8 +618,6 @@ curl http://localhost:8001/health
 }
 ```
 
-
-
 ---
 
 ## CI/CD Pipeline
@@ -621,12 +626,12 @@ AURIXA uses **GitHub Actions** for continuous integration and deployment. All wo
 
 ### Workflows Overview
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| **Docker Build** | Push/PR to main/develop | Builds Docker images for all services |
-| **Docker Build & Push** | Push to main or tags | Builds and pushes to registries (GHCR, Docker Hub) |
-| **Tests** | Push/PR | Runs TypeScript and Python test suites |
-| **Lint & Security** | Push/PR | ESLint, type checking, SAST scanning, dependency checks |
+| Workflow                | Trigger                 | Purpose                                                 |
+| ----------------------- | ----------------------- | ------------------------------------------------------- |
+| **Docker Build**        | Push/PR to main/develop | Builds Docker images for all services                   |
+| **Docker Build & Push** | Push to main or tags    | Builds and pushes to registries (GHCR, Docker Hub)      |
+| **Tests**               | Push/PR                 | Runs TypeScript and Python test suites                  |
+| **Lint & Security**     | Push/PR                 | ESLint, type checking, SAST scanning, dependency checks |
 
 ### Docker Build Workflow
 
@@ -668,6 +673,7 @@ docker.io/${{ owner }}/aurixa-api-gateway:v1.0.0
 
 **Configuration:**
 Add GitHub secrets for Docker Hub (optional):
+
 - `DOCKERHUB_USERNAME` - Your Docker Hub username
 - `DOCKERHUB_TOKEN` - Your Docker Hub token
 
@@ -676,11 +682,13 @@ Add GitHub secrets for Docker Hub (optional):
 Runs automated tests across all services:
 
 **TypeScript Services:**
+
 - ESLint
 - Type checking (TypeScript compiler)
 - Unit tests (Vitest)
 
 **Python Services:**
+
 - Type checking (Pyright)
 - Unit tests (pytest)
 
@@ -716,9 +724,11 @@ pnpm typecheck
 ### Setting Up Registries
 
 **GitHub Container Registry (automatic):**
+
 - Uses `GITHUB_TOKEN` - no additional setup needed
 
 **Docker Hub (optional):**
+
 ```bash
 # Create GitHub secrets
 gh secret set DOCKERHUB_USERNAME --body "your_docker_username"
@@ -728,6 +738,7 @@ gh secret set DOCKERHUB_TOKEN --body "your_docker_token"
 ### Deployment from Images
 
 **Pull and run images:**
+
 ```bash
 # From GHCR
 docker pull ghcr.io/${{ owner }}/aurixa-api-gateway:latest
@@ -739,6 +750,7 @@ docker run -p 3000:3000 docker.io/${{ owner }}/aurixa-api-gateway:latest
 ```
 
 **Using in docker-compose:**
+
 ```yaml
 services:
   api-gateway:
@@ -775,6 +787,7 @@ docker compose down
 ```
 
 **Services started:**
+
 - PostgreSQL 16 (localhost:5432), Redis 7 (localhost:6379)
 - db-seed (one-off, then exits)
 - API Gateway (3000), Orchestration (8001), LLM Router (8002), Agent Runtime (8003), RAG (8004), Safety (8005), Streaming Voice (8006), Execution Engine (8007), Observability Core (8008)
@@ -785,12 +798,14 @@ docker compose down
 Each service has a `Dockerfile` in its app directory. Images are built with **monorepo root** as build context so shared packages (`packages/db`, `packages/llm-clients`, etc.) are available.
 
 **Build all images:**
+
 ```bash
 cd infra/docker
 docker compose build
 ```
 
 **Build a single service:**
+
 ```bash
 docker build -f apps/api-gateway/Dockerfile -t aurixa/api-gateway:latest .
 # Run from repo root so context includes package.json, packages/, apps/
@@ -817,6 +832,7 @@ kubectl get svc -n aurixa
 ```
 
 **Kubernetes features:**
+
 - Health check probes (liveness & readiness)
 - Auto-scaling policies
 - Service discovery
@@ -843,6 +859,7 @@ terraform output
 ```
 
 **Provisions:**
+
 - VPC with public/private subnets
 - EKS Kubernetes cluster (3 nodes)
 - RDS PostgreSQL 16 database
@@ -855,6 +872,7 @@ terraform output
 ## Architecture Principles
 
 ### 1. **Stateless Services**
+
 All microservices are **stateless** and horizontally scalable. Persistent state is stored in PostgreSQL or Redis.
 
 ```python
@@ -868,6 +886,7 @@ conversation_cache = {}  # Lost on restart!
 ```
 
 ### 2. **Asynchronous Processing**
+
 Every service uses async/await patterns to handle concurrent requests without blocking:
 
 ```typescript
@@ -885,13 +904,16 @@ async def generate(request: GenerateRequest):
 ```
 
 ### 3. **Cost-Aware Routing**
+
 The LLM Router intelligently selects providers based on:
+
 - **Cost** - Prefers cheaper models when possible
 - **Latency** - Considers response time SLAs
 - **Availability** - Falls back to alternative providers
 - **Complexity** - Routes complex tasks to capable models
 
 ### 4. **Graceful Degradation**
+
 Services fail gracefully with sensible fallbacks:
 
 ```python
@@ -909,6 +931,7 @@ except Exception:
 ```
 
 ### 5. **Observability-Driven Operations**
+
 Every service reports metrics that drive scaling and optimization:
 
 ```python
@@ -916,9 +939,9 @@ Every service reports metrics that drive scaling and optimization:
 @app.post('/api/v1/pipeline/execute')
 async def execute_pipeline(request: PipelineRequest):
     start = time.time()
-    
+
     result = await orchestration.execute(request)
-    
+
     # Report metrics
     duration_ms = (time.time() - start) * 1000
     observability.record_metric(
@@ -927,7 +950,7 @@ async def execute_pipeline(request: PipelineRequest):
         status='success',
         steps=len(request.steps)
     )
-    
+
     return result
 ```
 
@@ -938,12 +961,14 @@ async def execute_pipeline(request: PipelineRequest):
 ### Authentication & Authorization
 
 **API Gateway:**
+
 - JWT token validation
 - API key authentication
 - Tenant isolation via headers
 - Rate limiting (200 req/min per tenant)
 
 **Services:**
+
 - Inter-service communication with service accounts
 - Request signing for critical operations
 - CORS policies enforced
@@ -993,17 +1018,19 @@ curl -X POST http://localhost:3000/api/v1/orchestration/pipelines \
 ### WebSocket Connection
 
 ```javascript
-const ws = new WebSocket('ws://localhost:3000/ws/conversations/conv-456');
+const ws = new WebSocket("ws://localhost:3000/ws/conversations/conv-456");
 
 ws.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  console.log('Received:', message);
+  console.log("Received:", message);
 };
 
-ws.send(JSON.stringify({
-  type: 'message',
-  content: 'Hello, assistant!'
-}));
+ws.send(
+  JSON.stringify({
+    type: "message",
+    content: "Hello, assistant!",
+  }),
+);
 ```
 
 ---
@@ -1082,13 +1109,13 @@ pnpm prettier --write .
 
 Current performance metrics (simulated, 24-hour period):
 
-| Metric | Value |
-|--------|-------|
+| Metric                             | Value |
+| ---------------------------------- | ----- |
 | **Overall Pipeline Latency (p95)** | 240ms |
-| **Average LLM Response Time** | 145ms |
-| **Total LLM Cost** | $0.15 |
-| **System Uptime** | 99.9% |
-| **Requests/sec** | 150+ |
+| **Average LLM Response Time**      | 145ms |
+| **Total LLM Cost**                 | $0.15 |
+| **System Uptime**                  | 99.9% |
+| **Requests/sec**                   | 150+  |
 
 See [performance_report.md](./performance_report.md) for detailed metrics.
 
@@ -1096,20 +1123,19 @@ See [performance_report.md](./performance_report.md) for detailed metrics.
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|-----------|
-| **Orchestration** | Turborepo, pnpm workspaces |
-| **API Gateway** | Fastify 5, TypeScript 5.7 |
-| **Services** | FastAPI 0.115, Python 3.11 |
-| **Database** | PostgreSQL 16, SQLAlchemy async |
-| **Cache** | Redis 7 |
-| **Frontend** | Next.js 15, React 19, Tailwind CSS |
-| **LLM Providers** | OpenAI, Anthropic, Google Gemini |
-| **Observability** | OpenTelemetry, Loguru, Pino |
-| **Containers** | Docker, Docker Compose |
-| **Orchestration** | Kubernetes, Helm |
-| **IaC** | Terraform |
-
+| Category          | Technology                         |
+| ----------------- | ---------------------------------- |
+| **Orchestration** | Turborepo, pnpm workspaces         |
+| **API Gateway**   | Fastify 5, TypeScript 5.7          |
+| **Services**      | FastAPI 0.115, Python 3.11         |
+| **Database**      | PostgreSQL 16, SQLAlchemy async    |
+| **Cache**         | Redis 7                            |
+| **Frontend**      | Next.js 15, React 19, Tailwind CSS |
+| **LLM Providers** | OpenAI, Anthropic, Google Gemini   |
+| **Observability** | OpenTelemetry, Loguru, Pino        |
+| **Containers**    | Docker, Docker Compose             |
+| **Orchestration** | Kubernetes, Helm                   |
+| **IaC**           | Terraform                          |
 
 ---
 

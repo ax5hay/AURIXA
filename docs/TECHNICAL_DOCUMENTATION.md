@@ -42,18 +42,18 @@ AURIXA is an enterprise-grade conversational AI orchestration platform built as 
 
 ### Technology Stack
 
-| Category | Technology |
-|----------|-----------|
-| **API Gateway** | Fastify 5, TypeScript 5.7, Node.js 20+ |
-| **Backend Services** | FastAPI 0.115+, Python 3.11+ |
-| **Frontend** | Next.js 15, React 19, Tailwind CSS |
-| **Database** | PostgreSQL 16, SQLAlchemy AsyncIO |
-| **Cache** | Redis 7 |
-| **LLM Providers** | OpenAI, Anthropic, Google Gemini, Local (LM Studio/Ollama) |
-| **Build System** | Turborepo, pnpm 10.28.1 |
-| **Containerization** | Docker, Docker Compose |
-| **Infrastructure** | Kubernetes, Terraform (AWS) |
-| **Observability** | OpenTelemetry, Loguru, Pino |
+| Category             | Technology                                                 |
+| -------------------- | ---------------------------------------------------------- |
+| **API Gateway**      | Fastify 5, TypeScript 5.7, Node.js 20+                     |
+| **Backend Services** | FastAPI 0.115+, Python 3.11+                               |
+| **Frontend**         | Next.js 15, React 19, Tailwind CSS                         |
+| **Database**         | PostgreSQL 16, SQLAlchemy AsyncIO                          |
+| **Cache**            | Redis 7                                                    |
+| **LLM Providers**    | OpenAI, Anthropic, Google Gemini, Local (LM Studio/Ollama) |
+| **Build System**     | Turborepo, pnpm 10.28.1                                    |
+| **Containerization** | Docker, Docker Compose                                     |
+| **Infrastructure**   | Kubernetes, Terraform (AWS)                                |
+| **Observability**    | OpenTelemetry, Loguru, Pino                                |
 
 ---
 
@@ -217,11 +217,13 @@ aurixa/
 ### Build System
 
 **Turborepo Configuration:**
+
 - **Tasks:** `build`, `dev`, `lint`, `test`, `typecheck`, `clean`
 - **Caching:** Output-based caching for `build` and `test` tasks
 - **Dependencies:** Task dependencies configured (`build` depends on `^build`)
 
 **pnpm Workspaces:**
+
 - Monorepo managed via pnpm workspaces
 - Shared dependencies hoisted to root `node_modules`
 - Workspace protocol (`workspace:*`) for internal package references
@@ -235,6 +237,7 @@ aurixa/
 **Technology:** TypeScript, Fastify 5, Node.js 20+
 
 **Responsibilities:**
+
 - Request routing and proxying to backend services
 - WebSocket proxy for voice and conversation streaming
 - Rate limiting (200 req/min per tenant/IP)
@@ -243,12 +246,14 @@ aurixa/
 - Health check aggregation
 
 **Key Features:**
+
 - **Path-based routing:** `/api/v1/{service}/*` → downstream service
 - **WebSocket buffering:** Buffers client messages until upstream connection established
 - **Timeout management:** Pipeline (180s), LLM (15s), others (30s)
 - **Service discovery:** Dynamic service registry via environment variables
 
 **Routes:**
+
 - `GET /` - Root endpoint
 - `GET /health` - Gateway health
 - `GET /health/services` - Aggregated service health
@@ -259,11 +264,13 @@ aurixa/
 - `/api/v1/observe/*` - Observability routes
 
 **Performance Optimizations:**
+
 - Connection reuse via Node.js fetch (keep-alive)
 - Request buffering for WebSocket reliability
 - Parallel health checks with 3s timeout
 
 **Configuration:**
+
 ```typescript
 // Service registry
 const SERVICE_REGISTRY = {
@@ -274,7 +281,7 @@ const SERVICE_REGISTRY = {
   safety: { host: "safety-guardrails", port: 8005 },
   voice: { host: "streaming-voice", port: 8006 },
   execute: { host: "execution-engine", port: 8007 },
-  observe: { host: "observability-core", port: 8008 }
+  observe: { host: "observability-core", port: 8008 },
 };
 ```
 
@@ -285,12 +292,14 @@ const SERVICE_REGISTRY = {
 **Technology:** Python 3.11+, FastAPI, SQLAlchemy AsyncIO
 
 **Responsibilities:**
+
 - Conversation state management
 - Pipeline orchestration (Intent → RAG/Agent → LLM → Safety)
 - Response caching (in-memory LRU, max 1000 entries, TTL 300s)
 - Database persistence (Conversations, PipelineSteps)
 
 **Pipeline Flow:**
+
 ```
 User Prompt
     ↓
@@ -310,27 +319,32 @@ User Prompt
 ```
 
 **Key Endpoints:**
+
 - `POST /api/v1/pipelines` - Full pipeline execution (returns complete response)
 - `POST /api/v1/pipelines/stream` - Streaming pipeline (NDJSON: status, text_delta, done)
 - `GET /api/v1/admin/*` - Admin operations (tenants, patients, appointments, knowledge, analytics)
 
 **Caching Strategy:**
+
 - In-memory LRU cache with TTL (300s default)
 - Max entries: 1000 (configurable via `ORCHESTRATION_RESPONSE_CACHE_MAX_ENTRIES`)
 - Cache key: SHA256 hash of (normalized prompt + tenant_id + user_id)
 - Eviction: Expired entries removed on read; oldest evicted when at capacity
 
 **Database Models:**
+
 - `Conversation` - Session tracking with `session_id` (unique index)
 - `PipelineStep` - Step-by-step execution tracking
 - Relationships: Conversation → PipelineSteps (one-to-many)
 
 **Performance Optimizations:**
+
 - Shared `httpx.AsyncClient` for downstream calls (connection reuse)
 - Response caching reduces LLM costs for repeated queries
 - Async database operations with connection pooling
 
 **Agent Detection:**
+
 ```python
 AGENT_WORTHY_PHRASES = [
     "appointment", "schedule", "book", "reschedule", "cancel appointment",
@@ -346,6 +360,7 @@ AGENT_WORTHY_PHRASES = [
 **Technology:** Python 3.11+, FastAPI, httpx
 
 **Responsibilities:**
+
 - Multi-provider LLM routing with automatic fallback
 - Cost-aware model selection
 - Semantic routing (intent-based provider selection)
@@ -353,32 +368,38 @@ AGENT_WORTHY_PHRASES = [
 - Provider health monitoring
 
 **Supported Providers:**
+
 - **Local (LM Studio):** Primary for development (cost-free)
 - **OpenAI:** GPT-4o, GPT-4 Turbo, o1, o3-mini
 - **Anthropic:** Claude 3 Opus, Sonnet, Haiku
 - **Google Gemini:** 2.0 Flash, 1.5 Pro, 1.5 Flash
 
 **Routing Logic:**
+
 1. **Semantic Routing:** Cosine similarity between query embedding and intent embeddings
 2. **Keyword Routing:** Rules-based routing (e.g., "fast" → Haiku, "deep analysis" → Opus)
 3. **Cost-Aware:** Prefers cheaper models for simple queries
 4. **Fallback Chain:** Automatic fallback if primary provider fails
 
 **Key Endpoints:**
+
 - `POST /api/v1/route` - Get recommended provider/model for query
 - `POST /api/v1/generate` - Generate completion (full response)
 - `POST /api/v1/generate/stream` - Stream completion (NDJSON: delta, done)
 
 **Shared HTTP Client:**
+
 - Initialized in `lifespan` context manager
 - Used for RAG embedding calls and telemetry
 - Connection reuse with keep-alive (max 8 connections)
 
 **Telemetry:**
+
 - Emits LLM call metrics to Observability Core
 - Tracks: latency, tokens, cost, model, provider
 
 **Routing Rules:**
+
 ```python
 ROUTING_RULES = {
     "haiku": {
@@ -406,12 +427,14 @@ ROUTING_RULES = {
 **Technology:** Python 3.11+, FastAPI, httpx
 
 **Responsibilities:**
+
 - Tool invocation and multi-step planning
 - Function calling with LLM
 - Knowledge base search integration
 - Execution engine coordination
 
 **Tool Registry:**
+
 - `get_appointments` - List patient appointments
 - `create_appointment` - Schedule new appointment
 - `check_insurance` - Verify insurance coverage
@@ -420,13 +443,16 @@ ROUTING_RULES = {
 - `search_knowledge_base` - RAG retrieval
 
 **Key Endpoints:**
+
 - `POST /api/v1/agents/run` - Execute agent task with tool calling
 
 **Shared HTTP Client:**
+
 - Reuses connections to RAG Service and Execution Engine
 - Initialized in `lifespan` for connection pooling
 
 **Tool Execution Flow:**
+
 ```
 Agent Runtime receives task
     ↓
@@ -450,33 +476,39 @@ Generate final response
 **Technology:** Python 3.11+, FastAPI, Sentence Transformers, FAISS, BM25
 
 **Responsibilities:**
+
 - Hybrid retrieval (vector + keyword search)
 - Document embedding and indexing
 - Knowledge base management
 - Reranking and context compression
 
 **Retrieval Strategy:**
+
 1. **Vector Search:** FAISS index with `all-MiniLM-L6-v2` embeddings
 2. **BM25 Search:** Keyword-based retrieval with `rank-bm25`
 3. **Hybrid Fusion:** Reciprocal Rank Fusion (RRF) combines both results
 4. **Reranking:** Score normalization and keyword boost (15% boost for query terms in docs)
 
 **Index Building:**
+
 - Loads documents from database on startup
 - Encodes all documents into embeddings
 - Builds FAISS L2 index and BM25 corpus
 - Graceful degradation if models unavailable
 
 **Key Endpoints:**
+
 - `POST /api/v1/embed` - Generate embedding vector for text
 - `POST /api/v1/retrieve` - Hybrid retrieval (returns top-k snippets)
 
 **Performance:**
+
 - Model loading: ~30s on first startup
 - Index building: Scales with document count
 - Query latency: <100ms for typical queries
 
 **Configuration:**
+
 ```python
 MODEL_NAME = "all-MiniLM-L6-v2"
 KEYWORD_BOOST = 0.15  # Boost score when query terms appear in document
@@ -490,12 +522,14 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 **Technology:** Python 3.11+, FastAPI
 
 **Responsibilities:**
+
 - Input/output validation
 - Banned word detection
 - PII detection and redaction
 - Emergency/clinical triage escalation
 
 **Validation Policies:**
+
 1. **Emergency Triage:** Detects clinical emergency keywords (chest pain, stroke, etc.)
    - Sets `requires_escalation: true`
    - Severity: 1.0 (critical)
@@ -504,9 +538,11 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
    - Redacts detected PII in response
 
 **Key Endpoints:**
+
 - `POST /api/v1/validate` - Validate text against safety policies
 
 **Response Format:**
+
 ```json
 {
   "is_valid": true,
@@ -517,6 +553,7 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 ```
 
 **Emergency Keywords:**
+
 ```python
 EMERGENCY_KEYWORDS = {
     "chest pain", "stroke", "bleeding heavily", "difficulty breathing",
@@ -533,30 +570,35 @@ EMERGENCY_KEYWORDS = {
 **Technology:** Python 3.11+, FastAPI, WebSocket, faster-whisper, piper
 
 **Responsibilities:**
+
 - Speech-to-Text (STT) processing
 - Text-to-Speech (TTS) synthesis
 - WebSocket streaming with LLM token streaming
 - REST voice processing
 
 **STT Providers (Priority Order):**
+
 1. **faster-whisper** (OSS, local)
 2. **Vosk** (OSS, local)
 3. **Deepgram** (API, requires key)
 4. **OpenAI Whisper API** (fallback)
 
 **TTS Providers (Priority Order):**
+
 1. **Piper** (OSS, local, model: `en_US-lessac-medium`)
 2. **Edge-TTS** (Microsoft, free)
 3. **OpenAI TTS** (API, requires key)
 4. **ElevenLabs** (API, requires key)
 
 **Key Endpoints:**
+
 - `POST /api/v1/voice/process` - REST voice processing (STT → pipeline → TTS)
 - `POST /api/v1/process` - Alias for gateway proxy
 - `POST /api/v1/tts` - TTS synthesis endpoint
 - `WebSocket /ws/stream` - Streaming voice with token-level LLM streaming
 
 **WebSocket Streaming Flow:**
+
 ```
 Client → WebSocket
     ↓
@@ -570,10 +612,12 @@ Optional TTS (final response → audio)
 ```
 
 **Shared HTTP Client:**
+
 - Reuses connections to Orchestration Engine
 - Initialized in `lifespan` for connection pooling
 
 **Message Types:**
+
 - `text` - Text input from client
 - `audio` - Base64-encoded audio input
 - `status` - Pipeline status updates
@@ -589,6 +633,7 @@ Optional TTS (final response → audio)
 **Technology:** Python 3.11+, FastAPI, SQLAlchemy AsyncIO
 
 **Responsibilities:**
+
 - Database-backed action execution
 - Appointment management
 - Insurance verification
@@ -596,6 +641,7 @@ Optional TTS (final response → audio)
 - Availability slot queries
 
 **Actions:**
+
 - `get_appointments` - Query appointments by patient_id
 - `create_appointment` - Create new appointment (DB write)
 - `check_insurance` - Verify patient insurance coverage
@@ -603,19 +649,23 @@ Optional TTS (final response → audio)
 - `request_prescription_refill` - Submit prescription refill (DB write)
 
 **Database Operations:**
+
 - Uses async SQLAlchemy sessions
 - Transaction management for writes
 - Audit logging for all actions
 
 **Key Endpoints:**
+
 - `POST /api/v1/execute` - Execute action with parameters
 - `GET /api/v1/actions` - List available actions
 
 **Performance:**
+
 - Composite index on `appointments(patient_id, status, start_time)` for fast queries
 - Async database operations prevent blocking
 
 **Action Execution:**
+
 ```python
 async def _get_appointments(db: AsyncSession, params: dict) -> str:
     """List upcoming appointments for a patient."""
@@ -637,12 +687,14 @@ async def _get_appointments(db: AsyncSession, params: dict) -> str:
 **Technology:** Python 3.11+, FastAPI
 
 **Responsibilities:**
+
 - Telemetry event aggregation
 - Performance metrics calculation
 - Cost analysis
 - Service health reporting
 
 **Metrics Collected:**
+
 - Latency (p50, p95, p99 per service)
 - LLM costs (by provider and model)
 - Error rates
@@ -650,14 +702,17 @@ async def _get_appointments(db: AsyncSession, params: dict) -> str:
 - Event types
 
 **Key Endpoints:**
+
 - `POST /api/v1/telemetry` - Submit telemetry event
 - `GET /api/v1/reports/performance` - Generate performance report
 
 **Current Implementation:**
+
 - In-memory event storage (mock)
 - Production should use time-series DB (Prometheus, InfluxDB)
 
 **Telemetry Event Structure:**
+
 ```python
 class TelemetryEvent(BaseModel):
     service_name: str
@@ -674,6 +729,7 @@ class TelemetryEvent(BaseModel):
 **Purpose:** Provider-agnostic LLM abstraction layer
 
 **Structure:**
+
 - `base.py` - Abstract `LLMClient` interface
 - `types.py` - Shared type definitions (`LLMRequest`, `LLMResponse`, `LLMProvider`)
 - `router.py` - Multi-provider router with fallback
@@ -682,6 +738,7 @@ class TelemetryEvent(BaseModel):
 - `gemini_client.py` - Google Gemini implementation
 
 **Key Interfaces:**
+
 ```python
 class LLMClient(ABC):
     async def generate(request: LLMRequest) -> LLMResponse
@@ -691,10 +748,12 @@ class LLMClient(ABC):
 ```
 
 **Streaming Support:**
+
 - Default `generate_stream` implementation yields full content
 - Providers can override for native streaming (OpenAI, LM Studio)
 
 **Provider Detection:**
+
 ```python
 def _initialize_clients(self) -> None:
     """Auto-detect providers from environment variables."""
@@ -711,21 +770,25 @@ def _initialize_clients(self) -> None:
 **Purpose:** Database models and session management
 
 **Key Components:**
+
 - `models.py` - SQLAlchemy ORM models
 - `database.py` - Engine creation and session factory
 - `seed.py` - Database seeding script
 
 **Connection Pooling:**
+
 - `pool_size`: 10 (configurable via `DB_POOL_SIZE`)
 - `max_overflow`: 10 (configurable via `DB_MAX_OVERFLOW`)
 - `pool_pre_ping`: True (detects stale connections)
 - `pool_recycle`: 3600s (1 hour, configurable via `DB_POOL_RECYCLE`)
 
 **Session Management:**
+
 - `get_db_session()` - FastAPI dependency for async sessions
 - Automatic cleanup on request completion
 
 **Database URL Handling:**
+
 ```python
 _raw = os.getenv("DATABASE_URL", "postgresql+asyncpg://aurixa:aurixa@localhost:5432/aurixa")
 # Ensure async driver (postgresql:// -> postgresql+asyncpg://)
@@ -740,6 +803,7 @@ if _raw.startswith("postgresql://") and "+asyncpg" not in _raw:
 **Purpose:** Authentication and authorization utilities
 
 **Features:**
+
 - JWT token validation (TypeScript)
 - API key authentication
 - Python auth utilities
@@ -760,6 +824,7 @@ if _raw.startswith("postgresql://") and "+asyncpg" not in _raw:
 **Purpose:** OpenTelemetry instrumentation setup
 
 **Features:**
+
 - Distributed tracing
 - Metrics collection
 - Service correlation
@@ -771,6 +836,7 @@ if _raw.startswith("postgresql://") and "+asyncpg" not in _raw:
 **Purpose:** Shared React components and Tailwind configuration
 
 **Features:**
+
 - Reusable React components
 - Shared Tailwind preset
 - Consistent design system
@@ -782,6 +848,7 @@ if _raw.startswith("postgresql://") and "+asyncpg" not in _raw:
 ### Core Tables
 
 #### Conversations
+
 ```sql
 CREATE TABLE conversations (
     id SERIAL PRIMARY KEY,
@@ -795,6 +862,7 @@ CREATE INDEX idx_conversations_session_id ON conversations(session_id);
 ```
 
 #### PipelineSteps
+
 ```sql
 CREATE TABLE pipeline_steps (
     id SERIAL PRIMARY KEY,
@@ -811,6 +879,7 @@ CREATE TABLE pipeline_steps (
 ```
 
 #### Tenants
+
 ```sql
 CREATE TABLE tenants (
     id SERIAL PRIMARY KEY,
@@ -825,6 +894,7 @@ CREATE TABLE tenants (
 ```
 
 #### Patients
+
 ```sql
 CREATE TABLE patients (
     id SERIAL PRIMARY KEY,
@@ -838,6 +908,7 @@ CREATE TABLE patients (
 ```
 
 #### Appointments
+
 ```sql
 CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
@@ -853,11 +924,12 @@ CREATE TABLE appointments (
 );
 
 -- Composite index for fast queries
-CREATE INDEX ix_appointments_patient_status_start 
+CREATE INDEX ix_appointments_patient_status_start
 ON appointments(patient_id, status, start_time);
 ```
 
 #### PatientInsurance
+
 ```sql
 CREATE TABLE patient_insurance (
     id SERIAL PRIMARY KEY,
@@ -872,6 +944,7 @@ CREATE TABLE patient_insurance (
 ```
 
 #### Prescriptions
+
 ```sql
 CREATE TABLE prescriptions (
     id SERIAL PRIMARY KEY,
@@ -885,6 +958,7 @@ CREATE TABLE prescriptions (
 ```
 
 #### KnowledgeBaseArticle
+
 ```sql
 CREATE TABLE knowledge_base_articles (
     id SERIAL PRIMARY KEY,
@@ -898,6 +972,7 @@ CREATE TABLE knowledge_base_articles (
 ```
 
 #### AuditLog
+
 ```sql
 CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
@@ -913,6 +988,7 @@ CREATE INDEX idx_audit_logs_service ON audit_logs(service);
 ```
 
 #### PlatformConfig
+
 ```sql
 CREATE TABLE platform_config (
     id SERIAL PRIMARY KEY,
@@ -946,6 +1022,7 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 **Technology:** Next.js 15, React 19, Tailwind CSS
 
 **Features:**
+
 - **Playground:** Service health, E2E tests, pipeline execution, metrics
 - **Tenants:** List tenants, Add Tenant (DB write)
 - **Services:** Health status and latency for all services
@@ -955,12 +1032,14 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 - **Audit:** Audit log viewer
 
 **Key Pages:**
+
 - `/playground` - Main testing and monitoring interface
 - `/tenants` - Tenant management
 - `/services` - Service health dashboard
 - `/analytics` - Performance metrics
 
 **Playground Capabilities:**
+
 - Run All Tests (one-click verification)
 - Full pipeline test (E2E with patient context)
 - Service API tests (Route, RAG, Safety, Agent, Execution, Knowledge, LLM, Audit)
@@ -975,18 +1054,21 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 **Technology:** Next.js 15, React 19, Tailwind CSS
 
 **Features:**
+
 - **Chat:** Text-based conversation with AI assistant
 - **Voice:** WebSocket voice interface with STT/TTS
 - **Appointments:** View and manage appointments
 - **Help:** Knowledge base articles
 
 **Key Pages:**
+
 - `/` - Main chat interface
 - `/voice` - Voice conversation interface
 - `/appointments` - Appointment management
 - `/help` - Help articles
 
 **Voice Interface:**
+
 - Mic input or text input
 - REST-based voice processing (STT → pipeline → optional TTS)
 - User toggle for "Play aloud" (TTS on/off)
@@ -999,6 +1081,7 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 **Technology:** Next.js 15, React 19, Tailwind CSS
 
 **Features:**
+
 - **Staff Dashboard:** Role-based access (reception, nurse, doctor, scheduler, admin)
 - **Patients:** Patient management
 - **Appointments:** Scheduling and management
@@ -1007,6 +1090,7 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 - **System Status:** Service health monitoring
 
 **Role-Based Access:**
+
 - **Reception:** Patient check-in, appointment scheduling
 - **Nurse:** Patient care coordination, appointment management
 - **Doctor:** Patient records, appointment review
@@ -1020,24 +1104,29 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 ### Docker Compose
 
 **Services:**
+
 - **Infrastructure:** PostgreSQL 16, Redis 7
 - **Backend:** 9 microservices (API Gateway + 8 Python services)
 - **Frontend:** 3 Next.js applications
 
 **Health Checks:**
+
 - All services have healthcheck definitions
 - `depends_on` with `condition: service_healthy` for dependencies
 - Startup periods configured (RAG: 60s, Orchestration: 30s, others: 10-20s)
 
 **Networking:**
+
 - Single bridge network (`aurixa`)
 - Service discovery via Docker DNS
 
 **Volumes:**
+
 - `pg-data` - PostgreSQL persistent storage
 - `redis-data` - Redis persistent storage
 
 **Example Service Definition:**
+
 ```yaml
 orchestration-engine:
   build:
@@ -1050,7 +1139,11 @@ orchestration-engine:
     ORCHESTRATION_ENGINE_PORT: 8001
     DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
   healthcheck:
-    test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
+    test:
+      [
+        "CMD-SHELL",
+        'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8001/health'')" || exit 1',
+      ]
     interval: 15s
     timeout: 5s
     retries: 3
@@ -1065,12 +1158,14 @@ orchestration-engine:
 ### Kubernetes
 
 **Manifests:** `infra/k8s/`
+
 - Namespace configuration
 - Service definitions
 - Deployment templates
 - Health check probes (liveness & readiness)
 
 **Features:**
+
 - Auto-scaling policies
 - Service discovery
 - Network policies
@@ -1081,6 +1176,7 @@ orchestration-engine:
 ### Terraform (AWS)
 
 **Infrastructure:**
+
 - VPC with public/private subnets
 - EKS Kubernetes cluster (3 nodes)
 - RDS PostgreSQL 16
@@ -1095,6 +1191,7 @@ orchestration-engine:
 ### Orchestration Pipeline
 
 #### Full Response
+
 ```http
 POST /api/v1/orchestration/pipelines
 Content-Type: application/json
@@ -1107,6 +1204,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "session_id": "...",
@@ -1122,7 +1220,7 @@ Content-Type: application/json
       "name": "cache_hit",
       "status": "success",
       "input": null,
-      "output": {"cached": true},
+      "output": { "cached": true },
       "error_message": null,
       "start_time": null,
       "end_time": null
@@ -1135,6 +1233,7 @@ Content-Type: application/json
 ```
 
 #### Streaming
+
 ```http
 POST /api/v1/orchestration/pipelines/stream
 Content-Type: application/json
@@ -1146,6 +1245,7 @@ Content-Type: application/json
 ```
 
 **Response (NDJSON):**
+
 ```
 {"event": "status", "message": "Classifying intent..."}
 {"event": "status", "message": "Searching knowledge base..."}
@@ -1161,6 +1261,7 @@ Content-Type: application/json
 ### LLM Router
 
 #### Route
+
 ```http
 POST /api/v1/llm/route
 Content-Type: application/json
@@ -1172,6 +1273,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "provider": "local",
@@ -1181,6 +1283,7 @@ Content-Type: application/json
 ```
 
 #### Generate
+
 ```http
 POST /api/v1/llm/generate
 Content-Type: application/json
@@ -1195,6 +1298,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "content": "...",
@@ -1209,6 +1313,7 @@ Content-Type: application/json
 ```
 
 #### Generate Stream
+
 ```http
 POST /api/v1/llm/generate/stream
 Content-Type: application/json
@@ -1220,6 +1325,7 @@ Content-Type: application/json
 ```
 
 **Response (NDJSON):**
+
 ```
 {"type": "delta", "content": "Hello"}
 {"type": "delta", "content": "!"}
@@ -1232,6 +1338,7 @@ Content-Type: application/json
 ### Voice Processing
 
 #### REST
+
 ```http
 POST /api/v1/voice/process
 Content-Type: application/json
@@ -1244,6 +1351,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "error": null,
@@ -1254,24 +1362,29 @@ Content-Type: application/json
 ```
 
 #### WebSocket
+
 ```javascript
-const ws = new WebSocket('ws://localhost:3000/ws/voice');
+const ws = new WebSocket("ws://localhost:3000/ws/voice");
 
 // Send text
-ws.send(JSON.stringify({
-  type: "text",
-  content: "Hello",
-  session_id: "optional",
-  patient_id: 1,
-  want_tts: true
-}));
+ws.send(
+  JSON.stringify({
+    type: "text",
+    content: "Hello",
+    session_id: "optional",
+    patient_id: 1,
+    want_tts: true,
+  }),
+);
 
 // Send audio
-ws.send(JSON.stringify({
-  type: "audio",
-  data: "base64-audio-data",
-  session_id: "optional"
-}));
+ws.send(
+  JSON.stringify({
+    type: "audio",
+    data: "base64-audio-data",
+    session_id: "optional",
+  }),
+);
 
 // Receive messages
 ws.onmessage = (event) => {
@@ -1304,7 +1417,7 @@ ws.onmessage = (event) => {
    - Provider selection
    ↓
 5. Route Decision:
-   
+
    Agent Path (appointments, scheduling):
    ├─ Agent Runtime (Port 8003)
    │   ├─ Tool selection (LLM function calling)
@@ -1342,24 +1455,29 @@ ws.onmessage = (event) => {
 ### Pipeline Steps Detail
 
 **Step 1: Intent Classification**
+
 - LLM Router analyzes prompt
 - Determines if agent tools needed or RAG sufficient
 - Selects appropriate provider/model
 
 **Step 2: Context Retrieval**
+
 - **Agent Path:** Agent Runtime selects tools, Execution Engine queries DB
 - **RAG Path:** RAG Service retrieves relevant documents
 
 **Step 3: LLM Generation**
+
 - LLM Router generates response with context
 - Streaming enabled for real-time updates
 
 **Step 4: Safety Validation**
+
 - Safety Guardrails validates response
 - Checks for banned words, PII, emergencies
 - Escalates if critical issues detected
 
 **Step 5: Response Delivery**
+
 - Formatted response returned to client
 - Cached for future identical queries
 
@@ -1370,31 +1488,37 @@ ws.onmessage = (event) => {
 ### Implemented Optimizations
 
 #### 1. Database Connection Pooling
+
 - **Pool size:** 10 (configurable via `DB_POOL_SIZE`)
 - **Max overflow:** 10 (configurable via `DB_MAX_OVERFLOW`)
 - **Pool pre-ping:** Enabled (detects stale connections)
 - **Pool recycle:** 3600s (1 hour, configurable via `DB_POOL_RECYCLE`)
 
 #### 2. HTTP Connection Reuse
+
 - Shared `httpx.AsyncClient` in Python services
 - Keep-alive connections (max 4-8 per service)
 - Connection limits configured
 
 #### 3. Response Caching
+
 - In-memory LRU cache (max 1000 entries)
 - TTL: 300s
 - Eviction: Expired + oldest when at capacity
 
 #### 4. Database Indexing
+
 - Composite index on `appointments(patient_id, status, start_time)`
 - Indexes on `session_id`, `service`, `key` fields
 
 #### 5. Docker Healthchecks
+
 - All services have healthcheck definitions
 - `depends_on` with `condition: service_healthy`
 - Prevents cascading failures
 
 #### 6. Streaming Support
+
 - LLM token streaming (NDJSON)
 - Pipeline status streaming
 - WebSocket buffering for reliability
@@ -1402,12 +1526,14 @@ ws.onmessage = (event) => {
 ### Performance Metrics
 
 **Current Benchmarks:**
+
 - Overall Pipeline Latency (p95): 240ms
 - Average LLM Response Time: 145ms
 - System Uptime: 99.9%
 - Requests/sec: 150+
 
 **Optimization Targets:**
+
 - Reduce p95 latency to <200ms
 - Increase throughput to 200+ req/s
 - Improve cache hit rate to >30%
@@ -1415,12 +1541,14 @@ ws.onmessage = (event) => {
 ### Caching Strategy
 
 **Orchestration Engine:**
+
 - Cache key: SHA256(normalized_prompt + tenant_id + user_id)
 - TTL: 300 seconds
 - Max entries: 1000
 - Eviction: LRU when at capacity
 
 **Benefits:**
+
 - Reduces LLM API costs for repeated queries
 - Improves response time for cached queries
 - Prevents unbounded memory growth
@@ -1432,12 +1560,14 @@ ws.onmessage = (event) => {
 ### Authentication & Authorization
 
 **API Gateway:**
+
 - JWT token validation
 - API key authentication
 - Tenant isolation via headers
 - Rate limiting: 200 req/min per tenant/IP
 
 **Services:**
+
 - Inter-service communication (no auth in dev, service accounts in prod)
 - Request signing for critical operations
 - CORS policies enforced
@@ -1445,15 +1575,18 @@ ws.onmessage = (event) => {
 ### Data Protection
 
 **In Transit:**
+
 - TLS 1.3 for all network communication (production)
 - WebSocket over WSS (production)
 
 **At Rest:**
+
 - PostgreSQL encryption
 - Redis password protection
 - Environment variables for secrets
 
 **Audit:**
+
 - All API calls logged with correlation IDs
 - Audit log table for system events
 - Request/response logging (sanitized)
@@ -1461,17 +1594,20 @@ ws.onmessage = (event) => {
 ### Safety Guardrails
 
 **Policies:**
+
 - Banned word detection
 - PII detection and redaction
 - Emergency/clinical triage escalation
 - Configurable via environment variables
 
 **Escalation:**
+
 - Emergency keywords trigger `requires_escalation: true`
 - Severity scoring (0.0 - 1.0)
 - Human-in-the-loop flagging
 
 **PII Patterns:**
+
 - SSN: `\b\d{3}-\d{2}-\d{4}\b`
 - Credit card: `\b\d{16}\b`
 - Email: `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b`
@@ -1484,11 +1620,13 @@ ws.onmessage = (event) => {
 ### Local Development
 
 **Start Full Stack:**
+
 ```bash
 ./scripts/run-stack.sh
 ```
 
 **Start Individual Service:**
+
 ```bash
 # API Gateway
 cd apps/api-gateway && pnpm dev
@@ -1499,6 +1637,7 @@ uvicorn orchestration_engine.main:app --reload --port 8001
 ```
 
 **Database Seeding:**
+
 ```bash
 pnpm db:seed
 ```
@@ -1506,18 +1645,21 @@ pnpm db:seed
 ### Docker Development
 
 **Start with Docker Compose:**
+
 ```bash
 cd infra/docker
 docker compose up --build -d
 ```
 
 **View Logs:**
+
 ```bash
 docker compose logs -f api-gateway
 docker compose logs orchestration-engine
 ```
 
 **Stop Services:**
+
 ```bash
 docker compose down
 ```
@@ -1525,16 +1667,19 @@ docker compose down
 ### Code Quality
 
 **Linting:**
+
 ```bash
 pnpm lint                       # ESLint + Prettier
 ```
 
 **Type Checking:**
+
 ```bash
 pnpm typecheck                 # TypeScript
 ```
 
 **Formatting:**
+
 ```bash
 pnpm prettier --write .        # Format all files
 ```
@@ -1565,16 +1710,19 @@ pnpm clean
 ### End-to-End Testing
 
 **Basic E2E Check:**
+
 ```bash
 ./scripts/e2e-check.sh
 ```
 
 **Comprehensive E2E Test:**
+
 ```bash
 ./scripts/e2e-detailed.sh
 ```
 
 **E2E Test Coverage:**
+
 - API Gateway root and health endpoints
 - Direct service health checks (all 8 Python services)
 - Proxy routes through gateway
@@ -1587,11 +1735,13 @@ pnpm clean
 ### Unit Testing
 
 **TypeScript Services:**
+
 ```bash
 cd apps/api-gateway && pnpm test
 ```
 
 **Python Services:**
+
 ```bash
 cd apps/orchestration-engine && pytest
 cd apps/llm-router && pytest
@@ -1600,11 +1750,13 @@ cd apps/llm-router && pytest
 ### Test Structure
 
 **API Gateway Tests:**
+
 - Vitest configuration
 - Unit tests for routes
 - Integration tests for proxying
 
 **Python Service Tests:**
+
 - pytest framework
 - Unit tests for business logic
 - Integration tests for API endpoints
@@ -1616,18 +1768,21 @@ cd apps/llm-router && pytest
 ### Logging
 
 **Structured Logging:**
+
 - JSON format in production
 - Pretty printing in development
 - Correlation IDs for request tracking
 - Log levels: debug, info, warning, error, critical
 
 **Access Logs:**
+
 ```bash
 docker compose logs -f api-gateway
 docker compose logs orchestration-engine | grep "requestId"
 ```
 
 **Log Format:**
+
 ```json
 {
   "timestamp": "2026-02-14T10:30:45.123Z",
@@ -1637,7 +1792,7 @@ docker compose logs orchestration-engine | grep "requestId"
   "requestId": "550e8400-e29b-41d4-a716-446655440000",
   "message": "LLM call completed",
   "duration_ms": 245,
-  "tokens_used": {"prompt": 150, "completion": 45},
+  "tokens_used": { "prompt": 150, "completion": 45 },
   "cost_usd": 0.0075,
   "model": "gpt-4o",
   "provider": "openai"
@@ -1647,17 +1802,20 @@ docker compose logs orchestration-engine | grep "requestId"
 ### Metrics & Telemetry
 
 **Observability Core:**
+
 - Aggregates telemetry from all services
 - Calculates latency percentiles (p50, p95, p99)
 - Tracks LLM costs by provider/model
 - Monitors error rates
 
 **Performance Report:**
+
 ```http
 GET /api/v1/observe/reports/performance
 ```
 
 **Response:**
+
 ```json
 {
   "overall": {
@@ -1671,15 +1829,15 @@ GET /api/v1/observe/reports/performance
   },
   "services": {
     "orchestration-engine": {
-      "latency_ms": {"p50": 100, "p95": 200, "p99": 300},
+      "latency_ms": { "p50": 100, "p95": 200, "p99": 300 },
       "request_count": 1000,
       "error_count": 5
     },
     "llm-router": {
-      "latency_ms": {"p50": 80, "p95": 150, "p99": 250},
+      "latency_ms": { "p50": 80, "p95": 150, "p99": 250 },
       "request_count": 800,
       "cost_usd": 0.12,
-      "tokens": {"prompt": 50000, "completion": 20000}
+      "tokens": { "prompt": 50000, "completion": 20000 }
     }
   }
 }
@@ -1688,11 +1846,13 @@ GET /api/v1/observe/reports/performance
 ### Health Checks
 
 **Service Health:**
+
 ```http
 GET /health
 ```
 
 **Response:**
+
 ```json
 {
   "service": "orchestration-engine",
@@ -1703,11 +1863,13 @@ GET /health
 ```
 
 **Aggregated Health:**
+
 ```http
 GET /health/services
 ```
 
 **Response:**
+
 ```json
 {
   "gateway": "healthy",
@@ -1727,6 +1889,7 @@ GET /health/services
 ### Telemetry Collection
 
 **Event Submission:**
+
 ```http
 POST /api/v1/telemetry
 Content-Type: application/json

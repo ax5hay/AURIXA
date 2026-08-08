@@ -1,19 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPatient, getPatientAppointments } from "../../api";
-import type { Patient, Appointment } from "../../api";
+import { useParams } from "next/navigation";
+import {
+  Alert,
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  PageLoader,
+  SectionHeader,
+  Timeline,
+} from "@aurixa/ui-kit";
+import { getPatient, getPatientAppointments, type Appointment, type Patient } from "../../api";
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
+}
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -21,79 +32,119 @@ export default function PatientDetailPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (isNaN(id)) return;
-    Promise.all([
-      getPatient(id).then(setPatient).catch(() => null),
-      getPatientAppointments(id).then(setAppointments).catch(() => []),
-    ]).finally(() => setLoading(false));
+    if (isNaN(id)) {
+      setLoading(false);
+      return;
+    }
+    Promise.all([getPatient(id).then(setPatient), getPatientAppointments(id).then(setAppointments)])
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (isNaN(id)) return <div className="text-red-400">Invalid patient ID</div>;
-  if (loading) {
+  if (loading) return <PageLoader label="Loading patient record" />;
+  if (isNaN(id) || !patient) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <span className="inline-flex gap-1 mb-4">
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
-        </span>
-        <p className="text-white/50 text-sm">Loading patient...</p>
-      </div>
-    );
-  }
-  if (!patient) {
-    return (
-      <div className="glass rounded-xl p-6">
-        <p className="text-red-400">Patient not found.</p>
-        <Link href="/patients" className="text-hospital-400 hover:underline mt-2 inline-block">Back to patients</Link>
-      </div>
+      <EmptyState
+        title="Patient record unavailable"
+        description="The record could not be found or loaded. No patient information is displayed."
+        action={
+          <Button asChild>
+            <Link href="/patients">Back to patients</Link>
+          </Button>
+        }
+      />
     );
   }
 
-  const upcoming = appointments.filter((a) => a.status === "confirmed" && new Date(a.startTime) > new Date());
-  const past = appointments.filter((a) => a.status === "completed" || new Date(a.startTime) < new Date());
+  const ordered = [...appointments].sort((a, b) => +new Date(b.startTime) - +new Date(a.startTime));
 
   return (
-    <div className="space-y-6 -mt-6 pb-8">
-      <Link href="/patients" className="text-hospital-400 hover:underline text-sm">Back to patients</Link>
-      <div className="glass rounded-2xl p-6 glow-sm">
-        <h2 className="text-xl font-semibold text-white">{patient.fullName}</h2>
-        <div className="mt-3 flex flex-wrap gap-4">
-          {patient.email && <p className="text-white/60 text-sm">Email: {patient.email}</p>}
-          {patient.phoneNumber && <p className="text-white/60 text-sm">Phone: {patient.phoneNumber}</p>}
-        </div>
-      </div>
-      <div className="glass rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-4">Appointments</h3>
-        {upcoming.length > 0 && (
-          <div className="mb-4">
-            <p className="text-white/50 text-xs mb-2">Upcoming</p>
-            {upcoming.map((a) => (
-              <div key={a.id} className="flex justify-between items-center border border-white/5 rounded-xl p-3 mb-2 bg-surface-secondary/40">
-                <p className="text-white">{a.providerName} - {formatDate(a.startTime)}</p>
-                <span className="px-2 py-1 rounded-lg text-xs bg-hospital-600/20 text-hospital-400">{a.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {past.length > 0 && (
-          <div>
-            <p className="text-white/50 text-xs mb-2">Past</p>
-            {past.slice(0, 5).map((a) => (
-              <div key={a.id} className="flex justify-between items-center border border-white/5 rounded-xl p-2 mb-2 opacity-80">
-                <p className="text-white/80 text-sm">{a.providerName} - {formatDate(a.startTime)}</p>
-                <span className="text-white/40 text-xs">{a.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {appointments.length === 0 && <p className="text-white/50 text-sm">No appointments on record.</p>}
-      </div>
-      <Link href={`/chat?patientId=${id}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-hospital-500/80 hover:bg-hospital-600 text-white text-sm font-medium">
-        Ask AI about this patient
+    <div className="space-y-6 pb-8">
+      <Link
+        href="/patients"
+        className="inline-flex min-h-11 items-center text-sm font-semibold text-ui-accent"
+      >
+        ← Patient directory
       </Link>
+
+      <Card variant="feature" padding="lg" className="sticky top-2 z-20">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <Avatar name={patient.fullName} size="lg" />
+            <div className="min-w-0">
+              <p className="eyebrow">Active patient context · Record #{patient.id}</p>
+              <h1 className="truncate text-2xl font-semibold text-ui-ink sm:text-3xl">
+                {patient.fullName}
+              </h1>
+              <p className="mt-1 text-sm text-ui-muted">
+                {[patient.email, patient.phoneNumber].filter(Boolean).join(" · ") ||
+                  "No contact information on file"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="secondary">
+              <Link href={`/chat?patientId=${patient.id}`}>Open assistant</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/schedule?patientId=${patient.id}`}>Schedule visit</Link>
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {failed && (
+        <Alert title="Some patient activity may be unavailable" tone="warning">
+          The appointment history could not be fully loaded.
+        </Alert>
+      )}
+
+      <section>
+        <SectionHeader
+          title="Appointment history"
+          description="Newest activity first. Status is shown with text as well as color."
+          count={ordered.length}
+        />
+        {ordered.length ? (
+          <Card variant="compact" padding="lg">
+            <Timeline
+              items={ordered.map((appointment) => ({
+                id: appointment.id,
+                title: `${appointment.providerName} · ${appointment.status}`,
+                time: formatDate(appointment.startTime),
+                icon:
+                  appointment.status === "completed"
+                    ? "✓"
+                    : appointment.status === "cancelled"
+                      ? "×"
+                      : "•",
+                description: (
+                  <Badge
+                    tone={
+                      appointment.status === "completed"
+                        ? "success"
+                        : appointment.status === "cancelled"
+                          ? "danger"
+                          : "info"
+                    }
+                  >
+                    {appointment.status}
+                  </Badge>
+                ),
+              }))}
+            />
+          </Card>
+        ) : (
+          <EmptyState
+            compact
+            title="No appointment history"
+            description="No appointment records were returned for this patient."
+          />
+        )}
+      </section>
     </div>
   );
 }

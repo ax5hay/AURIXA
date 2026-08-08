@@ -1,5 +1,7 @@
-import React, { useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+"use client";
+
+import React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import clsx from "clsx";
 
 export interface ModalProps {
@@ -10,6 +12,8 @@ export interface ModalProps {
   size?: "sm" | "md" | "lg" | "xl";
   closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
+  description?: React.ReactNode;
+  ariaLabel?: string;
   className?: string;
 }
 
@@ -20,38 +24,6 @@ const sizeClasses = {
   xl: "max-w-4xl",
 };
 
-const backdropVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-};
-
-const modalVariants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.95,
-    y: 10,
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 25,
-    },
-  },
-  exit: {
-    opacity: 0,
-    scale: 0.95,
-    y: 10,
-    transition: {
-      duration: 0.15,
-      ease: "easeIn",
-    },
-  },
-};
-
 export function Modal({
   open,
   onClose,
@@ -60,100 +32,66 @@ export function Modal({
   size = "md",
   closeOnBackdrop = true,
   closeOnEscape = true,
+  description,
+  ariaLabel,
   className,
 }: ModalProps) {
-  const handleEscape = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape" && closeOnEscape) {
-        onClose();
-      }
-    },
-    [onClose, closeOnEscape]
-  );
-
-  useEffect(() => {
-    if (open) {
-      document.addEventListener("keydown", handleEscape);
-      document.body.style.overflow = "hidden";
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-      document.body.style.overflow = "";
-    };
-  }, [open, handleEscape]);
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (closeOnBackdrop && e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  const descriptionId = React.useId();
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          variants={backdropVariants}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
-          transition={{ duration: 0.2 }}
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px]" />
+        <DialogPrimitive.Content
+          aria-label={title ? undefined : (ariaLabel ?? "Dialog")}
+          aria-describedby={description ? descriptionId : undefined}
+          onEscapeKeyDown={(event) => {
+            if (!closeOnEscape) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (!closeOnBackdrop) event.preventDefault();
+          }}
+          className={clsx(
+            "fixed left-1/2 top-1/2 z-[51] max-h-[88vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-ui-xl border border-ui-border-strong bg-ui-surface text-ui-ink shadow-ui outline-none",
+            sizeClasses[size],
+            className,
+          )}
         >
-          {/* Backdrop */}
-          <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={handleBackdropClick}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-
-          {/* Modal panel */}
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label={typeof title === "string" ? title : undefined}
-            variants={modalVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
+          {(title || description) && (
+            <div className="border-b border-ui-border px-6 py-5 pr-16">
+              {title && (
+                <DialogPrimitive.Title className="font-display text-xl font-medium tracking-[-0.025em] text-ui-ink">
+                  {title}
+                </DialogPrimitive.Title>
+              )}
+              {description && (
+                <DialogPrimitive.Description
+                  id={descriptionId}
+                  className={clsx("text-sm leading-6 text-ui-muted", title && "mt-1.5")}
+                >
+                  {description}
+                </DialogPrimitive.Description>
+              )}
+            </div>
+          )}
+          <DialogPrimitive.Close
+            aria-label="Close dialog"
             className={clsx(
-              "relative z-10 w-full rounded-xl border border-white/[0.08] bg-surface-secondary shadow-2xl",
-              sizeClasses[size],
-              className
+              "absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-ui-md text-ui-muted transition-colors hover:bg-ui-surface-inset hover:text-ui-ink",
             )}
           >
-            {title && (
-              <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
-                <h2 className="text-lg font-semibold text-white">{title}</h2>
-                <button
-                  onClick={onClose}
-                  className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-aurixa-500"
-                  aria-label="Close modal"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-            )}
-            <div className="px-6 py-5">{children}</div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+            <span aria-hidden="true" className="text-xl">
+              ×
+            </span>
+          </DialogPrimitive.Close>
+          <div className={clsx("px-6 py-5", !title && !description && "pt-16")}>{children}</div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

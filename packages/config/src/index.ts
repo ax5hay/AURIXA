@@ -80,10 +80,7 @@ export function buildServiceRegistry(): ServiceRegistry {
 /**
  * Convenience: get the URL for a service (http://host:port).
  */
-export function getServiceUrl(
-  service: ServiceName,
-  registry?: ServiceRegistry,
-): string {
+export function getServiceUrl(service: ServiceName, registry?: ServiceRegistry): string {
   const reg = registry ?? buildServiceRegistry();
   const { host, port } = reg[service];
   return `http://${host}:${port}`;
@@ -139,9 +136,7 @@ function toScreamingSnake(key: string): string {
  * // config.databaseUrl -> string
  * ```
  */
-export function loadConfig<T extends ZodSchema>(
-  options: LoadConfigOptions<T>,
-): z.infer<T> {
+export function loadConfig<T extends ZodSchema>(options: LoadConfigOptions<T>): z.infer<T> {
   const { schema, envMap = {}, defaults = {} } = options;
 
   // Derive the expected keys from the schema (works for ZodObject)
@@ -151,8 +146,7 @@ export function loadConfig<T extends ZodSchema>(
   const raw: Record<string, unknown> = { ...defaults };
 
   for (const key of Object.keys(shape)) {
-    const envKey =
-      (envMap as Record<string, string | undefined>)[key] ?? toScreamingSnake(key);
+    const envKey = (envMap as Record<string, string | undefined>)[key] ?? toScreamingSnake(key);
     const envVal = process.env[envKey];
     if (envVal !== undefined) {
       raw[key] = envVal;
@@ -163,10 +157,7 @@ export function loadConfig<T extends ZodSchema>(
 
   if (!result.success) {
     const formatted = formatZodError(result.error);
-    throw new ConfigValidationError(
-      `Configuration validation failed:\n${formatted}`,
-      result.error,
-    );
+    throw new ConfigValidationError(`Configuration validation failed:\n${formatted}`, result.error);
   }
 
   return result.data as z.infer<T>;
@@ -200,9 +191,7 @@ export const ServerConfigSchema = z.object({
   port: z.coerce.number().int().positive().default(3000),
   host: z.string().default("0.0.0.0"),
   nodeEnv: z.enum(["development", "production", "test"]).default("development"),
-  logLevel: z
-    .enum(["trace", "debug", "info", "warn", "error", "fatal"])
-    .default("info"),
+  logLevel: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
 });
 
 // ---------------------------------------------------------------------------

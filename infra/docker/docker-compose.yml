@@ -73,7 +73,11 @@ services:
       EXECUTION_HOST: execution-engine
       OBSERVABILITY_HOST: observability-core
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', (r)=>{ r.resume(); process.exit(r.statusCode===200?0:1); }).on('error', ()=>process.exit(1))\""]
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "require(''http'').get(''http://localhost:3000/health'', (r)=>{ r.resume(); process.exit(r.statusCode===200?0:1); }).on(''error'', ()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -103,7 +107,11 @@ services:
       AGENT_RUNTIME_HOST: http://agent-runtime:8003
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8001/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -126,7 +134,11 @@ services:
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
       RAG_SERVICE_HOST: http://rag-service:8004
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8002/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8002/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -149,7 +161,11 @@ services:
       RAG_SERVICE_HOST: http://rag-service:8004
       EXECUTION_ENGINE_HOST: http://execution-engine:8007
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8003/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8003/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -171,7 +187,11 @@ services:
       RAG_SERVICE_PORT: 8004
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8004/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8004/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -189,7 +209,11 @@ services:
     environment:
       SAFETY_GUARDRAILS_PORT: 8005
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8005/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8005/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -208,7 +232,11 @@ services:
       STREAMING_VOICE_PORT: 8006
       ORCHESTRATION_URL: http://orchestration-engine:8001
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8006/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8006/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -230,7 +258,11 @@ services:
       EXECUTION_ENGINE_PORT: 8007
       DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8007/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8007/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -251,7 +283,11 @@ services:
     environment:
       OBSERVABILITY_CORE_PORT: 8008
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8008/health')\" || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request; urllib.request.urlopen(''http://localhost:8008/health'')" || exit 1',
+        ]
       interval: 15s
       timeout: 5s
       retries: 3

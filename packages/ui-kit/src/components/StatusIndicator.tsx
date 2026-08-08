@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
 
 export type StatusType = "healthy" | "degraded" | "down" | "unknown";
@@ -12,17 +12,17 @@ export interface StatusIndicatorProps {
 }
 
 const statusColors: Record<StatusType, string> = {
-  healthy: "bg-accent-success",
-  degraded: "bg-accent-warning",
-  down: "bg-accent-error",
-  unknown: "bg-gray-500",
+  healthy: "bg-ui-success",
+  degraded: "bg-ui-warning",
+  down: "bg-ui-danger",
+  unknown: "bg-ui-faint",
 };
 
 const statusRingColors: Record<StatusType, string> = {
-  healthy: "bg-accent-success/30",
-  degraded: "bg-accent-warning/30",
-  down: "bg-accent-error/30",
-  unknown: "bg-gray-500/30",
+  healthy: "bg-ui-success/30",
+  degraded: "bg-ui-warning/30",
+  down: "bg-ui-danger/30",
+  unknown: "bg-ui-faint/30",
 };
 
 const statusLabels: Record<StatusType, string> = {
@@ -50,26 +50,18 @@ const textSizes = {
   lg: "text-base",
 };
 
-export function StatusIndicator({
-  status,
-  label,
-  size = "md",
-  className,
-}: StatusIndicatorProps) {
+export function StatusIndicator({ status, label, size = "md", className }: StatusIndicatorProps) {
   const isActive = status === "healthy" || status === "degraded";
   const displayLabel = label ?? statusLabels[status];
+  const reduceMotion = useReducedMotion();
 
   return (
-    <div className={clsx("inline-flex items-center gap-2", className)}>
+    <div role="status" className={clsx("inline-flex items-center gap-2", className)}>
       <div className="relative flex items-center justify-center">
         {/* Pulse ring for active states */}
-        {isActive && (
+        {isActive && !reduceMotion && (
           <motion.div
-            className={clsx(
-              "absolute rounded-full",
-              ringSizes[size],
-              statusRingColors[status]
-            )}
+            className={clsx("absolute rounded-full", ringSizes[size], statusRingColors[status])}
             animate={{
               scale: [1, 1.8, 1],
               opacity: [0.6, 0, 0.6],
@@ -84,20 +76,10 @@ export function StatusIndicator({
 
         {/* Dot */}
         <motion.div
-          className={clsx(
-            "relative rounded-full",
-            dotSizes[size],
-            statusColors[status]
-          )}
-          animate={
-            isActive
-              ? { scale: [1, 1.15, 1] }
-              : {}
-          }
+          className={clsx("relative rounded-full", dotSizes[size], statusColors[status])}
+          animate={isActive && !reduceMotion ? { scale: [1, 1.15, 1] } : {}}
           transition={
-            isActive
-              ? { duration: 2, repeat: Infinity, ease: "easeInOut" }
-              : {}
+            isActive && !reduceMotion ? { duration: 2, repeat: Infinity, ease: "easeInOut" } : {}
           }
         />
       </div>
@@ -107,10 +89,10 @@ export function StatusIndicator({
           className={clsx(
             "font-medium",
             textSizes[size],
-            status === "healthy" && "text-accent-success",
-            status === "degraded" && "text-accent-warning",
-            status === "down" && "text-accent-error",
-            status === "unknown" && "text-gray-400"
+            status === "healthy" && "text-ui-success",
+            status === "degraded" && "text-ui-warning",
+            status === "down" && "text-ui-danger",
+            status === "unknown" && "text-ui-muted",
           )}
         >
           {displayLabel}

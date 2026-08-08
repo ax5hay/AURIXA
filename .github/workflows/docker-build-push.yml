@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - 'v*'
+      - "v*"
 
 concurrency:
   group: docker-push-${{ github.ref }}
@@ -25,15 +25,15 @@ jobs:
     strategy:
       matrix:
         service:
-          - {name: "api-gateway", path: "apps/api-gateway", type: "typescript"}
-          - {name: "orchestration-engine", path: "apps/orchestration-engine", type: "python"}
-          - {name: "llm-router", path: "apps/llm-router", type: "python"}
-          - {name: "agent-runtime", path: "apps/agent-runtime", type: "python"}
-          - {name: "rag-service", path: "apps/rag-service", type: "python"}
-          - {name: "safety-guardrails", path: "apps/safety-guardrails", type: "python"}
-          - {name: "streaming-voice", path: "apps/streaming-voice", type: "python"}
-          - {name: "execution-engine", path: "apps/execution-engine", type: "python"}
-          - {name: "observability-core", path: "apps/observability-core", type: "python"}
+          - { name: "api-gateway", path: "apps/api-gateway", type: "typescript" }
+          - { name: "orchestration-engine", path: "apps/orchestration-engine", type: "python" }
+          - { name: "llm-router", path: "apps/llm-router", type: "python" }
+          - { name: "agent-runtime", path: "apps/agent-runtime", type: "python" }
+          - { name: "rag-service", path: "apps/rag-service", type: "python" }
+          - { name: "safety-guardrails", path: "apps/safety-guardrails", type: "python" }
+          - { name: "streaming-voice", path: "apps/streaming-voice", type: "python" }
+          - { name: "execution-engine", path: "apps/execution-engine", type: "python" }
+          - { name: "observability-core", path: "apps/observability-core", type: "python" }
       fail-fast: false
 
     steps:
@@ -114,10 +114,10 @@ jobs:
           name: Release ${{ github.ref }}
           body: |
             Docker images for all services have been built and pushed.
-            
+
             Available at:
             - GitHub Container Registry: `ghcr.io/${{ github.repository_owner }}/aurixa-*:${{ github.ref }}`
-            
+
             Services:
             - api-gateway
             - orchestration-engine

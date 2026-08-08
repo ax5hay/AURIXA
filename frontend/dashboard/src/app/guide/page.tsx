@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 const sections = [
   {
     id: "getting-started",
     title: "Getting Started",
-    description: "Your unified control center for the AURIXA healthcare AI platform.",
+    description: "Use the dashboard to check services, usage, configuration, and tenant activity.",
     items: [
       {
         title: "Dashboard",
@@ -41,7 +41,7 @@ const sections = [
       {
         title: "Services",
         href: "/services",
-        desc: "Check health and latency of microservices. Click a service for detailed observability metrics: event counts, latency, and estimated cost by event type.",
+        desc: "Check health and latency of microservices. Select a service for event counts, latency, and estimated cost by event type.",
       },
       {
         title: "Analytics",
@@ -87,18 +87,23 @@ const sections = [
 ];
 
 export default function GuidePage() {
+  const reduceMotion = useReducedMotion();
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="p-8 max-w-4xl mx-auto"
+      transition={{ duration: reduceMotion ? 0 : 0.3 }}
+      className="page-container max-w-4xl"
     >
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Start Here — AURIXA Dashboard Guide</h1>
-        <p className="text-white/60">
-          A detailed guide to help you navigate and use the AURIXA admin dashboard effectively.
-        </p>
+      <div className="page-header">
+        <div>
+          <p className="eyebrow">Product guide</p>
+          <h1 className="display-title">Operator dashboard guide</h1>
+          <p className="page-description">
+            Find the page for each operational task and see what it can do.
+          </p>
+        </div>
       </div>
 
       <div className="space-y-10">
@@ -110,16 +115,18 @@ export default function GuidePage() {
               {section.items.map((item, ii) => (
                 <Link key={item.href} href={item.href}>
                   <motion.div
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: si * 0.1 + ii * 0.05 }}
-                    className="glass rounded-xl p-4 flex items-start gap-4 hover:ring-2 hover:ring-aurixa-500/40 transition-all group"
+                    transition={{ delay: reduceMotion ? 0 : si * 0.1 + ii * 0.05 }}
+                    className="glass glass-hover group flex items-start gap-4 rounded-2xl p-5"
                   >
                     <div className="w-10 h-10 rounded-lg bg-aurixa-600/20 flex items-center justify-center flex-shrink-0 group-hover:bg-aurixa-600/30 transition-colors">
                       <span className="text-aurixa-400 text-lg">→</span>
                     </div>
                     <div>
-                      <h3 className="font-medium text-white group-hover:text-aurixa-300">{item.title}</h3>
+                      <h3 className="font-medium text-white group-hover:text-aurixa-300">
+                        {item.title}
+                      </h3>
                       <p className="text-sm text-white/50 mt-1">{item.desc}</p>
                     </div>
                   </motion.div>
@@ -133,11 +140,26 @@ export default function GuidePage() {
       <div className="mt-12 glass rounded-xl p-6 border border-aurixa-500/20">
         <h3 className="text-lg font-semibold text-white mb-3">Quick Tips</h3>
         <ul className="space-y-2 text-sm text-white/70">
-          <li>• <strong>Tenants</strong> are organizations (hospitals, clinics). Each has a plan and can have patients and knowledge articles.</li>
-          <li>• <strong>Knowledge Base</strong> articles are tenant-scoped and used by the RAG service for context in conversational pipelines.</li>
-          <li>• <strong>Audit Log</strong> records create/update operations for tenants, patients, appointments, prescription refills, and config changes.</li>
-          <li>• <strong>Settings</strong> lets you toggle feature flags (RAG, voice, safety) and adjust rate limits without code changes.</li>
-          <li>• <strong>Playground</strong> is ideal for testing prompts and pipelines before integrating with your application.</li>
+          <li>
+            • <strong>Tenants</strong> are organizations (hospitals, clinics). Each has a plan and
+            can have patients and knowledge articles.
+          </li>
+          <li>
+            • <strong>Knowledge Base</strong> articles are tenant-scoped and used by the RAG service
+            for context in conversational pipelines.
+          </li>
+          <li>
+            • <strong>Audit Log</strong> records create/update operations for tenants, patients,
+            appointments, prescription refills, and config changes.
+          </li>
+          <li>
+            • <strong>Settings</strong> lets you toggle feature flags (RAG, voice, safety) and
+            adjust rate limits without code changes.
+          </li>
+          <li>
+            • <strong>Playground</strong> is ideal for testing prompts and pipelines before
+            integrating with your application.
+          </li>
         </ul>
       </div>
     </motion.div>

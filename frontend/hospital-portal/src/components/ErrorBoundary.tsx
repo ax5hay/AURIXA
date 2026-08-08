@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ReactNode } from "react";
+import { Alert, Button } from "@aurixa/ui-kit";
 
 interface Props {
   children: ReactNode;
@@ -9,7 +10,6 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -18,30 +18,20 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Hospital portal error:", error, errorInfo);
+  static getDerivedStateFromError(): State {
+    return { hasError: true };
   }
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-amber-200">
-          <h3 className="font-semibold mb-2">Something went wrong</h3>
-          <p className="text-sm text-white/70 mb-4">
-            {this.state.error?.message ?? "An unexpected error occurred. Try refreshing or selecting different staff."}
-          </p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="px-4 py-2 rounded-lg bg-amber-600/50 hover:bg-amber-600 text-white text-sm"
-          >
+        <Alert title="This clinical view could not load" tone="danger">
+          <p>No patient details are displayed. Retry the view or return to today’s work.</p>
+          <Button className="mt-3" onClick={() => this.setState({ hasError: false })}>
             Try again
-          </button>
-        </div>
+          </Button>
+        </Alert>
       );
     }
     return this.props.children;

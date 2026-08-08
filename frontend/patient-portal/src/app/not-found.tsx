@@ -1,16 +1,19 @@
 import Link from "next/link";
+import { Button, EmptyState } from "@aurixa/ui-kit";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      <h1 className="text-2xl font-bold text-white mb-2">Page Not Found</h1>
-      <p className="text-white/60 text-sm mb-6">The page you&apos;re looking for doesn&apos;t exist.</p>
-      <Link
-        href="/"
-        className="px-4 py-2 rounded-lg bg-aurixa-500 hover:bg-aurixa-600 text-white font-medium transition-colors"
-      >
-        Go to Patient Portal
-      </Link>
+    <div className="flex min-h-[60vh] items-center justify-center py-12">
+      <EmptyState
+        eyebrow="Page not found"
+        title="That page isn’t here"
+        description="The link may be out of date. Return home to find appointments, messages, and support."
+        action={
+          <Button asChild>
+            <Link href="/">Return home</Link>
+          </Button>
+        }
+      />
     </div>
   );
 }

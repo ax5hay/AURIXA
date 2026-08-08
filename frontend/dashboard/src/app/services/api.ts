@@ -8,7 +8,7 @@ const PIPELINE_TIMEOUT_MS = 180000;
 async function fetchApi(
   path: string,
   opts: RequestInit = {},
-  timeoutMs: number = FETCH_TIMEOUT_MS
+  timeoutMs: number = FETCH_TIMEOUT_MS,
 ): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -40,11 +40,19 @@ export async function getTenants(): Promise<Tenant[]> {
   return res.json();
 }
 
-export async function createTenant(data: { name: string; plan?: string; status?: string }): Promise<{ id: string; name: string; plan: string; status: string }> {
+export async function createTenant(data: {
+  name: string;
+  plan?: string;
+  status?: string;
+}): Promise<{ id: string; name: string; plan: string; status: string }> {
   const res = await fetchApi("/api/v1/admin/tenants", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: data.name, plan: data.plan ?? "starter", status: data.status ?? "active" }),
+    body: JSON.stringify({
+      name: data.name,
+      plan: data.plan ?? "starter",
+      status: data.status ?? "active",
+    }),
   });
   if (!res.ok) throw new Error("Failed to create tenant");
   return res.json();
@@ -58,7 +66,7 @@ export async function getTenant(id: string): Promise<Tenant> {
 
 export async function updateTenant(
   id: string,
-  data: { name?: string; plan?: string; status?: string }
+  data: { name?: string; plan?: string; status?: string },
 ): Promise<Tenant> {
   const res = await fetchApi(`/api/v1/admin/tenants/${encodeURIComponent(id)}`, {
     method: "PATCH",
@@ -74,7 +82,12 @@ export async function updateTenant(
   };
 }
 
-export async function createPatient(data: { full_name: string; email?: string; phone_number?: string; tenant_id?: number }): Promise<PatientSummary> {
+export async function createPatient(data: {
+  full_name: string;
+  email?: string;
+  phone_number?: string;
+  tenant_id?: number;
+}): Promise<PatientSummary> {
   const res = await fetchApi("/api/v1/admin/patients", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -134,7 +147,10 @@ export async function getConfigDetail(): Promise<ConfigDetail> {
   return res.json();
 }
 
-export async function updateConfigKey(key: string, value: string): Promise<{ key: string; value: string }> {
+export async function updateConfigKey(
+  key: string,
+  value: string,
+): Promise<{ key: string; value: string }> {
   const res = await fetchApi(`/api/v1/admin/config/${encodeURIComponent(key)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -145,8 +161,17 @@ export async function updateConfigKey(key: string, value: string): Promise<{ key
 }
 
 export interface PerformanceReport {
-  overall_metrics: Record<string, { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }>;
-  service_metrics: Record<string, Record<string, { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }>>;
+  overall_metrics: Record<
+    string,
+    { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }
+  >;
+  service_metrics: Record<
+    string,
+    Record<
+      string,
+      { count: number; avg_latency_ms: number; p95_latency_ms: number; total_cost_usd?: number }
+    >
+  >;
 }
 
 export async function getAnalytics(): Promise<PerformanceReport> {
@@ -202,7 +227,7 @@ export interface PipelineRequest {
 
 export async function runPipeline(
   prompt: string,
-  opts?: { patient_id?: number; session_id?: string; tenant_id?: string }
+  opts?: { patient_id?: number; session_id?: string; tenant_id?: string },
 ): Promise<PipelineResponse> {
   const body: PipelineRequest = { prompt };
   if (opts?.patient_id != null) body.patient_id = opts.patient_id;
@@ -216,7 +241,7 @@ export async function runPipeline(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
-    PIPELINE_TIMEOUT_MS
+    PIPELINE_TIMEOUT_MS,
   );
 
   if (!response.ok) {

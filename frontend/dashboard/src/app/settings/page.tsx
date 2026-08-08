@@ -1,226 +1,138 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { getConfigSummary, getConfigDetail, getServiceHealth, updateConfigKey } from "@/app/services/api";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Button, FieldShell, Input, PageHeader, Select, useToast } from "@aurixa/ui-kit";
+import { getConfigDetail, updateConfigKey } from "@/app/services/api";
+import { PageShell } from "@/components/OperatorCompositions";
 
-const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
+const BOOLEAN_KEYS = [
+  "feature_rag_enabled",
+  "feature_voice_enabled",
+  "feature_safety_guardrails",
+  "maintenance_mode",
+];
+const NUMERIC_KEYS = [
+  "rate_limit_per_minute",
+  "max_conversations_per_tenant",
+  "api_gateway_timeout_ms",
+];
 
-const BOOLEAN_KEYS = ["feature_rag_enabled", "feature_voice_enabled", "feature_safety_guardrails", "maintenance_mode"];
-const NUMERIC_KEYS = ["rate_limit_per_minute", "max_conversations_per_tenant", "api_gateway_timeout_ms"];
-
-function ConfigRow({
-  keyName,
-  value,
+function Setting({
   category,
-  onSave,
+  name,
+  value,
+  onSaved,
 }: {
-  keyName: string;
-  value: string;
   category: string;
-  onSave: (key: string, value: string) => Promise<void>;
+  name: string;
+  value: string;
+  onSaved: (value: string) => Promise<void>;
 }) {
-  const [editValue, setEditValue] = useState(value);
+  const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const isBoolean = BOOLEAN_KEYS.includes(keyName);
-  const isNumeric = NUMERIC_KEYS.includes(keyName);
-
-  const handleSave = async () => {
-    if (editValue === value) return;
+  const save = async () => {
     setSaving(true);
     try {
-      await onSave(keyName, editValue);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      await onSaved(draft);
     } finally {
       setSaving(false);
     }
   };
-
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg bg-surface-secondary/50 border border-white/5">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-white/40 capitalize">{category}</p>
-        <p className="text-sm font-medium text-white/80 truncate" title={keyName}>{keyName}</p>
+    <div className="grid gap-3 border-b border-white/10 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(14rem,0.7fr)_auto] md:items-end">
+      <div>
+        <p className="text-xs capitalize text-white/40">{category.replace(/_/g, " ")}</p>
+        <p className="mt-1 font-mono text-sm text-white">{name}</p>
       </div>
-      <div className="flex items-center gap-2">
-        {isBoolean ? (
-          <select
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm focus:outline-none focus:border-aurixa-500/50"
-          >
-            <option value="true">true</option>
-            <option value="false">false</option>
-          </select>
+      <FieldShell label={`Value for ${name}`} className="[&_label]:sr-only">
+        {BOOLEAN_KEYS.includes(name) ? (
+          <Select value={draft} onChange={(event) => setDraft(event.target.value)}>
+            <option value="true">Enabled (true)</option>
+            <option value="false">Disabled (false)</option>
+          </Select>
         ) : (
-          <input
-            type={isNumeric ? "number" : "text"}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm font-mono focus:outline-none focus:border-aurixa-500/50 w-32"
+          <Input
+            type={NUMERIC_KEYS.includes(name) ? "number" : "text"}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
           />
         )}
-        <button
-          onClick={handleSave}
-          disabled={saving || editValue === value}
-          className="px-3 py-1.5 rounded-lg bg-aurixa-600/30 text-aurixa-300 text-xs font-medium hover:bg-aurixa-600/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {saving ? "..." : saved ? "Saved" : "Save"}
-        </button>
-      </div>
+      </FieldShell>
+      <Button variant="secondary" onClick={save} disabled={saving || draft === value}>
+        {saving ? "Saving…" : "Save"}
+      </Button>
     </div>
   );
 }
 
 export default function SettingsPage() {
-  const [config, setConfig] = useState<Awaited<ReturnType<typeof getConfigSummary>> | null>(null);
+  const { toast } = useToast();
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getConfigDetail>> | null>(null);
-  const [health, setHealth] = useState<Awaited<ReturnType<typeof getServiceHealth>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchData = () => {
-    Promise.all([
-      getConfigSummary().catch(() => null),
-      getConfigDetail().catch(() => null),
-      getServiceHealth().catch(() => null),
-    ])
-      .then(([c, d, h]) => {
-        setConfig(c);
-        setDetail(d);
-        setHealth(h);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
+  const load = useCallback(async () => {
+    try {
+      setDetail(await getConfigDetail());
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Settings could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleConfigSave = async (key: string, value: string) => {
-    await updateConfigKey(key, value);
-    if (detail?.categories) {
-      for (const cat of Object.keys(detail.categories)) {
-        const idx = detail.categories[cat].findIndex((e) => e.key === key);
-        if (idx >= 0) {
-          detail.categories[cat][idx].value = value;
-          setDetail({ ...detail });
-          break;
-        }
-      }
+  const save = async (key: string, value: string) => {
+    try {
+      await updateConfigKey(key, value);
+      await load();
+      toast({ title: "Behavior updated", description: key, tone: "success" });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Setting could not be saved.";
+      toast({ title: "Save failed", description: message, tone: "error" });
+      throw reason;
     }
   };
-
-  if (error) {
-    return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
-        <div className="glass rounded-xl p-6 text-accent-error border border-accent-error/30">{error}</div>
-      </div>
-    );
-  }
+  const entries = Object.entries(detail?.categories ?? {}).flatMap(([category, values]) =>
+    values.map((item) => ({ category, ...item })),
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="p-8 max-w-7xl mx-auto"
-    >
-      <h1 className="text-3xl font-bold text-white mb-2">Settings</h1>
-      <p className="text-white/50 text-sm mb-8">Platform configuration and service status</p>
-
-      {loading ? (
-        <div className="glass rounded-xl p-8 text-center text-white/50">Loading...</div>
-      ) : (
-        <div className="space-y-6">
-          <div className="glass rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white/80 mb-4">API Endpoint</h2>
-            <code className="block px-4 py-2 rounded-lg bg-surface-secondary/80 text-aurixa-400 text-sm font-mono break-all">
-              {API_URL}
-            </code>
-            <p className="text-xs text-white/40 mt-2">Gateway used for orchestration, observability, and admin APIs</p>
-          </div>
-
-          <div className="glass rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white/80 mb-4">Service Health</h2>
-            {health && Object.keys(health).length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(health).map(([name, info]) => (
-                  <div
-                    key={name}
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-secondary/50 border border-white/5"
-                  >
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        info?.status === "healthy" ? "bg-accent-success" : "bg-accent-warning"
-                      }`}
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-white/80">{name}</p>
-                      <p className="text-xs text-white/40">
-                        {info?.status ?? "unknown"}
-                        {info?.latencyMs != null && ` · ${info.latencyMs}ms`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-white/50 text-sm">No service health data available. Ensure the API gateway is running.</p>
-            )}
-          </div>
-
-          {config && (
-            <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white/80 mb-4">Tenant Distribution</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-2xl font-bold text-white">{config.tenants_count}</p>
-                  <p className="text-xs text-white/40">Total</p>
-                </div>
-                {Object.entries(config.tenants_by_plan ?? {}).map(([plan, n]) => (
-                  <div key={plan}>
-                    <p className="text-2xl font-bold text-white">{n}</p>
-                    <p className="text-xs text-white/40 capitalize">{plan}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <p className="text-sm text-white/50">
-                  By status:{" "}
-                  {Object.entries(config.tenants_by_status ?? {})
-                    .map(([k, v]) => `${k}: ${v}`)
-                    .join(", ")}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {detail && Object.keys(detail.categories ?? {}).length > 0 && (
-            <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white/80 mb-2">Platform Config</h2>
-              <p className="text-sm text-white/50 mb-4">Edit values and click Save to update. Changes are persisted to the database.</p>
-              <div className="space-y-3">
-                {Object.entries(detail.categories).flatMap(([category, entries]) =>
-                  entries.map(({ key, value }) => (
-                    <ConfigRow
-                      key={`${category}-${key}`}
-                      keyName={key}
-                      value={value}
-                      category={category}
-                      onSave={handleConfigSave}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+    <PageShell className="max-w-5xl">
+      <PageHeader
+        eyebrow="System · editable"
+        title="Behavior settings"
+        description="Edit persisted platform behavior. Runtime endpoints, providers, and deployed facts are shown separately under Runtime facts."
+      />
+      {error && (
+        <Alert title="Settings unavailable" tone="danger" className="mb-5">
+          {error}
+        </Alert>
       )}
-    </motion.div>
+      <Alert title="Changes affect platform behavior" tone="warning" className="mb-5">
+        Values are written through the existing configuration API. Review each change before saving.
+      </Alert>
+      <div className="surface-card">
+        {loading ? (
+          <p className="py-8 text-center text-sm text-white/55">Loading behavior settings…</p>
+        ) : entries.length ? (
+          entries.map((entry) => (
+            <Setting
+              key={`${entry.category}-${entry.key}-${entry.value}`}
+              category={entry.category}
+              name={entry.key}
+              value={entry.value}
+              onSaved={(value) => save(entry.key, value)}
+            />
+          ))
+        ) : (
+          <p className="py-8 text-center text-sm text-white/55">
+            No editable platform values were returned.
+          </p>
+        )}
+      </div>
+    </PageShell>
   );
 }

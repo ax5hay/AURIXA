@@ -7,18 +7,18 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 ## Executive Summary
 
-| Layer | Prompt Requirement | Current Implementation | Gap |
-|-------|--------------------|------------------------|-----|
-| Channel | Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR | Voice WebSocket, Webchat (patient portal/playground) | SMS, WhatsApp, Mobile SDK, IVR missing |
-| Streaming | Streaming ASR, duplex, partial transcripts, <800ms | Text + placeholder audio; no ASR | No Whisper/Deepgram; no duplex; high latency |
-| Conversation Intelligence | Hybrid NLU, semantic routing, confidence scoring | Keyword-based routing; LOCAL/cloud fallback | No embeddings; no confidence in routing |
-| Agent Orchestration | Tool-using agents, multi-step, LangGraph/CrewAI | Keyword tool dispatch; no LLM function calling | Not in pipeline; no state machine |
-| RAG 2.0 | BM25 + vector, rerankers, context injection | Vector + keyword boost; FAISS | No BM25; no rerankers; no history injection |
-| Safety | Risk classifiers, emergency detection, escalation | Banned words, PII redaction | No emergency/escalation |
-| Execution | EHR, billing, appointments, prescriptions | send_email, schedule_reminder, log_audit | No real integrations |
-| Observability | Intent accuracy, hallucination, voice metrics | Mock telemetry only | No live ingestion from pipeline |
-| Infrastructure | GPU/vLLM, K8s, WebRTC | Microservices, LM Studio | No vLLM; limited scaling |
-| Cost Optimization | 40–70% LLM reduction | Local-first routing | No context compression, caching, distilled models |
+| Layer                     | Prompt Requirement                                   | Current Implementation                               | Gap                                               |
+| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- |
+| Channel                   | Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR | Voice WebSocket, Webchat (patient portal/playground) | SMS, WhatsApp, Mobile SDK, IVR missing            |
+| Streaming                 | Streaming ASR, duplex, partial transcripts, <800ms   | Text + placeholder audio; no ASR                     | No Whisper/Deepgram; no duplex; high latency      |
+| Conversation Intelligence | Hybrid NLU, semantic routing, confidence scoring     | Keyword-based routing; LOCAL/cloud fallback          | No embeddings; no confidence in routing           |
+| Agent Orchestration       | Tool-using agents, multi-step, LangGraph/CrewAI      | Keyword tool dispatch; no LLM function calling       | Not in pipeline; no state machine                 |
+| RAG 2.0                   | BM25 + vector, rerankers, context injection          | Vector + keyword boost; FAISS                        | No BM25; no rerankers; no history injection       |
+| Safety                    | Risk classifiers, emergency detection, escalation    | Banned words, PII redaction                          | No emergency/escalation                           |
+| Execution                 | EHR, billing, appointments, prescriptions            | send_email, schedule_reminder, log_audit             | No real integrations                              |
+| Observability             | Intent accuracy, hallucination, voice metrics        | Mock telemetry only                                  | No live ingestion from pipeline                   |
+| Infrastructure            | GPU/vLLM, K8s, WebRTC                                | Microservices, LM Studio                             | No vLLM; limited scaling                          |
+| Cost Optimization         | 40–70% LLM reduction                                 | Local-first routing                                  | No context compression, caching, distilled models |
 
 ---
 
@@ -26,14 +26,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR fallback.
 
-| Channel | Status | Location | Notes |
-|---------|--------|----------|-------|
-| Voice | Implemented | `streaming-voice` `/ws/stream`, gateway `/voice` proxy | Accepts text + base64 audio; audio is placeholder |
-| Webchat | Implemented | Patient portal, Playground | Chat UI → orchestration pipeline |
-| SMS | Missing | — | Requires Twilio/similar adapter |
-| WhatsApp | Missing | — | Requires WhatsApp Business API |
-| Mobile SDK | Missing | — | Would need iOS/Android native SDK |
-| Smart IVR fallback | Missing | — | DTMF/voice menu fallback for failures |
+| Channel            | Status      | Location                                               | Notes                                             |
+| ------------------ | ----------- | ------------------------------------------------------ | ------------------------------------------------- |
+| Voice              | Implemented | `streaming-voice` `/ws/stream`, gateway `/voice` proxy | Accepts text + base64 audio; audio is placeholder |
+| Webchat            | Implemented | Patient portal, Playground                             | Chat UI → orchestration pipeline                  |
+| SMS                | Missing     | —                                                      | Requires Twilio/similar adapter                   |
+| WhatsApp           | Missing     | —                                                      | Requires WhatsApp Business API                    |
+| Mobile SDK         | Missing     | —                                                      | Would need iOS/Android native SDK                 |
+| Smart IVR fallback | Missing     | —                                                      | DTMF/voice menu fallback for failures             |
 
 ---
 
@@ -41,13 +41,13 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Streaming ASR → partial transcripts → early intent → real-time response; Whisper/Deepgram; duplex; interrupt handling; <800ms.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Real-time audio ingestion | Partial | `streaming_voice/main.py` accepts base64 audio |
-| Streaming ASR (Whisper/Deepgram) | Partial | Deepgram when DEEPGRAM_API_KEY set; `_transcribe_audio` |
-| Duplex audio | Missing | Response is text only; no TTS/audio back |
-| Interrupt handling | Missing | — |
-| Latency target (<800ms) | Not met | Pipeline is synchronous request-response; LM Studio can be slow |
+| Feature                          | Status  | Code Location                                                   |
+| -------------------------------- | ------- | --------------------------------------------------------------- |
+| Real-time audio ingestion        | Partial | `streaming_voice/main.py` accepts base64 audio                  |
+| Streaming ASR (Whisper/Deepgram) | Partial | Deepgram when DEEPGRAM_API_KEY set; `_transcribe_audio`         |
+| Duplex audio                     | Missing | Response is text only; no TTS/audio back                        |
+| Interrupt handling               | Missing | —                                                               |
+| Latency target (<800ms)          | Not met | Pipeline is synchronous request-response; LM Studio can be slow |
 
 ---
 
@@ -55,14 +55,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Intent classifier, embedding similarity, context reasoning, semantic routing, confidence scoring; reduce LLM cost.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Intent classifier | Partial | `llm_router/main.py` keyword rules (haiku/opus/gemini) |
-| LLM fallback | Implemented | LOCAL first; cloud for keyword matches |
-| Semantic routing | Implemented | LLM Router calls RAG `/embed`, cosine similarity to intent embeddings |
-| Context reasoning | Missing | No conversation history in route |
-| Confidence scoring | Implemented | `RouteResponse.confidence` from embedding similarity |
-| Cost reduction | Partial | Response cache (TTL); keyword routing; no context compression |
+| Feature            | Status      | Code Location                                                         |
+| ------------------ | ----------- | --------------------------------------------------------------------- |
+| Intent classifier  | Partial     | `llm_router/main.py` keyword rules (haiku/opus/gemini)                |
+| LLM fallback       | Implemented | LOCAL first; cloud for keyword matches                                |
+| Semantic routing   | Implemented | LLM Router calls RAG `/embed`, cosine similarity to intent embeddings |
+| Context reasoning  | Missing     | No conversation history in route                                      |
+| Confidence scoring | Implemented | `RouteResponse.confidence` from embedding similarity                  |
+| Cost reduction     | Partial     | Response cache (TTL); keyword routing; no context compression         |
 
 ---
 
@@ -70,14 +70,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Tool-using AI agents; query enterprise systems; multi-step workflows; LangGraph/CrewAI/Semantic Kernel.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Tool registry | Implemented | `agent_runtime/main.py` TOOL_REGISTRY |
-| RAG tool | Implemented | `search_knowledge_base` calls RAG |
-| Pipeline integration | Missing | Orchestration never calls agent-runtime |
-| LLM function calling | Missing | Keyword-based tool selection (`tool_name in task.prompt`) |
-| Multi-step state machine | Missing | Single-tool dispatch only |
-| Agent planners (LangGraph/CrewAI) | Missing | — |
+| Feature                           | Status      | Code Location                                             |
+| --------------------------------- | ----------- | --------------------------------------------------------- |
+| Tool registry                     | Implemented | `agent_runtime/main.py` TOOL_REGISTRY                     |
+| RAG tool                          | Implemented | `search_knowledge_base` calls RAG                         |
+| Pipeline integration              | Missing     | Orchestration never calls agent-runtime                   |
+| LLM function calling              | Missing     | Keyword-based tool selection (`tool_name in task.prompt`) |
+| Multi-step state machine          | Missing     | Single-tool dispatch only                                 |
+| Agent planners (LangGraph/CrewAI) | Missing     | —                                                         |
 
 ---
 
@@ -85,14 +85,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Hybrid retrieval (BM25 + vector), medical/domain rerankers, context injection (history, reports).
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Vector search | Implemented | `rag_service/main.py` FAISS + SentenceTransformer |
-| Keyword boost | Implemented | Relevance scoring for term matches |
-| BM25 hybrid | Implemented | rank-bm25 + Reciprocal Rank Fusion; `RAG_USE_HYBRID` env |
-| Medical/domain rerankers | Missing | — |
-| Chunk lineage tracking | Missing | — |
-| DB + fallback docs | Implemented | `documents.py` load_documents_from_db |
+| Feature                  | Status      | Code Location                                            |
+| ------------------------ | ----------- | -------------------------------------------------------- |
+| Vector search            | Implemented | `rag_service/main.py` FAISS + SentenceTransformer        |
+| Keyword boost            | Implemented | Relevance scoring for term matches                       |
+| BM25 hybrid              | Implemented | rank-bm25 + Reciprocal Rank Fusion; `RAG_USE_HYBRID` env |
+| Medical/domain rerankers | Missing     | —                                                        |
+| Chunk lineage tracking   | Missing     | —                                                        |
+| DB + fallback docs       | Implemented | `documents.py` load_documents_from_db                    |
 
 ---
 
@@ -100,14 +100,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Risk classifiers, response validators, emergency detection, PHI leakage, escalation triggers.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Banned words | Implemented | `safety_guardrails/main.py` configurable via env |
-| PII detection | Implemented | SSN, email, phone, credit card patterns |
-| PII redaction | Implemented | Pattern substitution |
-| Emergency symptom detection | Missing | — |
-| Unsafe advice detection | Missing | — |
-| Escalation triggers | Missing | No `requires_escalation` flag |
+| Feature                     | Status      | Code Location                                    |
+| --------------------------- | ----------- | ------------------------------------------------ |
+| Banned words                | Implemented | `safety_guardrails/main.py` configurable via env |
+| PII detection               | Implemented | SSN, email, phone, credit card patterns          |
+| PII redaction               | Implemented | Pattern substitution                             |
+| Emergency symptom detection | Missing     | —                                                |
+| Unsafe advice detection     | Missing     | —                                                |
+| Escalation triggers         | Missing     | No `requires_escalation` flag                    |
 
 ---
 
@@ -115,15 +115,15 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Appointment APIs, EHR, billing, prescriptions, insurance verification.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| send_email | Placeholder | `execution_engine` |
-| schedule_reminder | Placeholder | — |
-| log_audit | Placeholder | — |
-| get_appointments, create_appointment | Stub | Execution engine + agent integration |
-| check_insurance, get_availability | Stub | — |
-| request_prescription_refill | Stub | — |
-| EHR integration | Stub | Scaffolding for real integrations |
+| Feature                              | Status      | Code Location                        |
+| ------------------------------------ | ----------- | ------------------------------------ |
+| send_email                           | Placeholder | `execution_engine`                   |
+| schedule_reminder                    | Placeholder | —                                    |
+| log_audit                            | Placeholder | —                                    |
+| get_appointments, create_appointment | Stub        | Execution engine + agent integration |
+| check_insurance, get_availability    | Stub        | —                                    |
+| request_prescription_refill          | Stub        | —                                    |
+| EHR integration                      | Stub        | Scaffolding for real integrations    |
 
 ---
 
@@ -131,14 +131,14 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** Intent accuracy, hallucination rate, retrieval precision, voice metrics (silence, talk ratio), call success.
 
-| Feature | Status | Code Location |
-|---------|--------|---------------|
-| Telemetry ingestion API | Implemented | `observability_core` POST `/api/v1/telemetry` |
+| Feature                      | Status      | Code Location                                                                        |
+| ---------------------------- | ----------- | ------------------------------------------------------------------------------------ |
+| Telemetry ingestion API      | Implemented | `observability_core` POST `/api/v1/telemetry`                                        |
 | Live telemetry from services | Implemented | Orchestration (pipeline_step), LLM router (llm_call with cost) emit to observability |
-| Performance reports | Implemented | Mock data + real analysis of stored events |
-| Intent accuracy tracking | Missing | — |
-| Voice metrics | Missing | — |
-| Retrieval precision | Missing | — |
+| Performance reports          | Implemented | Mock data + real analysis of stored events                                           |
+| Intent accuracy tracking     | Missing     | —                                                                                    |
+| Voice metrics                | Missing     | —                                                                                    |
+| Retrieval precision          | Missing     | —                                                                                    |
 
 ---
 
@@ -146,13 +146,13 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 **Prompt:** GPU clusters, vLLM, Kubernetes scaling, WebRTC streaming gateways.
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Microservices | Implemented | 10+ services |
-| LM Studio (local LLM) | Implemented | OpenAI-compatible |
-| vLLM / GPU inference | Missing | — |
-| Kubernetes | Partial | k8s templates exist |
-| WebRTC | Missing | — |
+| Feature               | Status      | Notes               |
+| --------------------- | ----------- | ------------------- |
+| Microservices         | Implemented | 10+ services        |
+| LM Studio (local LLM) | Implemented | OpenAI-compatible   |
+| vLLM / GPU inference  | Missing     | —                   |
+| Kubernetes            | Partial     | k8s templates exist |
+| WebRTC                | Missing     | —                   |
 
 ---
 

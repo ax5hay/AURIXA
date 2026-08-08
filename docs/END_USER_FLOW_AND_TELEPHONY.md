@@ -18,15 +18,15 @@ This document defines how end users interact with AURIXA across different channe
 
 ## Channel Layer Overview
 
-| Channel        | Status       | Endpoint/Protocol            | Primary Use                    |
-|----------------|-------------|-----------------------------|--------------------------------|
-| Voice (Web)    | Implemented  | REST `POST /api/v1/voice/process` (primary); WebSocket `/ws/voice` → `/ws/stream` (optional) | Patient portal `/voice`: mic or text, optional TTS |
-| Webchat        | Implemented  | REST `/api/v1/orchestration/pipelines` | Patient portal chat            |
-| Voice (Phone)  | Not implemented | (Planned: SIP/WebRTC gateway) | Inbound/outbound phone calls   |
-| SMS            | Stub         | (Planned)                    | Appointment reminders, alerts  |
-| WhatsApp       | Planned      | (Planned)                    | International messaging        |
-| Mobile SDK     | Planned      | (Planned)                    | Native mobile app embedding    |
-| Smart IVR      | Planned      | (Planned)                    | Keypad/voice fallback for IVR |
+| Channel       | Status          | Endpoint/Protocol                                                                            | Primary Use                                        |
+| ------------- | --------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Voice (Web)   | Implemented     | REST `POST /api/v1/voice/process` (primary); WebSocket `/ws/voice` → `/ws/stream` (optional) | Patient portal `/voice`: mic or text, optional TTS |
+| Webchat       | Implemented     | REST `/api/v1/orchestration/pipelines`                                                       | Patient portal chat                                |
+| Voice (Phone) | Not implemented | (Planned: SIP/WebRTC gateway)                                                                | Inbound/outbound phone calls                       |
+| SMS           | Stub            | (Planned)                                                                                    | Appointment reminders, alerts                      |
+| WhatsApp      | Planned         | (Planned)                                                                                    | International messaging                            |
+| Mobile SDK    | Planned         | (Planned)                                                                                    | Native mobile app embedding                        |
+| Smart IVR     | Planned         | (Planned)                                                                                    | Keypad/voice fallback for IVR                      |
 
 ---
 
@@ -37,6 +37,7 @@ This document defines how end users interact with AURIXA across different channe
 **User**: Patient visiting the AURIXA Patient Portal.
 
 **Flow**:
+
 ```
 Patient opens Patient Portal (port 3300)
     → Types message in chat
@@ -49,6 +50,7 @@ Patient opens Patient Portal (port 3300)
 ```
 
 **I/O**:
+
 - **Input**: `{ prompt: string, session_id?: string, patient_id?: number }`
 - **Output**: `{ session_id: string, final_response: string }`
 
@@ -59,6 +61,7 @@ Patient opens Patient Portal (port 3300)
 **User**: Patient on the Patient Portal **Voice** page.
 
 **Flow**:
+
 ```
 User opens Patient Portal → /voice
     → Option A: Records with mic → audio encoded to base64
@@ -79,6 +82,7 @@ REST (Option B — text):
 ```
 
 **I/O**:
+
 - **Input**: `POST /api/v1/voice/process` — `audio_b64`, `patient_id?`, `want_tts?` (default true)
 - **Output**: `{ transcript?, response, audio_b64? }` — always text; audio only when `want_tts` and TTS configured
 
@@ -89,6 +93,7 @@ The **"Play aloud"** toggle on the Voice page controls `want_tts`; when off, onl
 **User**: Client that prefers real-time duplex (e.g., future telephony gateway or custom app).
 
 **Flow**:
+
 ```
 WebSocket connect to wss://host/ws/voice (proxied to streaming-voice /ws/stream)
 
@@ -105,6 +110,7 @@ Outbound (Platform → User):
 ```
 
 **I/O**:
+
 - **Input**: WebSocket messages — `text` or `audio`, optional `want_tts` (default true)
 - **Output**: WebSocket messages — `text`, `audio`, `status`, `error`
 
@@ -115,6 +121,7 @@ Outbound (Platform → User):
 **User**: Caller dialing a hospital/clinic number.
 
 **Flow** (conceptual):
+
 ```
 PSTN/VoIP call → Telephony gateway (Twilio, Vapi, etc.)
     → Gateway streams audio to AURIXA Voice WebSocket /ws/stream
@@ -125,6 +132,7 @@ Alternative: SIP trunk → Asterisk/FreeSWITCH → WebRTC bridge → AURIXA
 ```
 
 **I/O** (when telephony gateway is added):
+
 - **Input**: RTP/SRTP audio from gateway, or WebSocket from gateway to our `/ws/stream`
 - **Output**: RTP/SRTP or WebSocket audio back to gateway → caller
 
@@ -137,34 +145,38 @@ The streaming-voice service remains **gateway-agnostic**: it receives audio, ret
 ### STT (Speech-to-Text)
 
 **Primary (OSS, free, no API keys):**
-| Provider        | License   | Notes                                  |
-|-----------------|-----------|----------------------------------------|
-| Vosk            | Apache 2  | Kaldi-based, offline. Set `VOSK_MODEL_PATH`. |
-| faster-whisper  | MIT       | Local Whisper (CTranslate2). Model downloads on first use. |
-| SpeechBrain     | Apache 2  | Optional: `pip install speechbrain`   |
+
+| Provider       | License  | Notes                                                      |
+| -------------- | -------- | ---------------------------------------------------------- |
+| Vosk           | Apache 2 | Kaldi-based, offline. Set `VOSK_MODEL_PATH`.               |
+| faster-whisper | MIT      | Local Whisper (CTranslate2). Model downloads on first use. |
+| SpeechBrain    | Apache 2 | Optional: `pip install speechbrain`                        |
 
 **Fallbacks (proprietary):**
-| Provider   | When used              |
-|------------|------------------------|
-| AssemblyAI | `ASSEMBLYAI_API_KEY`   |
-| Deepgram   | `DEEPGRAM_API_KEY`    |
-| Whisper API| `OPENAI_API_KEY`      |
+
+| Provider    | When used            |
+| ----------- | -------------------- |
+| AssemblyAI  | `ASSEMBLYAI_API_KEY` |
+| Deepgram    | `DEEPGRAM_API_KEY`   |
+| Whisper API | `OPENAI_API_KEY`     |
 
 **Order**: OSS first → proprietary. `STT_PROVIDER_ORDER=vosk,faster_whisper,speechbrain,assemblyai,deepgram,whisper`. Service works with zero API keys when Vosk or faster-whisper is configured.
 
 ### TTS (Text-to-Speech)
 
 **Primary (OSS, free, no API keys):**
-| Provider   | Notes |
-|------------|--------|
-| Piper      | Local neural TTS. Set `PIPER_MODEL_PATH` (e.g. `/models/piper/en_US-lessac-medium.onnx`). Model can be downloaded at build time or mounted. |
-| edge-tts   | Free Microsoft TTS (internet required). No key. `EDGE_TTS_VOICE` (default `en-US-JennyNeural`). |
+
+| Provider | Notes                                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Piper    | Local neural TTS. Set `PIPER_MODEL_PATH` (e.g. `/models/piper/en_US-lessac-medium.onnx`). Model can be downloaded at build time or mounted. |
+| edge-tts | Free Microsoft TTS (internet required). No key. `EDGE_TTS_VOICE` (default `en-US-JennyNeural`).                                             |
 
 **Fallbacks (proprietary):**
-| Provider   | When used |
-|------------|-----------|
+
+| Provider   | When used                          |
+| ---------- | ---------------------------------- |
 | OpenAI     | `OPENAI_API_KEY` (not placeholder) |
-| ElevenLabs | `ELEVENLABS_API_KEY` |
+| ElevenLabs | `ELEVENLABS_API_KEY`               |
 
 **Order**: `TTS_PROVIDER_ORDER=piper,edge_tts,openai,elevenlabs`. Service works with zero API keys when Piper or edge-tts is available. User can disable TTS per request via `want_tts: false` (Voice page "Play aloud" off).
 
@@ -201,6 +213,7 @@ When adding PSTN/VoIP:
 4. **Bland AI**: Similar WebSocket or HTTP streaming integration
 
 The streaming-voice service is designed to accept:
+
 - Text (for testing and webchat bridge)
 - Base64 audio chunks (for any WebSocket-based client, including gateways)
 

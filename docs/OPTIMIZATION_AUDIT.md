@@ -7,16 +7,16 @@
 
 ## Executive Summary
 
-| Area | Priority | Impact | Effort | Status |
-|------|----------|--------|--------|--------|
-| DB connection pool & pool_pre_ping | P0 | High | Low | Recommended |
-| Shared HTTP clients (Python services) | P0 | High | Low | Recommended |
-| Orchestration response cache (Redis or capped LRU) | P0 | High | Medium | Recommended |
-| Gateway: streaming proxy for pipeline/LLM | P1 | High | Medium | Recommended |
-| Docker healthchecks & depends_on conditions | P1 | Resilience | Low | Recommended |
-| DB indexes for hot queries | P1 | Medium | Low | Recommended |
-| Frontend: client-side cache (SWR/React Query) | P2 | Medium | Medium | Optional |
-| Gateway: persistent HTTP agent (keep-alive) | P2 | Low–Medium | Low | Optional |
+| Area                                               | Priority | Impact     | Effort | Status      |
+| -------------------------------------------------- | -------- | ---------- | ------ | ----------- |
+| DB connection pool & pool_pre_ping                 | P0       | High       | Low    | Recommended |
+| Shared HTTP clients (Python services)              | P0       | High       | Low    | Recommended |
+| Orchestration response cache (Redis or capped LRU) | P0       | High       | Medium | Recommended |
+| Gateway: streaming proxy for pipeline/LLM          | P1       | High       | Medium | Recommended |
+| Docker healthchecks & depends_on conditions        | P1       | Resilience | Low    | Recommended |
+| DB indexes for hot queries                         | P1       | Medium     | Low    | Recommended |
+| Frontend: client-side cache (SWR/React Query)      | P2       | Medium     | Medium | Optional    |
+| Gateway: persistent HTTP agent (keep-alive)        | P2       | Low–Medium | Low    | Optional    |
 
 ---
 
@@ -31,12 +31,12 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **Buffered proxy** | High | For `/orchestration/pipelines` and `/llm/*` (e.g. generate), stream response chunks to the client instead of buffering. Reduces TTFB and memory under load. |
-| **No connection reuse** | Medium | Node 18+ `fetch` keeps connections alive per origin by default. For explicit pooling and keep-alive to multiple origins, use a shared `undici.Dispatcher` or `http.Agent` with `keepAlive: true` and pass through to `fetch` (or use `fastify-http-proxy` / `@fastify/http-proxy` with streaming). |
-| **No gateway healthcheck in Docker** | Medium | Add `healthcheck` for gateway (e.g. `GET /health`) so orchestrators can mark the container healthy and use `depends_on: condition: service_healthy` for dependent services. |
-| **WebSockets** | Low | Voice and conversation WS proxies are straightforward; ensure upstream connection timeouts and backpressure if upstream is slow. |
+| Issue                                | Severity | Recommendation                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Buffered proxy**                   | High     | For `/orchestration/pipelines` and `/llm/*` (e.g. generate), stream response chunks to the client instead of buffering. Reduces TTFB and memory under load.                                                                                                                                        |
+| **No connection reuse**              | Medium   | Node 18+ `fetch` keeps connections alive per origin by default. For explicit pooling and keep-alive to multiple origins, use a shared `undici.Dispatcher` or `http.Agent` with `keepAlive: true` and pass through to `fetch` (or use `fastify-http-proxy` / `@fastify/http-proxy` with streaming). |
+| **No gateway healthcheck in Docker** | Medium   | Add `healthcheck` for gateway (e.g. `GET /health`) so orchestrators can mark the container healthy and use `depends_on: condition: service_healthy` for dependent services.                                                                                                                        |
+| **WebSockets**                       | Low      | Voice and conversation WS proxies are straightforward; ensure upstream connection timeouts and backpressure if upstream is slow.                                                                                                                                                                   |
 
 ### Recommended Actions
 
@@ -56,13 +56,13 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **Default pool size** | High | Set explicit `pool_size` (e.g. 5–20) and `max_overflow` (e.g. 10) so multiple workers/containers don’t over-open connections. |
-| **No pool_pre_ping** | High | Enable `pool_pre_ping=True` so stale/broken connections are discarded before use (critical after idle or failover). |
-| **Unbounded pool** | Medium | Rely on `pool_size` + `max_overflow`; avoid creating many engines per process. |
-| **Missing composite index** | Medium | Execution engine’s `_get_appointments` filters `Appointment.patient_id`, `status != 'cancelled'`, `order_by(start_time)`. Add composite index: `(patient_id, status, start_time)` to avoid full scans on large tables. |
-| **AuditLog queries** | Low | If you query by `(service, action)` or time range, add indexes to match. |
+| Issue                       | Severity | Recommendation                                                                                                                                                                                                         |
+| --------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Default pool size**       | High     | Set explicit `pool_size` (e.g. 5–20) and `max_overflow` (e.g. 10) so multiple workers/containers don’t over-open connections.                                                                                          |
+| **No pool_pre_ping**        | High     | Enable `pool_pre_ping=True` so stale/broken connections are discarded before use (critical after idle or failover).                                                                                                    |
+| **Unbounded pool**          | Medium   | Rely on `pool_size` + `max_overflow`; avoid creating many engines per process.                                                                                                                                         |
+| **Missing composite index** | Medium   | Execution engine’s `_get_appointments` filters `Appointment.patient_id`, `status != 'cancelled'`, `order_by(start_time)`. Add composite index: `(patient_id, status, start_time)` to avoid full scans on large tables. |
+| **AuditLog queries**        | Low      | If you query by `(service, action)` or time range, add indexes to match.                                                                                                                                               |
 
 ### Recommended Actions
 
@@ -81,12 +81,12 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **Unbounded in-memory cache** | High | Cache can grow without limit; long-lived process may OOM. Use either: (a) Redis with TTL and optional maxmemory-policy, or (b) in-process LRU with max size (e.g. 1000 entries) and TTL eviction on read + periodic cleanup. |
-| **Cache not shared** | Medium | With multiple orchestration replicas, each has its own cache. Move to Redis for shared cache and better hit rate. |
-| **Pipeline strictly sequential** | Low | Intent → Agent or (RAG → Generate) → Safety is correct; no unnecessary parallelism to add. |
-| **Telemetry** | Good | `emit_telemetry` is fire-and-forget with short timeout; non-blocking. |
+| Issue                            | Severity | Recommendation                                                                                                                                                                                                               |
+| -------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unbounded in-memory cache**    | High     | Cache can grow without limit; long-lived process may OOM. Use either: (a) Redis with TTL and optional maxmemory-policy, or (b) in-process LRU with max size (e.g. 1000 entries) and TTL eviction on read + periodic cleanup. |
+| **Cache not shared**             | Medium   | With multiple orchestration replicas, each has its own cache. Move to Redis for shared cache and better hit rate.                                                                                                            |
+| **Pipeline strictly sequential** | Low      | Intent → Agent or (RAG → Generate) → Safety is correct; no unnecessary parallelism to add.                                                                                                                                   |
+| **Telemetry**                    | Good     | `emit_telemetry` is fire-and-forget with short timeout; non-blocking.                                                                                                                                                        |
 
 ### Recommended Actions
 
@@ -105,10 +105,10 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **New AsyncClient per route request** | High | Create one shared `httpx.AsyncClient` (e.g. in lifespan or module) for RAG/embed calls; reuse for every request to avoid connection churn and latency. |
-| **Per-request client in generate** | Medium | If any code path still uses a new `httpx.AsyncClient` for generate, replace with shared client. |
+| Issue                                 | Severity | Recommendation                                                                                                                                         |
+| ------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **New AsyncClient per route request** | High     | Create one shared `httpx.AsyncClient` (e.g. in lifespan or module) for RAG/embed calls; reuse for every request to avoid connection churn and latency. |
+| **Per-request client in generate**    | Medium   | If any code path still uses a new `httpx.AsyncClient` for generate, replace with shared client.                                                        |
 
 ### Recommended Actions
 
@@ -125,9 +125,9 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **New client per request** | High | Use one shared `httpx.AsyncClient` (or two: one for RAG, one for execution) in app state, created in lifespan, closed on shutdown. Set timeouts per call if needed. |
+| Issue                      | Severity | Recommendation                                                                                                                                                      |
+| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **New client per request** | High     | Use one shared `httpx.AsyncClient` (or two: one for RAG, one for execution) in app state, created in lifespan, closed on shutdown. Set timeouts per call if needed. |
 
 ### Recommended Actions
 
@@ -144,10 +144,10 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **New client per pipeline call** | High | Reuse a shared client for orchestration (e.g. in app state, created in lifespan). |
-| **TTS/STT clients** | Medium | Reuse one or two shared clients for TTS and STT providers to avoid connection churn. |
+| Issue                            | Severity | Recommendation                                                                       |
+| -------------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| **New client per pipeline call** | High     | Reuse a shared client for orchestration (e.g. in app state, created in lifespan).    |
+| **TTS/STT clients**              | Medium   | Reuse one or two shared clients for TTS and STT providers to avoid connection churn. |
 
 ### Recommended Actions
 
@@ -166,10 +166,10 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **Telemetry client** | Low | Use a shared httpx client for observability posts. |
-| **Document loading** | Low | If knowledge base grows large, consider lazy loading or tenant-scoped indexes; current design is fine for moderate size. |
+| Issue                | Severity | Recommendation                                                                                                           |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Telemetry client** | Low      | Use a shared httpx client for observability posts.                                                                       |
+| **Document loading** | Low      | If knowledge base grows large, consider lazy loading or tenant-scoped indexes; current design is fine for moderate size. |
 
 ### Recommended Actions
 
@@ -186,10 +186,10 @@
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **Index for get_appointments** | Medium | Add composite index on `(patient_id, status, start_time)` (see §2). |
-| **N+1 / over-fetch** | Low | Current single-query pattern is fine; avoid loading full relationships if only IDs are needed. |
+| Issue                          | Severity | Recommendation                                                                                 |
+| ------------------------------ | -------- | ---------------------------------------------------------------------------------------------- |
+| **Index for get_appointments** | Medium   | Add composite index on `(patient_id, status, start_time)` (see §2).                            |
+| **N+1 / over-fetch**           | Low      | Current single-query pattern is fine; avoid loading full relationships if only IDs are needed. |
 
 ### Recommended Actions
 
@@ -215,10 +215,10 @@ No critical changes; optional: shared httpx client for observability in each ser
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **No client-side cache** | Medium | For list/read-heavy endpoints (tenants, patients, config summary), use SWR or React Query with short stale time (e.g. 30s) to reduce redundant requests and make UI feel snappier. |
-| **Bundle** | Low | `optimizePackageImports` for `clsx` is good; consider auditing other large deps and lazy-loading below-the-fold or route-specific code. |
+| Issue                    | Severity | Recommendation                                                                                                                                                                     |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No client-side cache** | Medium   | For list/read-heavy endpoints (tenants, patients, config summary), use SWR or React Query with short stale time (e.g. 30s) to reduce redundant requests and make UI feel snappier. |
+| **Bundle**               | Low      | `optimizePackageImports` for `clsx` is good; consider auditing other large deps and lazy-loading below-the-fold or route-specific code.                                            |
 
 ### Recommended Actions
 
@@ -236,11 +236,11 @@ No critical changes; optional: shared httpx client for observability in each ser
 
 ### Findings
 
-| Issue | Severity | Recommendation |
-|-------|----------|-----------------|
-| **No healthchecks for app services** | High | Add `healthcheck` for api-gateway (GET /health), orchestration-engine, llm-router, rag-service, execution-engine, streaming-voice (GET /health on each). Use `interval`/`timeout`/`retries` so unhealthy containers are marked and can be restarted. |
-| **depends_on without condition** | Medium | Where startup order matters (e.g. gateway after backends), use `depends_on: <svc>: condition: service_healthy` so Compose/Kubernetes waits for healthy backends before starting dependents. |
-| **Resource limits** | Low | Optionally add `deploy.resources.limits` (memory/cpu) to avoid noisy neighbours in shared hosts. |
+| Issue                                | Severity | Recommendation                                                                                                                                                                                                                                       |
+| ------------------------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No healthchecks for app services** | High     | Add `healthcheck` for api-gateway (GET /health), orchestration-engine, llm-router, rag-service, execution-engine, streaming-voice (GET /health on each). Use `interval`/`timeout`/`retries` so unhealthy containers are marked and can be restarted. |
+| **depends_on without condition**     | Medium   | Where startup order matters (e.g. gateway after backends), use `depends_on: <svc>: condition: service_healthy` so Compose/Kubernetes waits for healthy backends before starting dependents.                                                          |
+| **Resource limits**                  | Low      | Optionally add `deploy.resources.limits` (memory/cpu) to avoid noisy neighbours in shared hosts.                                                                                                                                                     |
 
 ### Recommended Actions
 
@@ -268,17 +268,17 @@ No critical changes; optional: shared httpx client for observability in each ser
 
 ## Summary Table (per service)
 
-| Service | Speed | Resilience | Scalability | Notes |
-|---------|--------|------------|-------------|--------|
-| API Gateway | Buffering → streaming | Add healthcheck | OK | Shared agent optional |
-| Orchestration | Cache Redis/cap | Pool + pre_ping | Cache shared with Redis |
-| LLM Router | Shared httpx | — | OK | RAG embed reuse |
-| Agent Runtime | Shared httpx | — | OK | RAG + execution reuse |
-| RAG | OK | — | OK | Optional to_thread for encode |
-| Streaming Voice | Shared httpx | — | OK | Orchestration + TTS/STT |
-| Execution Engine | Index | Pool + pre_ping | OK | Index appointments |
-| Frontend | Client cache | — | OK | SWR/React Query |
-| Docker | Healthchecks | Healthy deps | Optional limits | All app services |
+| Service          | Speed                 | Resilience      | Scalability             | Notes                         |
+| ---------------- | --------------------- | --------------- | ----------------------- | ----------------------------- |
+| API Gateway      | Buffering → streaming | Add healthcheck | OK                      | Shared agent optional         |
+| Orchestration    | Cache Redis/cap       | Pool + pre_ping | Cache shared with Redis |
+| LLM Router       | Shared httpx          | —               | OK                      | RAG embed reuse               |
+| Agent Runtime    | Shared httpx          | —               | OK                      | RAG + execution reuse         |
+| RAG              | OK                    | —               | OK                      | Optional to_thread for encode |
+| Streaming Voice  | Shared httpx          | —               | OK                      | Orchestration + TTS/STT       |
+| Execution Engine | Index                 | Pool + pre_ping | OK                      | Index appointments            |
+| Frontend         | Client cache          | —               | OK                      | SWR/React Query               |
+| Docker           | Healthchecks          | Healthy deps    | Optional limits         | All app services              |
 
 This audit should be re-run after major changes or before production load tests.
 
@@ -318,14 +318,14 @@ The following high-impact changes have been applied in the codebase:
 
 ### Security & Vulnerabilities
 
-| Area | Status | Notes |
-|------|--------|--------|
-| **SQL injection** | OK | Queries use SQLAlchemy `select()` / parameterized `text(…).bindparams()`; no raw user input in SQL. |
-| **Admin routes** | Risk | `/api/v1/admin/*` are **unauthenticated** (auth plugin is a no-op placeholder). For production, add JWT/API-key/session auth and enforce on admin routes. |
-| **CORS** | Dev-only | `CORS_ORIGIN` defaults to `*`. Set `CORS_ORIGIN` to allowed origins in production. |
-| **Rate limit** | OK | 200 req/min per tenant/IP at gateway. |
-| **Secrets** | OK | No hardcoded API keys in repo; use env (e.g. `OPENAI_API_KEY`, `JWT_SECRET`). |
-| **Proxy timeouts** | OK | Proxy and admin proxy use `AbortSignal.timeout()`; pipeline/LLM get 180s/15s as appropriate. |
+| Area               | Status   | Notes                                                                                                                                                     |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SQL injection**  | OK       | Queries use SQLAlchemy `select()` / parameterized `text(…).bindparams()`; no raw user input in SQL.                                                       |
+| **Admin routes**   | Risk     | `/api/v1/admin/*` are **unauthenticated** (auth plugin is a no-op placeholder). For production, add JWT/API-key/session auth and enforce on admin routes. |
+| **CORS**           | Dev-only | `CORS_ORIGIN` defaults to `*`. Set `CORS_ORIGIN` to allowed origins in production.                                                                        |
+| **Rate limit**     | OK       | 200 req/min per tenant/IP at gateway.                                                                                                                     |
+| **Secrets**        | OK       | No hardcoded API keys in repo; use env (e.g. `OPENAI_API_KEY`, `JWT_SECRET`).                                                                             |
+| **Proxy timeouts** | OK       | Proxy and admin proxy use `AbortSignal.timeout()`; pipeline/LLM get 180s/15s as appropriate.                                                              |
 
 ### Optimization Gaps (quick reference)
 

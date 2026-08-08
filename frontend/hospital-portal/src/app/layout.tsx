@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ToastProvider } from "@aurixa/ui-kit";
 import "./globals.css";
 import { StaffNav } from "@/components/StaffNav";
 import { StaffProvider } from "@/context/StaffContext";
@@ -11,20 +12,26 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className="font-sans bg-background text-white min-h-screen antialiased">
-        <StaffProvider>
-          <ErrorBoundary>
-            <main className="w-full max-w-6xl mx-auto px-4 sm:px-6">
-              <StaffNav />
-              {children}
-            </main>
-          </ErrorBoundary>
-        </StaffProvider>
+    <html lang="en" data-theme="clinical">
+      <body className="min-h-screen font-sans text-ui-ink antialiased">
+        <ToastProvider>
+          <a
+            href="#main-content"
+            className="sr-only z-[200] rounded-ui-md bg-ui-accent px-4 py-3 text-ui-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          >
+            Skip to content
+          </a>
+          <StaffProvider>
+            <ErrorBoundary>
+              <main id="main-content" tabIndex={-1} className="portal-container">
+                <StaffNav />
+                {children}
+              </main>
+            </ErrorBoundary>
+          </StaffProvider>
+        </ToastProvider>
       </body>
     </html>
   );

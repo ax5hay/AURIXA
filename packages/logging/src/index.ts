@@ -78,15 +78,9 @@ export interface CreateLoggerOptions {
  *  - Log level driven by `LOG_LEVEL` env var
  */
 export function createLogger(options: CreateLoggerOptions | string): AurixaLogger {
-  const opts: CreateLoggerOptions =
-    typeof options === "string" ? { service: options } : options;
+  const opts: CreateLoggerOptions = typeof options === "string" ? { service: options } : options;
 
-  const {
-    service,
-    level = resolveLevel(),
-    bindings = {},
-    pretty = isDevEnvironment(),
-  } = opts;
+  const { service, level = resolveLevel(), bindings = {}, pretty = isDevEnvironment() } = opts;
 
   const pinoOpts: LoggerOptions = {
     level,

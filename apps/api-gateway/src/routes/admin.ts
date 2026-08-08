@@ -1,7 +1,7 @@
-import { FastifyInstance } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getServiceUrl } from "../config.js";
 
-async function proxyToOrchestration(path: string, req: any, reply: any) {
+async function proxyToOrchestration(path: string, req: FastifyRequest, reply: FastifyReply) {
   const base = getServiceUrl("orchestration");
   const qs = new URLSearchParams((req.query as Record<string, string>) ?? {}).toString();
   const url = `${base}/api/v1/${path}${qs ? `?${qs}` : ""}`;
@@ -40,9 +40,15 @@ export async function adminRoutes(app: FastifyInstance) {
     return proxyToOrchestration(`tenants/${id}`, req, reply);
   });
   app.get("/audit", async (req, reply) => proxyToOrchestration("audit", req, reply));
-  app.get("/analytics/summary", async (req, reply) => proxyToOrchestration("analytics/summary", req, reply));
-  app.get("/config/summary", async (req, reply) => proxyToOrchestration("config/summary", req, reply));
-  app.get("/config/detail", async (req, reply) => proxyToOrchestration("config/detail", req, reply));
+  app.get("/analytics/summary", async (req, reply) =>
+    proxyToOrchestration("analytics/summary", req, reply),
+  );
+  app.get("/config/summary", async (req, reply) =>
+    proxyToOrchestration("config/summary", req, reply),
+  );
+  app.get("/config/detail", async (req, reply) =>
+    proxyToOrchestration("config/detail", req, reply),
+  );
   app.patch("/config/:key", async (req, reply) => {
     const { key } = req.params as { key: string };
     return proxyToOrchestration(`config/${encodeURIComponent(key)}`, req, reply);
@@ -61,8 +67,12 @@ export async function adminRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     return proxyToOrchestration(`patients/${id}`, req, reply);
   });
-  app.get("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
-  app.post("/knowledge/articles", async (req, reply) => proxyToOrchestration("knowledge/articles", req, reply));
+  app.get("/knowledge/articles", async (req, reply) =>
+    proxyToOrchestration("knowledge/articles", req, reply),
+  );
+  app.post("/knowledge/articles", async (req, reply) =>
+    proxyToOrchestration("knowledge/articles", req, reply),
+  );
   app.get("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
   app.post("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
   app.patch("/appointments/:id", async (req, reply) => {

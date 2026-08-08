@@ -1,26 +1,40 @@
 import type { Metadata } from "next";
+import { ToastProvider } from "@aurixa/ui-kit";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import CommandPalette from "@/components/CommandPalette";
+import ContextBar from "@/components/ContextBar";
+import { OperatorProvider } from "@/context/OperatorContext";
 
 export const metadata: Metadata = {
   title: "AURIXA Dashboard",
-  description: "AURIXA AI Platform - Orchestration Dashboard",
+  description: "AURIXA platform operator console",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
-      <body className="font-sans antialiased" style={{ backgroundColor: "#0a0a0f", color: "#ffffff" }}>
-        <div className="flex min-h-screen bg-surface-primary" style={{ backgroundColor: "#0a0a0f" }}>
-          <Sidebar />
-          <main className="flex-1 overflow-auto" style={{ backgroundColor: "#0a0a0f" }}>
-            {children}
-          </main>
-        </div>
+      <body className="font-sans antialiased">
+        <OperatorProvider>
+          <ToastProvider>
+            <a
+              href="#main-content"
+              className="sr-only z-[200] rounded-md bg-white px-4 py-3 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+            >
+              Skip to content
+            </a>
+            <div className="flex min-h-screen">
+              <Sidebar />
+              <div className="min-w-0 flex-1">
+                <ContextBar />
+                <main id="main-content" tabIndex={-1} className="pb-24 lg:pb-0">
+                  {children}
+                </main>
+              </div>
+            </div>
+            <CommandPalette />
+          </ToastProvider>
+        </OperatorProvider>
       </body>
     </html>
   );

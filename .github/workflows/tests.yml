@@ -25,7 +25,7 @@ jobs:
       python-services: ${{ steps.set-matrix.outputs.python-services }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - id: set-matrix
         run: |
           node_services=$(jq -c '.' <<< '[
@@ -57,7 +57,7 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.test-matrix.outputs.node-services) }}
       fail-fast: false
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -67,8 +67,8 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
@@ -100,7 +100,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         run: pip install uv

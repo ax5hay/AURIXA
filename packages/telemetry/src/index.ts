@@ -182,11 +182,7 @@ export async function createSpan<T>(
 /**
  * Like `createSpan` but for synchronous functions.
  */
-export function createSpanSync<T>(
-  name: string,
-  fn: (span: Span) => T,
-  options?: SpanOptions,
-): T {
+export function createSpanSync<T>(name: string, fn: (span: Span) => T, options?: SpanOptions): T {
   const tracer = getTracer();
   const span = tracer.startSpan(name, { kind: SpanKind.INTERNAL, ...options });
   const ctx = trace.setSpan(context.active(), span);
@@ -236,9 +232,7 @@ export function getSpanId(): string {
 /**
  * Add attributes to the currently-active span (no-op if none is active).
  */
-export function setSpanAttributes(
-  attributes: Record<string, string | number | boolean>,
-): void {
+export function setSpanAttributes(attributes: Record<string, string | number | boolean>): void {
   const span = trace.getActiveSpan();
   if (span) {
     span.setAttributes(attributes);

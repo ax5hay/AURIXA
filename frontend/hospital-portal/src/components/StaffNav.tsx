@@ -2,155 +2,251 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import { getStaff, getTenants } from "../app/api";
-import { useStaffContext } from "@/context/StaffContext";
-import type { Staff } from "../app/api";
+import { useEffect, useMemo, useState } from "react";
+import { Avatar, Badge, Menu, Select } from "@aurixa/ui-kit";
+import { getStaff, getTenants, type Staff } from "../app/api";
+import { useStaffContext, type StaffRoleCategory } from "@/context/StaffContext";
 
 const ICONS = {
-  home: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  ),
-  patients: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  ),
-  calendar: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  ),
-  schedule: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  chat: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-    </svg>
-  ),
-  knowledge: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-    </svg>
-  ),
-  status: () => (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
+  home: "⌂",
+  patients: "◎",
+  appointments: "▣",
+  schedule: "+",
+  chat: "✦",
+  knowledge: "≡",
+  status: "◇",
 };
 
 const TABS = [
-  { id: "dashboard", href: "/", label: "Dashboard", icon: "home" as const },
-  { id: "patients", href: "/patients", label: "Patients", icon: "patients" as const },
-  { id: "appointments", href: "/appointments", label: "Appointments", icon: "calendar" as const },
-  { id: "schedule", href: "/schedule", label: "Schedule", icon: "schedule" as const },
-  { id: "chat", href: "/chat", label: "AI Assistant", icon: "chat" as const },
-  { id: "knowledge", href: "/knowledge", label: "Knowledge", icon: "knowledge" as const },
-  { id: "status", href: "/status", label: "System Status", icon: "status" as const },
-];
+  {
+    id: "today",
+    href: "/",
+    label: "Today",
+    icon: "home",
+    roles: ["clinical", "coordination", "operations"],
+  },
+  {
+    id: "patients",
+    href: "/patients",
+    label: "Patients",
+    icon: "patients",
+    roles: ["clinical", "coordination", "operations"],
+  },
+  {
+    id: "appointments",
+    href: "/appointments",
+    label: "Appointments",
+    icon: "appointments",
+    roles: ["clinical", "coordination", "operations"],
+  },
+  {
+    id: "schedule",
+    href: "/schedule",
+    label: "Schedule",
+    icon: "schedule",
+    roles: ["coordination", "clinical", "operations"],
+  },
+  {
+    id: "chat",
+    href: "/chat",
+    label: "Assistant",
+    icon: "chat",
+    roles: ["clinical", "coordination", "operations"],
+  },
+  {
+    id: "knowledge",
+    href: "/knowledge",
+    label: "Knowledge",
+    icon: "knowledge",
+    roles: ["clinical", "coordination", "operations"],
+  },
+  { id: "status", href: "/status", label: "Operations", icon: "status", roles: ["operations"] },
+] as const;
 
 function roleLabel(role: string) {
-  const labels: Record<string, string> = {
-    reception: "Reception",
-    nurse: "Nurse",
-    doctor: "Doctor",
-    scheduler: "Scheduler",
-    admin: "Admin",
-  };
-  return labels[role] || role;
+  return role.replace(/[-_]/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export function StaffNav() {
   const pathname = usePathname();
-  const { staff, setStaff, tenantFilter, setTenantFilter } = useStaffContext();
+  const { staff, setStaff, tenantFilter, setTenantFilter, roleCategory } = useStaffContext();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
-  const [staffError, setStaffError] = useState<string | null>(null);
+  const [staffError, setStaffError] = useState(false);
 
   useEffect(() => {
-    setStaffError(null);
     getStaff()
-      .then((list) => { setStaffList(list); setStaffError(null); })
-      .catch((err) => {
-        console.warn("Failed to load staff:", err);
+      .then((list) => {
+        setStaffList(list);
+        setStaffError(false);
+      })
+      .catch(() => {
         setStaffList([]);
-        setStaffError(err instanceof Error ? err.message : "Failed to load staff");
+        setStaffError(true);
       });
     getTenants()
       .then(setTenants)
-      .catch(() => []);
+      .catch(() => setTenants([]));
   }, []);
 
+  const rankedTabs = useMemo(() => {
+    const category: StaffRoleCategory =
+      roleCategory === "unassigned" ? "coordination" : roleCategory;
+    return [...TABS].sort((a, b) => {
+      const aRank = a.roles.indexOf(category as never);
+      const bRank = b.roles.indexOf(category as never);
+      return (aRank < 0 ? 99 : aRank) - (bRank < 0 ? 99 : bRank);
+    });
+  }, [roleCategory]);
+
+  const primaryMobile = rankedTabs.filter((tab) => tab.id !== "status").slice(0, 4);
+  const primaryMobileIds = new Set<string>(primaryMobile.map((tab) => tab.id));
+  const moreMobile = rankedTabs.filter((tab) => !primaryMobileIds.has(tab.id));
+
   return (
-    <header className="border-b border-white/5 py-6 mb-6">
-      <h1 className="text-2xl sm:text-3xl font-bold text-center text-gradient">AURIXA Hospital Portal</h1>
-      <p className="text-center text-white/50 text-sm mt-2">Staff interface — patients, scheduling, AI assistant, and system status</p>
-      <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Logged in as</label>
-          {staffError && <p className="text-amber-400 text-xs mb-1">Check API at localhost:3000</p>}
-          <select
-            value={staff ? String(staff.id) : ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (!val) {
-                setStaff(null);
-                return;
-              }
-              const id = parseInt(val, 10);
-              const s = staffList.find((x) => x.id === id) ?? null;
-              setStaff(s);
-            }}
-            className="px-3 py-2 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm min-w-[180px]"
-          >
-            <option value="">Select staff...</option>
-            {staffList.map((s) => (
-              <option key={s.id} value={String(s.id)}>
-                {s.fullName} ({roleLabel(s.role)})
-              </option>
-            ))}
-          </select>
+    <>
+      <header className="relative z-40 mb-7 pt-4 sm:pt-5">
+        <div className="rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-soft">
+          <div className="flex min-h-16 items-center gap-4 px-3 sm:px-4">
+            <Link href="/" className="flex min-h-11 items-center gap-3 rounded-ui-md px-1">
+              <span className="flex h-10 w-10 items-center justify-center rounded-ui-md border border-ui-border-strong bg-ui-tint text-sm font-bold text-ui-accent">
+                A
+              </span>
+              <span className="hidden sm:block">
+                <span className="block text-sm font-bold tracking-[0.12em] text-ui-ink">
+                  AURIXA
+                </span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ui-muted">
+                  Clinical workspace
+                </span>
+              </span>
+            </Link>
+
+            <nav
+              aria-label="Staff navigation"
+              className="ml-auto hidden items-center gap-0.5 xl:flex"
+            >
+              {rankedTabs.map((tab) => {
+                const active = pathname === tab.href;
+                return (
+                  <Link
+                    key={tab.id}
+                    href={tab.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-ui-md px-3 text-sm font-semibold ${
+                      active
+                        ? "bg-ui-tint text-ui-accent"
+                        : "text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink"
+                    }`}
+                  >
+                    <span aria-hidden="true">{ICONS[tab.icon]}</span>
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="ml-auto flex items-center gap-2 xl:ml-2">
+              {staff ? (
+                <>
+                  <Avatar name={staff.fullName} size="sm" />
+                  <div className="hidden min-w-0 sm:block">
+                    <p className="max-w-36 truncate text-xs font-semibold text-ui-ink">
+                      {staff.fullName}
+                    </p>
+                    <p className="text-[11px] text-ui-muted">{roleLabel(staff.role)}</p>
+                  </div>
+                </>
+              ) : (
+                <Badge tone="warning">Select staff</Badge>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 border-t border-ui-border bg-ui-canvas-subtle/40 p-3 sm:grid-cols-2 sm:p-4">
+            <label className="text-xs font-semibold text-ui-muted">
+              Acting staff member
+              <Select
+                className="mt-1.5"
+                value={staff ? String(staff.id) : ""}
+                onChange={(event) => {
+                  const selected = staffList.find((item) => String(item.id) === event.target.value);
+                  setStaff(selected ?? null);
+                }}
+              >
+                <option value="">Select staff member</option>
+                {staffList.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.fullName} · {roleLabel(item.role)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="text-xs font-semibold text-ui-muted">
+              Organization context
+              <Select
+                className="mt-1.5"
+                value={tenantFilter}
+                onChange={(event) => setTenantFilter(event.target.value)}
+              >
+                <option value="">All organizations</option>
+                {tenants.map((tenant) => (
+                  <option key={tenant.id} value={tenant.id}>
+                    {tenant.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          </div>
+          {staffError && (
+            <p
+              role="status"
+              className="border-t border-ui-border px-4 py-2 text-xs text-ui-warning"
+            >
+              Staff directory unavailable. Existing context is retained; check the API connection.
+            </p>
+          )}
         </div>
-        <div>
-          <label className="block text-xs text-white/40 mb-1">Filter by tenant</label>
-          <select
-            value={tenantFilter}
-            onChange={(e) => setTenantFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg bg-surface-secondary/80 border border-white/10 text-white text-sm min-w-[160px]"
-          >
-            <option value="">All tenants</option>
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <nav className="flex justify-center gap-2 mt-4 flex-wrap">
-        {TABS.map((t) => {
-          const isActive = pathname === t.href;
-          const Icon = ICONS[t.icon];
+      </header>
+
+      <nav
+        aria-label="Staff mobile navigation"
+        className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 gap-1 rounded-ui-lg border border-ui-border-strong bg-ui-surface p-1.5 shadow-ui xl:hidden"
+      >
+        {primaryMobile.map((tab) => {
+          const active = pathname === tab.href;
           return (
             <Link
-              key={t.id}
-              href={t.href}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? "bg-hospital-600 text-white shadow-lg shadow-hospital-600/20"
-                  : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+              key={tab.id}
+              href={tab.href}
+              aria-current={active ? "page" : undefined}
+              className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-ui-sm px-1 text-[10px] font-semibold ${
+                active ? "bg-ui-tint text-ui-accent" : "text-ui-muted"
               }`}
             >
-              <Icon />
-              {t.label}
+              <span aria-hidden="true" className="text-base leading-none">
+                {ICONS[tab.icon]}
+              </span>
+              {tab.label}
             </Link>
           );
         })}
+        <Menu
+          label="More navigation"
+          trigger={
+            <button
+              type="button"
+              className="flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-ui-sm px-1 text-[10px] font-semibold text-ui-muted"
+            >
+              <span aria-hidden="true" className="text-base leading-none">
+                •••
+              </span>
+              More
+            </button>
+          }
+          items={moreMobile.map((tab) => ({ label: tab.label, href: tab.href }))}
+        />
       </nav>
-    </header>
+    </>
   );
 }

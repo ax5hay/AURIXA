@@ -1,174 +1,254 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPatients, getTenants, createPatient } from "../api";
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  DataTable,
+  Dialog,
+  EmptyState,
+  FieldShell,
+  Input,
+  PageHeader,
+  PageLoader,
+  SearchInput,
+  Select,
+  useToast,
+} from "@aurixa/ui-kit";
+import { createPatient, getPatients, getTenants, type Patient } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
-import type { Patient } from "../api";
 
-function parseTenantId(s: string): number | undefined {
-  if (!s) return undefined;
-  const n = parseInt(s.replace(/^t-0*/, ""), 10);
-  return isNaN(n) ? undefined : n;
+function parseTenantId(value: string): number | undefined {
+  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
+  return value && !isNaN(parsed) ? parsed : undefined;
 }
 
 export default function PatientsPage() {
+  const { toast } = useToast();
   const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ fullName: "", email: "", phoneNumber: "" });
+  const [loadError, setLoadError] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState({ fullName: "", email: "", phoneNumber: "" });
+  const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
   const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError(false);
     getPatients(tid)
       .then(setPatients)
-      .catch((e) => { setError(e instanceof Error ? e.message : "Failed"); setPatients([]); })
+      .catch(() => {
+        setPatients([]);
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
   }, [tid]);
 
   useEffect(() => {
-    getTenants().then(setTenants).catch(() => []);
+    getTenants()
+      .then(setTenants)
+      .catch(() => setTenants([]));
   }, []);
 
-  const filtered = patients.filter(
-    (p) =>
-      !search.trim() ||
-      p.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      (p.email?.toLowerCase().includes(search.toLowerCase())) ||
-      (p.phoneNumber?.includes(search))
-  );
+  const filtered = patients.filter((patient) => {
+    const query = search.trim().toLowerCase();
+    return (
+      !query ||
+      patient.fullName.toLowerCase().includes(query) ||
+      patient.email?.toLowerCase().includes(query) ||
+      patient.phoneNumber?.includes(query)
+    );
+  });
 
-  const handleAddPatient = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.fullName.trim()) {
+      setFormError("Enter the patient’s full name.");
+      return;
+    }
     setSubmitting(true);
-    setError(null);
+    setFormError(null);
     try {
       const created = await createPatient({
-        full_name: addForm.fullName.trim(),
-        email: addForm.email.trim() || undefined,
-        phone_number: addForm.phoneNumber.trim() || undefined,
-        tenant_id: tid ?? 1,
+        full_name: form.fullName.trim(),
+        email: form.email.trim() || undefined,
+        phone_number: form.phoneNumber.trim() || undefined,
+        tenant_id: tid,
       });
-      setPatients((prev) => [...prev, created]);
-      setShowAdd(false);
-      setAddForm({ fullName: "", email: "", phoneNumber: "" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create patient");
+      setPatients((current) => [...current, created]);
+      setDialogOpen(false);
+      setForm({ fullName: "", email: "", phoneNumber: "" });
+      toast({
+        title: "Patient added",
+        description: "The patient is now in the care directory.",
+        tone: "success",
+      });
+    } catch {
+      setFormError("The patient could not be added. Check the details and try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <span className="inline-flex gap-1 mb-4">
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
-        </span>
-        <p className="text-white/50 text-sm">Loading patients...</p>
-      </div>
-    );
-  }
-
-  if (error && !showAdd) {
-    return <div className="glass rounded-xl p-6 text-red-400">{error}</div>;
-  }
+  if (loading) return <PageLoader label="Loading patient directory" />;
 
   return (
-    <div className="space-y-6 -mt-6 pb-8">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <input
-          type="text"
-          placeholder="Search by name, email, phone..."
+    <div className="space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Care directory"
+        title="Patients"
+        description="Find patient context quickly. Identity remains visible before any care action."
+        actions={<Button onClick={() => setDialogOpen(true)}>Add patient</Button>}
+      />
+
+      {loadError && (
+        <Alert title="Patient directory unavailable" tone="danger">
+          No patient records are shown. Check the API connection and reload this page.
+        </Alert>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-hospital-500/50"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name, email, or phone"
+          aria-label="Search patients"
         />
-        <select
+        <Select
           value={tenantFilter}
-          onChange={(e) => setTenantFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
+          onChange={(event) => setTenantFilter(event.target.value)}
+          aria-label="Filter patients by organization"
         >
-          <option value="">All tenants</option>
-          {tenants.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+          <option value="">All organizations</option>
+          {tenants.map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.name}
+            </option>
           ))}
-        </select>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2.5 rounded-xl bg-hospital-500 hover:bg-hospital-600 text-white font-medium whitespace-nowrap"
-        >
-          Add Patient
-        </button>
+        </Select>
       </div>
+      <p className="text-sm text-ui-muted">{filtered.length} patient records</p>
 
-      {showAdd && (
-        <div className="glass rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Add New Patient</h3>
-          <form onSubmit={handleAddPatient} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Full name *"
-              value={addForm.fullName}
-              onChange={(e) => setAddForm((f) => ({ ...f, fullName: e.target.value }))}
-              required
-              className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={addForm.email}
-              onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
-            />
-            <input
-              type="tel"
-              placeholder="Phone"
-              value={addForm.phoneNumber}
-              onChange={(e) => setAddForm((f) => ({ ...f, phoneNumber: e.target.value }))}
-              className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
-            />
-            <div className="flex gap-2">
-              <button type="submit" disabled={submitting} className="px-4 py-2 rounded-xl bg-hospital-500 hover:bg-hospital-600 text-white disabled:opacity-50">
-                {submitting ? "Creating..." : "Create"}
-              </button>
-              <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white">
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <p className="text-white/50 text-sm">{filtered.length} patients</p>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((p) => (
-          <Link
-            key={p.id}
-            href={`/patients/${p.id}`}
-            className="glass rounded-xl p-5 glass-hover block"
+      {filtered.length ? (
+        <>
+          <DataTable
+            caption="Patient directory"
+            headers={["Patient", "Contact", "Record", ""]}
+            className="hidden md:block"
           >
-            <p className="font-medium text-white text-lg">{p.fullName}</p>
-            {p.email && <p className="text-white/60 text-sm mt-1">{p.email}</p>}
-            {p.phoneNumber && <p className="text-white/50 text-sm">{p.phoneNumber}</p>}
-            <p className="text-hospital-400 text-xs mt-2">View details →</p>
-          </Link>
-        ))}
-      </div>
-      {filtered.length === 0 && !showAdd && (
-        <div className="glass rounded-xl p-12 text-center">
-          <p className="text-white/50">No patients found.</p>
-          <button onClick={() => setShowAdd(true)} className="mt-2 text-hospital-400 hover:underline">Add first patient</button>
-        </div>
+            {filtered.map((patient) => (
+              <tr key={patient.id} className="clinical-table-row">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={patient.fullName} />
+                    <span className="font-semibold text-ui-ink">{patient.fullName}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-ui-muted">
+                  {patient.email || patient.phoneNumber || "No contact on file"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-ui-faint">#{patient.id}</td>
+                <td className="px-4 py-3 text-right">
+                  <Button asChild variant="quiet">
+                    <Link href={`/patients/${patient.id}`}>Open record</Link>
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
+          <div className="grid gap-3 md:hidden">
+            {filtered.map((patient) => (
+              <Card key={patient.id} variant="compact" padding="md">
+                <div className="flex items-start gap-3">
+                  <Avatar name={patient.fullName} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ui-ink">{patient.fullName}</p>
+                    <p className="mt-1 truncate text-sm text-ui-muted">
+                      {patient.email || patient.phoneNumber || "No contact on file"}
+                    </p>
+                    <Button asChild variant="secondary" className="mt-3 w-full">
+                      <Link href={`/patients/${patient.id}`}>Open record</Link>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
+      ) : (
+        <EmptyState
+          title={search ? "No matching patients" : "No patients in this view"}
+          description={
+            search
+              ? "Try a name, email, or phone number."
+              : "No patient records were returned for this organization."
+          }
+          action={<Button onClick={() => setDialogOpen(true)}>Add patient</Button>}
+        />
       )}
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Add patient"
+        description="Add only the minimum information needed for the care directory."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form="add-patient-form" loading={submitting}>
+              Add patient
+            </Button>
+          </>
+        }
+      >
+        <form id="add-patient-form" onSubmit={submit} className="space-y-4">
+          {formError && (
+            <Alert title="Could not add patient" tone="danger">
+              {formError}
+            </Alert>
+          )}
+          <FieldShell label="Full name" htmlFor="patient-name" required>
+            <Input
+              id="patient-name"
+              autoFocus
+              value={form.fullName}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, fullName: event.target.value }))
+              }
+            />
+          </FieldShell>
+          <FieldShell label="Email" htmlFor="patient-email" hint="Optional">
+            <Input
+              id="patient-email"
+              type="email"
+              value={form.email}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, email: event.target.value }))
+              }
+            />
+          </FieldShell>
+          <FieldShell label="Phone" htmlFor="patient-phone" hint="Optional">
+            <Input
+              id="patient-phone"
+              type="tel"
+              value={form.phoneNumber}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, phoneNumber: event.target.value }))
+              }
+            />
+          </FieldShell>
+        </form>
+      </Dialog>
     </div>
   );
 }

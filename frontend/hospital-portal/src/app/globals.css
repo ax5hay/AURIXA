@@ -1,3 +1,4 @@
+@import "../../../../packages/ui-kit/src/styles/themes.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,48 +6,106 @@
 @layer base {
   html {
     font-size: 16px;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-surface-primary text-white antialiased;
-  }
-
-  ::selection {
-    @apply bg-hospital-600/40 text-white;
+    @apply min-h-screen bg-ui-canvas text-ui-ink antialiased;
+    letter-spacing: -0.008em;
   }
 
   ::-webkit-scrollbar {
-    @apply w-1.5;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-surface-secondary;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-elevated rounded-full;
+    border: 2px solid var(--ui-canvas);
+    border-radius: 999px;
+    background: var(--ui-ink-faint);
   }
 }
 
-@layer utilities {
+@layer components {
+  .portal-container {
+    @apply mx-auto w-full max-w-7xl px-4 pb-28 sm:px-6 lg:pb-10;
+  }
+
+  .page-header {
+    @apply mb-6 flex flex-col gap-4 border-b border-ui-border pb-6 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .eyebrow {
+    @apply mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-ui-muted;
+  }
+
+  .display-title {
+    @apply text-3xl font-semibold leading-tight tracking-[-0.035em] text-ui-ink sm:text-4xl;
+  }
+
+  .page-description {
+    @apply mt-2 max-w-2xl text-sm leading-6 text-ui-muted;
+  }
+
+  /* Compatibility aliases retained while legacy views migrate to ui-kit primitives. */
   .glass {
-    @apply bg-surface-secondary/60 backdrop-blur-xl border border-white/5;
+    @apply border border-ui-border bg-ui-surface;
+    box-shadow: var(--ui-shadow-soft);
   }
 
   .glass-hover {
-    @apply hover:bg-surface-secondary/80 hover:border-white/10 transition-all duration-200;
+    @apply transition-colors duration-200 hover:border-ui-border-strong hover:bg-ui-surface-raised;
   }
 
-  .glow-sm {
-    box-shadow: 0 0 15px -3px rgba(20, 184, 166, 0.15);
+  .surface-card {
+    @apply rounded-ui-lg border border-ui-border bg-ui-surface p-4 shadow-ui-soft sm:p-5;
   }
 
+  .metric-card {
+    @apply rounded-ui-lg border border-ui-border bg-ui-surface p-4;
+  }
+
+  .button-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-ui-md border border-transparent bg-ui-accent px-4 py-2 text-sm font-semibold text-ui-accent-ink transition-colors hover:bg-ui-accent-strong;
+  }
+
+  .button-secondary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-ui-md border border-ui-border-strong bg-ui-surface px-4 py-2 text-sm font-semibold text-ui-ink transition-colors hover:bg-ui-surface-inset;
+  }
+
+  .field {
+    @apply min-h-11 w-full rounded-ui-md border border-ui-border-strong bg-ui-surface px-3.5 text-sm text-ui-ink outline-none transition placeholder:text-ui-faint hover:border-ui-faint focus:border-ui-accent focus:ring-4 focus:ring-ui-accent/10;
+  }
+
+  .status-pill {
+    @apply inline-flex min-h-7 items-center gap-1.5 rounded-full border border-ui-border bg-ui-surface-inset px-2.5 text-xs font-semibold text-ui-muted;
+  }
+
+  .app-noise {
+    display: none;
+  }
+
+  .glow-sm,
   .glow-md {
-    box-shadow: 0 0 30px -5px rgba(20, 184, 166, 0.2);
+    box-shadow: var(--ui-shadow-soft);
   }
 
   .text-gradient {
-    @apply bg-gradient-to-r from-hospital-400 to-hospital-600 bg-clip-text text-transparent;
-    -webkit-background-clip: text;
+    color: var(--ui-ink);
+  }
+
+  .clinical-table-row {
+    @apply border-b border-ui-border last:border-0 hover:bg-ui-canvas-subtle/50;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

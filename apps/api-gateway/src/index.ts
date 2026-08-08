@@ -79,7 +79,7 @@ async function main() {
       services: Object.keys(SERVICE_REGISTRY),
       memoryMB: (process.memoryUsage.rss() / 1024 / 1024).toFixed(1),
     },
-    `api-gateway started in ${bootTime}ms`
+    `api-gateway started in ${bootTime}ms`,
   );
 }
 

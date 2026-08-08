@@ -1,32 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { Alert, Button } from "@aurixa/ui-kit";
 
 export default function Error({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="glass rounded-xl p-8 text-center space-y-4 max-w-md mx-auto">
-        <h1 className="text-xl font-bold text-white">Something went wrong</h1>
-        <p className="text-white/60 text-sm">{error?.message || "An unexpected error occurred"}</p>
-        <div className="flex gap-3 justify-center">
-          <button
-            onClick={() => reset()}
-            className="px-4 py-2 bg-aurixa-600 hover:bg-aurixa-700 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Try again
-          </button>
-          <Link
-            href="/"
-            className="px-4 py-2 bg-white/10 hover:bg-white/15 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Back to Dashboard
-          </Link>
+    <div className="page-container flex min-h-[60vh] items-center justify-center">
+      <div className="w-full max-w-xl space-y-5">
+        <Alert title="This view could not be loaded" tone="danger">
+          Try again. If the problem continues, note which page you were using and contact support.
+        </Alert>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => reset()}>Try again</Button>
+          <Button asChild variant="secondary">
+            <Link href="/">Back to overview</Link>
+          </Button>
         </div>
       </div>
     </div>

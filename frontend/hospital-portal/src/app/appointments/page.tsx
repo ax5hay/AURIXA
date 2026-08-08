@@ -1,180 +1,275 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAppointments, getTenants, getPatients, updateAppointmentStatus, type Appointment } from "../api";
+import {
+  Alert,
+  AppointmentCard,
+  Button,
+  Dialog,
+  EmptyState,
+  FieldShell,
+  Input,
+  PageHeader,
+  PageLoader,
+  Select,
+  useToast,
+} from "@aurixa/ui-kit";
+import {
+  getAppointments,
+  getPatients,
+  getTenants,
+  updateAppointmentStatus,
+  type Appointment,
+} from "../api";
 import { useStaffContext } from "@/context/StaffContext";
 
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
+function parseTenantId(value: string): number | undefined {
+  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
+  return value && !isNaN(parsed) ? parsed : undefined;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
+}
 
-function parseTenantId(s: string): number | undefined {
-  if (!s) return undefined;
-  const n = parseInt(s.replace(/^t-0*/, ""), 10);
-  return isNaN(n) ? undefined : n;
+function tone(status: string): "success" | "danger" | "warning" | "info" | "neutral" {
+  if (status === "confirmed") return "info";
+  if (status === "completed") return "success";
+  if (status === "cancelled") return "danger";
+  return "neutral";
 }
 
 export default function AppointmentsPage() {
+  const { toast } = useToast();
   const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [patientMap, setPatientMap] = useState<Record<number, string>>({});
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [dateTo, setDateTo] = useState(() => new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(() =>
+    new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+  );
   const [loading, setLoading] = useState(true);
-  const [cancellingId, setCancellingId] = useState<number | null>(null);
-
+  const [loadError, setLoadError] = useState(false);
+  const [pending, setPending] = useState<{
+    appointment: Appointment;
+    status: "cancelled" | "completed";
+  } | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [freshAt, setFreshAt] = useState<Date | null>(null);
   const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
-    getTenants().then(setTenants).catch(() => []);
+    getTenants()
+      .then(setTenants)
+      .catch(() => setTenants([]));
+    getPatients()
+      .then((patients) =>
+        setPatientMap(
+          Object.fromEntries(patients.map((patient) => [patient.id, patient.fullName])),
+        ),
+      )
+      .catch(() => setPatientMap({}));
   }, []);
 
   useEffect(() => {
     setLoading(true);
-    getAppointments({
-      tenantId: tid,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-    })
+    setLoadError(false);
+    getAppointments({ tenantId: tid, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
       .then(setAppointments)
-      .catch(() => [])
-      .finally(() => setLoading(false));
+      .catch(() => {
+        setAppointments([]);
+        setLoadError(true);
+      })
+      .finally(() => {
+        setFreshAt(new Date());
+        setLoading(false);
+      });
   }, [tid, dateFrom, dateTo]);
 
-  useEffect(() => {
-    getPatients().then((ps) => {
-      const m: Record<number, string> = {};
-      ps.forEach((p) => { m[p.id] = p.fullName; });
-      setPatientMap(m);
-    }).catch(() => ({}));
-  }, []);
-
-  const handleCancel = async (id: number) => {
-    setCancellingId(id);
+  const confirmUpdate = async () => {
+    if (!pending) return;
+    setUpdating(true);
     try {
-      await updateAppointmentStatus(id, "cancelled");
-      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "cancelled" } : a)));
+      await updateAppointmentStatus(pending.appointment.id, pending.status);
+      setAppointments((current) =>
+        current.map((item) =>
+          item.id === pending.appointment.id ? { ...item, status: pending.status } : item,
+        ),
+      );
+      toast({
+        title: pending.status === "completed" ? "Appointment completed" : "Appointment cancelled",
+        tone: "success",
+      });
+      setPending(null);
     } catch {
-      // ignore
+      toast({
+        title: "Status update failed",
+        description: "The appointment was not changed. Please try again.",
+        tone: "error",
+      });
     } finally {
-      setCancellingId(null);
+      setUpdating(false);
     }
   };
 
-  const handleComplete = async (id: number) => {
-    setCancellingId(id);
-    try {
-      await updateAppointmentStatus(id, "completed");
-      setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status: "completed" } : a)));
-    } catch {
-      // ignore
-    } finally {
-      setCancellingId(null);
-    }
-  };
-
-  const confirmed = appointments.filter((a) => a.status === "confirmed");
-  const others = appointments.filter((a) => a.status !== "confirmed");
+  if (loading) return <PageLoader label="Loading appointments" />;
 
   return (
-    <div className="space-y-6 -mt-6 pb-8">
-      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
-        <div>
-          <label className="text-xs text-white/40 block mb-1">From</label>
-          <input
+    <div className="space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Care coordination"
+        title="Appointments"
+        description="Review visits and confirm status changes before they are sent."
+        actions={
+          <Button asChild>
+            <Link href="/schedule">Schedule appointment</Link>
+          </Button>
+        }
+        aside={
+          <p className="text-xs text-ui-muted">
+            {freshAt
+              ? `Updated at ${freshAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+              : "Not yet updated"}
+          </p>
+        }
+      />
+
+      {loadError && (
+        <Alert title="Appointments unavailable" tone="danger">
+          No appointments are shown because the service could not be reached.
+        </Alert>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <FieldShell label="From" htmlFor="date-from">
+          <Input
+            id="date-from"
             type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
+            onChange={(event) => setDateFrom(event.target.value)}
           />
-        </div>
-        <div>
-          <label className="text-xs text-white/40 block mb-1">To</label>
-          <input
+        </FieldShell>
+        <FieldShell label="To" htmlFor="date-to">
+          <Input
+            id="date-to"
             type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
+            onChange={(event) => setDateTo(event.target.value)}
           />
-        </div>
-        <div>
-          <label className="text-xs text-white/40 block mb-1">Tenant</label>
-          <select
+        </FieldShell>
+        <FieldShell label="Organization" htmlFor="appointment-tenant">
+          <Select
+            id="appointment-tenant"
             value={tenantFilter}
-            onChange={(e) => setTenantFilter(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
+            onChange={(event) => setTenantFilter(event.target.value)}
           >
-            <option value="">All</option>
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            <option value="">All organizations</option>
+            {tenants.map((tenant) => (
+              <option key={tenant.id} value={tenant.id}>
+                {tenant.name}
+              </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </FieldShell>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-white/50">Loading...</div>
-      ) : (
-        <>
-          <h2 className="text-lg font-semibold text-white/80">Confirmed ({confirmed.length})</h2>
-          <div className="space-y-3">
-            {confirmed.map((a) => (
-              <div key={a.id} className="glass rounded-xl p-4 flex justify-between items-center glass-hover">
-                <div>
-                  <p className="text-white font-medium">{patientMap[a.patientId ?? 0] ?? `Patient #${a.patientId}`}</p>
-                  <p className="text-white/50 text-sm">{a.providerName} · {formatDate(a.startTime ?? "")}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-lg text-xs bg-hospital-600/20 text-hospital-400">{a.status}</span>
-                  <button
-                    onClick={() => handleComplete(a.id)}
-                    disabled={cancellingId === a.id}
-                    className="px-2 py-1 rounded text-xs bg-green-600/20 text-green-400 hover:bg-green-600/30 disabled:opacity-50"
-                  >
-                    Complete
-                  </button>
-                  <button
-                    onClick={() => handleCancel(a.id)}
-                    disabled={cancellingId === a.id}
-                    className="px-2 py-1 rounded text-xs bg-red-600/20 text-red-400 hover:bg-red-600/30 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  {a.patientId && (
-                    <Link href={`/patients/${a.patientId}`} className="text-hospital-400 text-sm hover:underline">View patient</Link>
-                  )}
-                </div>
-              </div>
-            ))}
-            {confirmed.length === 0 && <p className="text-white/50 text-sm">No confirmed appointments in range.</p>}
-          </div>
-
-          {others.length > 0 && (
-            <>
-              <h2 className="text-lg font-semibold text-white/80 mt-8">Other ({others.length})</h2>
-              <div className="space-y-2">
-                {others.map((a) => (
-                  <div key={a.id} className="glass rounded-xl p-3 flex justify-between items-center opacity-80">
-                    <p className="text-white/80">{patientMap[a.patientId ?? 0] ?? `#${a.patientId}`} · {a.providerName} · {formatDate(a.startTime ?? "")}</p>
-                    <span className="text-white/40 text-xs">{a.status}</span>
+      {appointments.length ? (
+        <div className="space-y-3">
+          {appointments.map((appointment) => {
+            const patientName =
+              patientMap[appointment.patientId ?? 0] ??
+              `Patient record ${appointment.patientId ?? "unlinked"}`;
+            return (
+              <AppointmentCard
+                key={appointment.id}
+                provider={patientName}
+                date={formatDate(appointment.startTime)}
+                detail={`Clinician: ${appointment.providerName}`}
+                status={appointment.status}
+                tone={tone(appointment.status)}
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    {appointment.status === "confirmed" && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPending({ appointment, status: "completed" })}
+                        >
+                          Complete
+                        </Button>
+                        <Button
+                          variant="quiet"
+                          onClick={() => setPending({ appointment, status: "cancelled" })}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    )}
+                    {appointment.patientId && (
+                      <Button asChild variant="quiet">
+                        <Link href={`/patients/${appointment.patientId}`}>Patient</Link>
+                      </Button>
+                    )}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <Link href="/schedule" className="inline-flex mt-4 px-4 py-2 rounded-xl bg-hospital-500/80 hover:bg-hospital-600 text-white text-sm font-medium">
-            Book new appointment
-          </Link>
-        </>
+                }
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          title="No appointments in this range"
+          description="No appointment records were returned for the selected dates and organization."
+          action={
+            <Button asChild>
+              <Link href="/schedule">Schedule a visit</Link>
+            </Button>
+          }
+        />
       )}
+
+      <Dialog
+        open={Boolean(pending)}
+        onOpenChange={(open) => !open && setPending(null)}
+        title={
+          pending?.status === "completed" ? "Mark appointment complete?" : "Cancel appointment?"
+        }
+        description="This updates the appointment record immediately after confirmation."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPending(null)}>
+              Keep unchanged
+            </Button>
+            <Button
+              variant={pending?.status === "cancelled" ? "danger" : "primary"}
+              loading={updating}
+              onClick={confirmUpdate}
+            >
+              {pending?.status === "completed" ? "Confirm complete" : "Confirm cancellation"}
+            </Button>
+          </>
+        }
+      >
+        {pending && (
+          <div className="rounded-ui-md bg-ui-surface-inset p-4 text-sm">
+            <p className="font-semibold text-ui-ink">
+              {patientMap[pending.appointment.patientId ?? 0] ??
+                `Patient record ${pending.appointment.patientId ?? "unlinked"}`}
+            </p>
+            <p className="mt-1 text-ui-muted">
+              {formatDate(pending.appointment.startTime)} · {pending.appointment.providerName}
+            </p>
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

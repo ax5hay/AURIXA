@@ -1,12 +1,15 @@
 /** API client for AURIXA Patient Portal. */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://127.0.0.1:3000";
 
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;
 
-async function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  opts: RequestInit = {},
+  timeoutMs = FETCH_TIMEOUT_MS,
+): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -78,16 +81,13 @@ export interface ConversationSummary {
 export async function getConversations(patientId: number): Promise<ConversationSummary[]> {
   const res = await fetchWithTimeout(
     `${API_BASE}/api/v1/admin/patients/${patientId}/conversations`,
-    { method: "GET" }
+    { method: "GET" },
   );
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function sendMessage(
-  prompt: string,
-  patientId?: number
-): Promise<PipelineResponse> {
+export async function sendMessage(prompt: string, patientId?: number): Promise<PipelineResponse> {
   const body: Record<string, unknown> = { prompt };
   if (patientId != null) body.patient_id = patientId;
   const res = await fetchWithTimeout(
@@ -97,7 +97,7 @@ export async function sendMessage(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
-    PIPELINE_TIMEOUT_MS
+    PIPELINE_TIMEOUT_MS,
   );
   if (!res.ok) {
     const text = await res.text();
@@ -121,7 +121,7 @@ export async function synthesizeSpeech(text: string): Promise<string | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     },
-    15000
+    15000,
   );
   if (!res.ok) return null;
   const data = await res.json();
@@ -131,7 +131,7 @@ export async function synthesizeSpeech(text: string): Promise<string | null> {
 export async function processVoice(
   audioB64: string,
   patientId?: number,
-  wantTts = true
+  wantTts = true,
 ): Promise<VoiceProcessResponse> {
   const body: Record<string, unknown> = {
     audio_b64: audioB64,
@@ -145,7 +145,7 @@ export async function processVoice(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
-    PIPELINE_TIMEOUT_MS
+    PIPELINE_TIMEOUT_MS,
   );
   if (!res.ok) {
     const text = await res.text();

@@ -1,113 +1,272 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getPatients, getStaff, createAppointment } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import {
+  Alert,
+  Button,
+  Card,
+  ErrorSummary,
+  FieldShell,
+  Input,
+  PageHeader,
+  Select,
+  useToast,
+} from "@aurixa/ui-kit";
+import { createAppointment, getPatients, getStaff, type Patient } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
-import type { Patient } from "../api";
 
-function parseTenantId(s: string): number | undefined {
-  if (!s) return undefined;
-  const n = parseInt(s.replace(/^t-0*/, ""), 10);
-  return isNaN(n) ? undefined : n;
+function parseTenantId(value: string): number | undefined {
+  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
+  return value && !isNaN(parsed) ? parsed : undefined;
 }
 
 export default function SchedulePage() {
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
   const { tenantFilter, tenantId } = useStaffContext();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<{ id: number; fullName: string }[]>([]);
-  const [patientId, setPatientId] = useState("");
+  const [patientId, setPatientId] = useState(searchParams.get("patientId") ?? "");
   const [date, setDate] = useState(() => new Date(Date.now() + 864e5).toISOString().slice(0, 10));
-  const [providerId, setProviderId] = useState<string>("");
-  const [reason, setReason] = useState("General visit");
+  const [time, setTime] = useState("09:00");
+  const [providerId, setProviderId] = useState("");
+  const [reason, setReason] = useState("");
+  const [step, setStep] = useState<"details" | "review" | "success">("details");
+  const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
   const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
-    getPatients(tid).then(setPatients).catch(() => []);
-    getStaff({ role: "doctor", tenantId: tid }).then((s) =>
-      setDoctors(s.map((x) => ({ id: x.id, fullName: x.fullName })))
-    ).catch(() => []);
+    getPatients(tid)
+      .then(setPatients)
+      .catch(() => setPatients([]));
+    getStaff({ role: "doctor", tenantId: tid })
+      .then((staff) => setDoctors(staff.map((item) => ({ id: item.id, fullName: item.fullName }))))
+      .catch(() => setDoctors([]));
   }, [tid]);
 
   useEffect(() => {
-    if (doctors.length > 0 && !providerId) {
+    if (doctors.length && !doctors.some((doctor) => String(doctor.id) === providerId)) {
       setProviderId(String(doctors[0].id));
-    } else if (doctors.length > 0 && providerId) {
-      const exists = doctors.some((d) => String(d.id) === providerId);
-      if (!exists) setProviderId(String(doctors[0].id));
-    } else if (doctors.length === 0) {
-      setProviderId("");
     }
   }, [doctors, providerId]);
 
-  const handleBook = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!patientId) {
-      setResult("Please select a patient.");
+  const selectedPatient = useMemo(
+    () => patients.find((patient) => String(patient.id) === patientId),
+    [patientId, patients],
+  );
+  const selectedDoctor = useMemo(
+    () => doctors.find((doctor) => String(doctor.id) === providerId),
+    [doctors, providerId],
+  );
+
+  const validate = () => {
+    const next: string[] = [];
+    if (!patientId) next.push("Select a patient.");
+    if (!providerId || !selectedDoctor) next.push("Select an available clinician.");
+    if (!date) next.push("Choose a visit date.");
+    if (!time) next.push("Choose a visit time.");
+    if (!reason.trim()) next.push("Enter a reason for the visit.");
+    setErrors(next);
+    return next.length === 0;
+  };
+
+  const review = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (validate()) setStep("review");
+  };
+
+  const book = async () => {
+    if (!validate() || !selectedDoctor) {
+      setStep("details");
       return;
     }
     setSubmitting(true);
-    setResult(null);
     try {
-      const sel = doctors.find((d) => String(d.id) === providerId);
       await createAppointment({
         patient_id: parseInt(patientId, 10),
-        tenant_id: tid ?? undefined,
-        provider_name: sel?.fullName ?? doctors[0]?.fullName ?? "Dr. Adams",
-        reason: reason.trim() || "General visit",
+        tenant_id: tid,
+        provider_name: selectedDoctor.fullName,
+        reason: reason.trim(),
         date,
-        start_time: "09:00",
+        start_time: time,
       });
-      setResult("Appointment booked successfully.");
-    } catch (err) {
-      setResult("Error: " + (err instanceof Error ? err.message : "Failed to book"));
+      setStep("success");
+      toast({
+        title: "Appointment booked",
+        description: `${date} at ${time} has been reserved.`,
+        tone: "success",
+      });
+    } catch {
+      setErrors([
+        "The appointment could not be booked. No reservation was created; please try again.",
+      ]);
+      setStep("details");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 -mt-6 pb-8 max-w-xl">
-      <div className="glass rounded-2xl p-6 glow-sm">
-        <h2 className="text-lg font-semibold text-white mb-1">Book Appointment</h2>
-        <p className="text-white/60 text-sm">Schedule a new appointment. Data saved to database.</p>
-      </div>
-      <form onSubmit={handleBook} className="glass rounded-xl p-6 space-y-4">
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">Patient</label>
-          <select value={patientId} onChange={(e) => setPatientId(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white">
-            <option value="">Select patient</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>{p.fullName}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">Provider</label>
-          <select value={providerId} onChange={(e) => setProviderId(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white">
-            {doctors.length === 0 && <option value="">Dr. Adams</option>}
-            {doctors.map((d) => (
-              <option key={d.id} value={String(d.id)}>{d.fullName}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">Date</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white" />
-        </div>
-        <div>
-          <label className="block text-xs text-white/50 mb-1.5">Reason</label>
-          <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="General visit" className="w-full px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white" />
-        </div>
-        <button type="submit" disabled={submitting} className="w-full py-3 rounded-xl bg-hospital-500 hover:bg-hospital-600 text-white font-medium disabled:opacity-50">
-          {submitting ? "Booking..." : "Book Appointment"}
-        </button>
-        {result && (
-          <div className="p-3 rounded-xl bg-surface-secondary/80 border border-white/10 text-white/80 text-sm">{result}</div>
-        )}
-      </form>
+    <div className="mx-auto max-w-3xl space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Care coordination"
+        title="Schedule an appointment"
+        description="Complete the visit details, review the patient and clinician, then confirm."
+      />
+      <ol className="grid grid-cols-3 gap-2" aria-label="Scheduling progress">
+        {["Visit details", "Review", "Confirmation"].map((label, index) => {
+          const activeIndex = step === "details" ? 0 : step === "review" ? 1 : 2;
+          return (
+            <li
+              key={label}
+              aria-current={index === activeIndex ? "step" : undefined}
+              className={`rounded-ui-md border px-3 py-3 text-center text-xs font-semibold ${index === activeIndex ? "border-ui-accent bg-ui-tint text-ui-accent" : "border-ui-border bg-ui-surface text-ui-muted"}`}
+            >
+              {index + 1}. {label}
+            </li>
+          );
+        })}
+      </ol>
+
+      {step === "details" && (
+        <form onSubmit={review} className="space-y-5">
+          <ErrorSummary errors={errors} />
+          {!doctors.length && (
+            <Alert title="No clinicians available" tone="warning">
+              The staff directory did not return any doctors for this organization. Booking cannot
+              continue until a clinician is available.
+            </Alert>
+          )}
+          <Card variant="standard" padding="lg">
+            <div className="space-y-5">
+              <FieldShell
+                label="Patient"
+                htmlFor="schedule-patient"
+                required
+                hint="Patient identity will remain visible during review."
+              >
+                <Select
+                  id="schedule-patient"
+                  value={patientId}
+                  onChange={(event) => setPatientId(event.target.value)}
+                >
+                  <option value="">Select patient</option>
+                  {patients.map((patient) => (
+                    <option key={patient.id} value={patient.id}>
+                      {patient.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </FieldShell>
+              <FieldShell label="Clinician" htmlFor="schedule-provider" required>
+                <Select
+                  id="schedule-provider"
+                  value={providerId}
+                  onChange={(event) => setProviderId(event.target.value)}
+                >
+                  <option value="">Select clinician</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </FieldShell>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FieldShell label="Date" htmlFor="schedule-date" required>
+                  <Input
+                    id="schedule-date"
+                    type="date"
+                    value={date}
+                    onChange={(event) => setDate(event.target.value)}
+                  />
+                </FieldShell>
+                <FieldShell label="Time" htmlFor="schedule-time" required>
+                  <Input
+                    id="schedule-time"
+                    type="time"
+                    value={time}
+                    onChange={(event) => setTime(event.target.value)}
+                  />
+                </FieldShell>
+              </div>
+              <FieldShell
+                label="Reason for visit"
+                htmlFor="schedule-reason"
+                required
+                hint="Use a concise operational reason; avoid unnecessary clinical detail."
+              >
+                <Input
+                  id="schedule-reason"
+                  value={reason}
+                  onChange={(event) => setReason(event.target.value)}
+                  placeholder="e.g. Follow-up visit"
+                />
+              </FieldShell>
+            </div>
+          </Card>
+          <Button type="submit" className="w-full">
+            Review appointment
+          </Button>
+        </form>
+      )}
+
+      {step === "review" && (
+        <Card variant="feature" padding="lg">
+          <p className="eyebrow">Confirm patient identity</p>
+          <h2 className="text-2xl font-semibold text-ui-ink">{selectedPatient?.fullName}</h2>
+          <dl className="mt-5 grid gap-4 rounded-ui-md bg-ui-surface p-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-semibold text-ui-muted">Clinician</dt>
+              <dd className="mt-1 text-sm font-semibold">{selectedDoctor?.fullName}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold text-ui-muted">Date and time</dt>
+              <dd className="mt-1 text-sm font-semibold">
+                {date} at {time}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-semibold text-ui-muted">Reason</dt>
+              <dd className="mt-1 text-sm font-semibold">{reason}</dd>
+            </div>
+          </dl>
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={() => setStep("details")}>
+              Edit details
+            </Button>
+            <Button loading={submitting} onClick={book}>
+              Confirm appointment
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {step === "success" && (
+        <Card variant="feature" padding="lg">
+          <Alert title="Appointment confirmed" tone="success">
+            The appointment service accepted the reservation for {selectedPatient?.fullName} on{" "}
+            {date} at {time}.
+          </Alert>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/appointments">View appointments</Link>
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStep("details");
+                setReason("");
+              }}
+            >
+              Schedule another
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

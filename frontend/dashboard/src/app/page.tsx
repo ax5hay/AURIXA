@@ -1,190 +1,258 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import ServiceCard from "@/components/ServiceCard";
-import { getServiceHealth, getAnalyticsSummary, getTenants, getAnalytics, getKnowledgeArticles, getAuditLog, type ServiceHealth, type AuditEntry } from "@/app/services/api";
-
-function formatServiceName(name: string): string {
-  return name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PageHeader,
+  SectionHeader,
+  Timeline,
+  WorkQueue,
+} from "@aurixa/ui-kit";
+import {
+  getAnalytics,
+  getAuditLog,
+  getServiceHealth,
+  getTenants,
+  type AuditEntry,
+  type ServiceHealth,
+} from "@/app/services/api";
+import { MetricStrip, PageShell, StatusBadge } from "@/components/OperatorCompositions";
+import { useOperator } from "@/context/OperatorContext";
 
 export default function DashboardPage() {
-  const [serviceHealth, setServiceHealth] = useState<ServiceHealth>({});
-  const [insights, setInsights] = useState<Awaited<ReturnType<typeof getAnalyticsSummary>> | null>(null);
-  const [tenants, setTenants] = useState<{ status: string; id: string; name: string }[]>([]);
-  const [analytics, setAnalytics] = useState<{ totalCalls: number; totalCost: number } | null>(null);
-  const [articlesByTenant, setArticlesByTenant] = useState<Record<string, number>>({});
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [healthLoading, setHealthLoading] = useState(true);
+  const { role } = useOperator();
+  const [health, setHealth] = useState<ServiceHealth>({});
+  const [tenants, setTenants] = useState<Awaited<ReturnType<typeof getTenants>>>([]);
+  const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getAnalytics>> | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [health, summary, t, obs, articles, audit] = await Promise.all([
-          getServiceHealth(),
-          getAnalyticsSummary().catch(() => null),
-          getTenants().catch(() => []),
-          getAnalytics().catch(() => ({ overall_metrics: {}, service_metrics: {} })),
-          getKnowledgeArticles().catch(() => []),
-          getAuditLog(20).catch(() => []),
-        ]);
-        setServiceHealth(health);
-        setInsights(summary);
-        setTenants(t);
-        const byTenant: Record<string, number> = {};
-        for (const a of articles) {
-          if (a.tenantId != null) {
-            const key = `t-${String(a.tenantId).padStart(3, "0")}`;
-            byTenant[key] = (byTenant[key] ?? 0) + 1;
-          }
-        }
-        setArticlesByTenant(byTenant);
-        setAuditLog(audit);
-        const totalCalls = Object.values(obs?.overall_metrics ?? {}).reduce((s, m) => s + (m?.count ?? 0), 0);
-        const totalCost = Object.values(obs?.overall_metrics ?? {}).reduce((s, m) => s + (m?.total_cost_usd ?? 0), 0);
-        setAnalytics({ totalCalls, totalCost });
-        setLastUpdated(new Date());
-      } catch (err) {
-        setError("Failed to fetch data.");
-      } finally {
-        setHealthLoading(false);
-      }
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+  const refresh = useCallback(async () => {
+    setError(null);
+    const results = await Promise.allSettled([
+      getServiceHealth(),
+      getTenants(),
+      getAuditLog(12),
+      getAnalytics(),
+    ]);
+    if (results[0].status === "fulfilled") setHealth(results[0].value);
+    if (results[1].status === "fulfilled") setTenants(results[1].value);
+    if (results[2].status === "fulfilled") setAudit(results[2].value);
+    if (results[3].status === "fulfilled") setAnalytics(results[3].value);
+    if (results.every((result) => result.status === "rejected"))
+      setError("The console could not reach the platform APIs.");
+    setRefreshedAt(new Date());
+    setLoading(false);
   }, []);
 
-  const activeTenants = tenants.filter((t) => t.status === "active").length;
-  const pendingTenants = tenants.filter((t) => t.status === "pending").length;
-  const allHealthy = Object.values(serviceHealth).every((s) => s?.status === "healthy");
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(refresh, 30000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
-  const overviewMetrics = [
-    { label: "System Health", value: healthLoading ? "—" : allHealthy ? "Operational" : "Degraded", sub: "From /health/services" },
-    { label: "Active Tenants", value: healthLoading ? "—" : `${activeTenants}`, sub: pendingTenants ? `${pendingTenants} pending` : `${tenants.length} total` },
-    { label: "Conversations", value: healthLoading ? "—" : (insights?.conversations_total ?? analytics?.totalCalls ?? 0).toLocaleString(), sub: "From database" },
-    { label: "LLM Cost", value: healthLoading ? "—" : `$${(analytics?.totalCost ?? 0).toFixed(2)}`, sub: "Observability" },
-  ];
+  const serviceEntries = Object.entries(health);
+  const issues = serviceEntries.filter(([, item]) => item?.status !== "healthy");
+  const activeTenants = tenants.filter((tenant) => tenant.status === "active").length;
+  const totals = useMemo(() => {
+    const values = Object.values(analytics?.overall_metrics ?? {});
+    return {
+      events: values.reduce((sum, item) => sum + (item?.count ?? 0), 0),
+      cost: values.reduce((sum, item) => sum + (item?.total_cost_usd ?? 0), 0),
+    };
+  }, [analytics]);
+  const stale = refreshedAt ? Date.now() - refreshedAt.getTime() > 60000 : false;
+  const roleIntro =
+    role === "analyst"
+      ? "Usage, performance, and recent platform activity."
+      : role === "support"
+        ? "Current service issues and the activity needed to investigate them."
+        : role === "administrator"
+          ? "Operational health, organizations, and configuration activity."
+          : "What needs attention across the platform right now.";
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-white/50 text-sm">System status, metrics, and service health — unified AURIXA control center</p>
-        </div>
-        {lastUpdated && <span className="text-xs text-white/30 font-mono">Updated {lastUpdated.toLocaleTimeString()}</span>}
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow={`${role[0].toUpperCase()}${role.slice(1)} view`}
+        title="Platform overview"
+        description={roleIntro}
+        actions={
+          <Button onClick={refresh} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh data"}
+          </Button>
+        }
+        aside={
+          <StatusBadge
+            status={
+              loading
+                ? undefined
+                : issues.length
+                  ? "degraded"
+                  : serviceEntries.length
+                    ? "healthy"
+                    : undefined
+            }
+            label={
+              loading
+                ? "Checking health"
+                : issues.length
+                  ? `${issues.length} service issue${issues.length === 1 ? "" : "s"}`
+                  : serviceEntries.length
+                    ? "Services healthy"
+                    : "Health unknown"
+            }
+          />
+        }
+      />
 
-      {error && <div className="text-accent-error mb-6">{error}</div>}
-
-      {/* Overview metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {overviewMetrics.map((m) => (
-          <div key={m.label} className="glass rounded-xl p-5">
-            <p className="text-xs text-white/40 uppercase tracking-wider">{m.label}</p>
-            <p className="text-2xl font-bold text-white mt-1">{m.value}</p>
-            <p className="text-xs text-white/30 mt-0.5">{m.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Knowledge Base CTA */}
-      <Link
-        href="/knowledge"
-        className="block mb-8 glass rounded-xl p-5 hover:ring-2 hover:ring-aurixa-500/40 transition-all group"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-white group-hover:text-aurixa-300 transition-colors">Knowledge Base</h2>
-            <p className="text-sm text-white/50 mt-0.5">
-              RAG-indexed articles by tenant. Browse and search tenant-specific knowledge.
-            </p>
-            {Object.keys(articlesByTenant).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {tenants
-                  .filter((t) => articlesByTenant[t.id] != null && articlesByTenant[t.id] > 0)
-                  .map((t) => (
-                    <span key={t.id} className="text-xs px-2 py-1 rounded bg-aurixa-600/20 text-aurixa-400">
-                      {t.name}: {articlesByTenant[t.id]} articles
-                    </span>
-                  ))}
-              </div>
-            )}
-          </div>
-          <span className="text-aurixa-400 group-hover:translate-x-1 transition-transform">→</span>
-        </div>
-      </Link>
-
-      {/* DB insight cards */}
-      {insights && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Conversations (DB)", value: insights.conversations_total },
-            { label: "Tenants", value: insights.tenants_count },
-            { label: "Patients", value: insights.patients_count },
-            { label: "Knowledge Articles", value: insights.knowledge_articles_count },
-          ].map((m) => (
-            <div key={m.label} className="glass rounded-xl p-4">
-              <p className="text-xs text-white/40 uppercase tracking-wider">{m.label}</p>
-              <p className="text-2xl font-bold text-white mt-1">{m.value}</p>
-            </div>
-          ))}
-        </div>
+      {error && (
+        <Alert title="Platform data unavailable" tone="danger" className="mb-6">
+          {error}
+        </Alert>
+      )}
+      {stale && (
+        <Alert title="This view may be stale" tone="warning" className="mb-6">
+          The last successful refresh was more than a minute ago.
+        </Alert>
       )}
 
-      {/* Recent Audit Log */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-white/80">Recent Audit Log</h2>
-          <Link href="/audit" className="text-sm text-aurixa-400 hover:text-aurixa-300 transition-colors">View all →</Link>
-        </div>
-        <div className="glass rounded-xl p-6">
-          {auditLog.length === 0 ? (
-            <p className="text-white/50 text-sm">No audit entries.</p>
+      <MetricStrip
+        items={[
+          {
+            label: "Service checks",
+            value: loading ? "—" : serviceEntries.length,
+            detail: serviceEntries.length
+              ? `${serviceEntries.length - issues.length} healthy`
+              : "No response",
+          },
+          {
+            label: "Active organizations",
+            value: loading ? "—" : activeTenants,
+            detail: `${tenants.length} total`,
+          },
+          {
+            label: "Telemetry events",
+            value: loading ? "—" : totals.events.toLocaleString(),
+            detail: "Reported by observability",
+          },
+          {
+            label: "Estimated LLM cost",
+            value: loading ? "—" : `$${totals.cost.toFixed(2)}`,
+            detail: refreshedAt
+              ? `Updated ${refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : "Not refreshed",
+          },
+        ]}
+      />
+
+      <div className="grid gap-7 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.6fr)]">
+        <section>
+          <SectionHeader
+            title="Needs attention"
+            description="Only conditions reported by platform APIs appear here."
+            action={
+              <Link href="/services" className="button-secondary">
+                Open services
+              </Link>
+            }
+          />
+          <WorkQueue
+            items={issues.map(([name, item]) => ({
+              id: name,
+              title: name.replace(/-/g, " "),
+              description: `Health check reports ${item?.status ?? "unknown"}${item?.latencyMs != null ? ` at ${item.latencyMs}ms` : ""}.`,
+              leading: <StatusBadge status={item?.status} />,
+              urgent: item?.status === "down",
+              action: (
+                <Link href="/services" className="button-secondary">
+                  Inspect
+                </Link>
+              ),
+            }))}
+            empty={
+              <EmptyState
+                compact
+                title={
+                  loading
+                    ? "Checking platform health"
+                    : serviceEntries.length
+                      ? "No service issues reported"
+                      : "Health is unknown"
+                }
+                description={
+                  loading
+                    ? "Service checks are in progress."
+                    : serviceEntries.length
+                      ? "All returned checks are healthy."
+                      : "No service health response has been received."
+                }
+              />
+            }
+          />
+        </section>
+
+        <section>
+          <SectionHeader
+            title="Recent recorded activity"
+            description="Latest audit entries returned by the platform."
+            action={
+              <Link href="/audit" className="text-sm font-semibold text-teal-300">
+                View audit
+              </Link>
+            }
+          />
+          {audit.length ? (
+            <Timeline
+              items={audit.slice(0, 6).map((item) => ({
+                id: item.id,
+                title: `${item.service} · ${item.action}`,
+                description: item.details,
+                time: item.timestamp,
+                icon: item.severity === "error" ? "!" : item.severity === "warning" ? "△" : "•",
+              }))}
+            />
           ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {auditLog.map((a) => (
-                <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-secondary/40 border border-white/5 text-sm">
-                  <span className="text-white/40 font-mono shrink-0 text-xs">{a.timestamp}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-white/90 font-medium">{a.service} · {a.action}</p>
-                    <p className="text-white/50 text-xs mt-0.5 truncate">{a.details}</p>
-                  </div>
-                  <span className={`shrink-0 px-2 py-0.5 rounded text-xs ${a.severity === "error" ? "bg-red-500/20 text-red-400" : a.severity === "warning" ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-white/60"}`}>
-                    {a.severity}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <EmptyState
+              compact
+              title={loading ? "Loading activity" : "No audit entries returned"}
+              description="The console does not generate placeholder events."
+            />
           )}
-        </div>
+        </section>
       </div>
 
-      {/* Service Status Grid */}
-      <div>
-        <h2 className="text-lg font-semibold text-white/80 mb-4">Live Service Health</h2>
-        {healthLoading ? (
-          <div className="text-white/50">Loading service status...</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Object.entries(serviceHealth).map(([name, health]) => (
-              <div key={name}>
-                <ServiceCard
-                  name={formatServiceName(name)}
-                  status={health.status as any}
-                  latency={`${health.latencyMs ?? 0}ms`}
-                  lastCheck="Just now"
-                  description={`The ${formatServiceName(name)} service.`}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      <section className="mt-9 border-t border-white/10 pt-7">
+        <SectionHeader
+          title="Next actions"
+          description="Common operator paths based on available capabilities."
+        />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/audit" className="surface-card glass-hover">
+            <strong className="block">Review activity</strong>
+            <span className="mt-1 block text-sm text-white/55">
+              Filter recorded changes and errors.
+            </span>
+          </Link>
+          <Link href="/tenants" className="surface-card glass-hover">
+            <strong className="block">Check organizations</strong>
+            <span className="mt-1 block text-sm text-white/55">
+              Review active, pending, or suspended tenants.
+            </span>
+          </Link>
+          <Link href="/playground" className="surface-card glass-hover">
+            <strong className="block">Test a pipeline</strong>
+            <span className="mt-1 block text-sm text-white/55">
+              Run existing test and execution APIs.
+            </span>
+          </Link>
+        </div>
+      </section>
+    </PageShell>
   );
 }

@@ -23,17 +23,10 @@ declare module "fastify" {
   }
 }
 
-async function authPlugin(
-  fastify: FastifyInstance,
-  opts: AuthPluginOptions
-): Promise<void> {
-  const publicPrefixes = opts.publicPrefixes ?? [
-    "/",
-    "/health",
-    "/api/v1/auth",
-  ];
+async function authPlugin(fastify: FastifyInstance, opts: AuthPluginOptions): Promise<void> {
+  const publicPrefixes = opts.publicPrefixes ?? ["/", "/health", "/api/v1/auth"];
 
-  fastify.addHook("onRequest", async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.addHook("onRequest", async (request: FastifyRequest, _reply: FastifyReply) => {
     const path = request.url.split("?")[0];
     if (publicPrefixes.some((p) => path === p || path.startsWith(p + "/"))) {
       return;

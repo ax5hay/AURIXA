@@ -1,11 +1,13 @@
 import React from "react";
-import { motion, type HTMLMotionProps } from "framer-motion";
 import clsx from "clsx";
 
-export interface CardProps extends HTMLMotionProps<"div"> {
+export type CardVariant = "feature" | "standard" | "compact" | "inset" | "interactive";
+
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   header?: React.ReactNode;
   hoverable?: boolean;
   padding?: "none" | "sm" | "md" | "lg";
+  variant?: CardVariant;
   children: React.ReactNode;
 }
 
@@ -23,54 +25,53 @@ const headerPaddingClasses = {
   lg: "px-7 py-4",
 };
 
+const variantClasses: Record<CardVariant, string> = {
+  feature: "border-ui-border-strong bg-ui-tint shadow-none",
+  standard: "border-ui-border bg-ui-surface shadow-ui-soft",
+  compact: "border-ui-border bg-ui-surface shadow-none",
+  inset: "border-transparent bg-ui-surface-inset shadow-none",
+  interactive:
+    "border-ui-border bg-ui-surface shadow-none transition-[border-color,background-color,box-shadow] duration-200 hover:border-ui-border-strong hover:bg-ui-surface-raised hover:shadow-ui-soft",
+};
+
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
     {
       header,
       hoverable = false,
       padding = "md",
+      variant = "standard",
       children,
       className,
       ...props
     },
-    ref
+    ref,
   ) => {
+    const resolvedVariant = hoverable ? "interactive" : variant;
     return (
-      <motion.div
+      <div
         ref={ref}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        whileHover={
-          hoverable
-            ? {
-                y: -2,
-                boxShadow: "0 8px 30px rgba(0, 0, 0, 0.3)",
-                transition: { duration: 0.2 },
-              }
-            : undefined
-        }
         className={clsx(
-          "rounded-xl border border-white/[0.06] bg-surface-secondary shadow-lg",
-          "overflow-hidden",
-          className
+          "overflow-hidden rounded-ui-lg border",
+          variantClasses[resolvedVariant],
+          className,
         )}
         {...props}
       >
         {header && (
           <div
             className={clsx(
-              "border-b border-white/[0.06] bg-surface-tertiary/50",
-              headerPaddingClasses[padding]
+              "border-b border-ui-border bg-ui-surface-inset/60",
+              headerPaddingClasses[padding],
             )}
           >
             {header}
           </div>
         )}
         <div className={paddingClasses[padding]}>{children}</div>
-      </motion.div>
+      </div>
     );
-  }
+  },
 );
 
 Card.displayName = "Card";

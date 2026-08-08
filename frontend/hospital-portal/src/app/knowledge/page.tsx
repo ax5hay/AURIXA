@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getKnowledgeArticles, getTenants } from "../api";
+import { useEffect, useState } from "react";
+import {
+  Accordion,
+  Alert,
+  Card,
+  EmptyState,
+  PageHeader,
+  PageLoader,
+  SearchInput,
+  Select,
+} from "@aurixa/ui-kit";
+import { getKnowledgeArticles, getTenants, type KnowledgeArticle } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
-import type { KnowledgeArticle } from "../api";
 
-function parseTenantId(s: string): number | undefined {
-  if (!s) return undefined;
-  const n = parseInt(s.replace(/^t-0*/, ""), 10);
-  return isNaN(n) ? undefined : n;
+function parseTenantId(value: string): number | undefined {
+  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
+  return value && !isNaN(parsed) ? parsed : undefined;
 }
 
 export default function KnowledgePage() {
@@ -16,91 +24,100 @@ export default function KnowledgePage() {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [failed, setFailed] = useState(false);
   const tid = tenantId ?? parseTenantId(tenantFilter);
+  const selectedTenant = tenants.find((tenant) => tenant.id === tenantFilter);
 
   useEffect(() => {
-    getKnowledgeArticles(tid).then(setArticles).catch(() => []).finally(() => setLoading(false));
+    setLoading(true);
+    setFailed(false);
+    getKnowledgeArticles(tid)
+      .then(setArticles)
+      .catch(() => {
+        setArticles([]);
+        setFailed(true);
+      })
+      .finally(() => setLoading(false));
   }, [tid]);
 
   useEffect(() => {
-    getTenants().then(setTenants).catch(() => []);
+    getTenants()
+      .then(setTenants)
+      .catch(() => setTenants([]));
   }, []);
 
+  const query = search.trim().toLowerCase();
   const filtered = articles.filter(
-    (a) =>
-      !search.trim() ||
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      a.content.toLowerCase().includes(search.toLowerCase())
+    (article) =>
+      !query ||
+      article.title.toLowerCase().includes(query) ||
+      article.content.toLowerCase().includes(query),
   );
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <span className="inline-flex gap-1 mb-4">
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
-        </span>
-        <p className="text-white/50 text-sm">Loading knowledge base...</p>
-      </div>
-    );
-  }
+  if (loading) return <PageLoader label="Loading knowledge library" />;
 
   return (
-    <div className="space-y-6 -mt-6 pb-8">
-      <div className="flex flex-col sm:flex-row gap-4">
-        <input
-          type="text"
-          placeholder="Search articles..."
+    <div className="space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Organizational guidance"
+        title="Knowledge library"
+        description="Search source articles returned by the knowledge service. Confirm guidance against current policy before care decisions."
+        aside={
+          <p className="text-xs font-semibold text-ui-muted">
+            Source: {selectedTenant?.name ?? "All organizations"}
+          </p>
+        }
+      />
+      {failed && (
+        <Alert title="Knowledge service unavailable" tone="danger">
+          No articles are shown. Try again after the service connection is restored.
+        </Alert>
+      )}
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:border-hospital-500/50"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search titles and article text"
+          aria-label="Search knowledge articles"
         />
-        <select
+        <Select
           value={tenantFilter}
-          onChange={(e) => setTenantFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white"
+          onChange={(event) => setTenantFilter(event.target.value)}
+          aria-label="Filter knowledge by organization"
         >
-          <option value="">All tenants</option>
-          {tenants.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+          <option value="">All organizations</option>
+          {tenants.map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.name}
+            </option>
           ))}
-        </select>
+        </Select>
       </div>
-      <p className="text-white/50 text-sm">{filtered.length} articles</p>
-      {filtered.length === 0 ? (
-        <div className="glass rounded-xl p-12 text-center">
-          <p className="text-white/50">No articles found.</p>
-        </div>
+      <p className="text-sm text-ui-muted">{filtered.length} source articles</p>
+      {filtered.length ? (
+        <Card variant="compact" padding="lg">
+          <Accordion
+            items={filtered.map((article) => ({
+              id: String(article.id),
+              title: article.title,
+              content: (
+                <div>
+                  <p className="whitespace-pre-wrap">{article.content}</p>
+                  <p className="mt-4 border-t border-ui-border pt-3 text-xs font-semibold text-ui-faint">
+                    Source article #{article.id}
+                    {article.tenantId ? ` · Organization ${article.tenantId}` : ""}
+                  </p>
+                </div>
+              ),
+            }))}
+          />
+        </Card>
       ) : (
-        <div className="space-y-4">
-          {filtered.map((a) => (
-            <div key={a.id} className="glass rounded-xl overflow-hidden">
-              <button
-                onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                className="w-full p-5 text-left hover:bg-white/[0.02] transition-colors"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-white">{a.title}</h3>
-                    <p className="text-white/50 text-sm mt-1 line-clamp-1">{a.content.slice(0, 120)}...</p>
-                  </div>
-                  <svg className={`w-5 h-5 text-white/40 transition-transform ${expandedId === a.id ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </button>
-              {expandedId === a.id && (
-                <div className="px-5 pb-5 pt-0 border-t border-white/5">
-                  <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">{a.content}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <EmptyState
+          title="No matching guidance"
+          description="Try a broader search or a different organization context."
+        />
       )}
     </div>
   );

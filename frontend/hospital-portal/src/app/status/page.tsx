@@ -1,88 +1,162 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getServiceHealth, getAuditLog } from "../api";
-import type { ServiceHealth, AuditEntry } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Badge,
+  Card,
+  DiagnosticBundle,
+  EmptyState,
+  PageHeader,
+  PageLoader,
+  SectionHeader,
+} from "@aurixa/ui-kit";
+import { getAuditLog, getServiceHealth, type AuditEntry, type ServiceHealth } from "../api";
+import { useStaffContext } from "@/context/StaffContext";
 
 function formatName(name: string) {
-  return name.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return name.replace(/-/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default function StatusPage() {
+  const { roleCategory } = useStaffContext();
   const [health, setHealth] = useState<ServiceHealth>({});
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [freshAt, setFreshAt] = useState<Date | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      getServiceHealth().then(setHealth).catch(() => ({})),
-      getAuditLog(20).then(setAudit).catch(() => []),
-    ]).finally(() => setLoading(false));
+    Promise.all([getServiceHealth().then(setHealth), getAuditLog(20).then(setAudit)]).finally(
+      () => {
+        setFreshAt(new Date());
+        setLoading(false);
+      },
+    );
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <span className="inline-flex gap-1 mb-4">
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
-          <span className="h-3 w-3 bg-hospital-400 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
-        </span>
-        <p className="text-white/50 text-sm">Loading system status...</p>
-      </div>
-    );
-  }
+  const services = Object.entries(health);
+  const healthyCount = services.filter(([, info]) => info?.status === "healthy").length;
+  const severityCounts = useMemo(
+    () =>
+      audit.reduce<Record<string, number>>((counts, entry) => {
+        counts[entry.severity] = (counts[entry.severity] ?? 0) + 1;
+        return counts;
+      }, {}),
+    [audit],
+  );
 
-  const healthyCount = Object.values(health).filter((h) => h?.status === "healthy").length;
-  const total = Object.keys(health).length || 1;
+  if (loading) return <PageLoader label="Loading operations status" />;
 
   return (
-    <div className="space-y-6 -mt-6 pb-8">
-      <div className="glass rounded-2xl p-6 glow-sm">
-        <h2 className="text-lg font-semibold text-white mb-1">System Status</h2>
-        <p className="text-white/60 text-sm">Services health and recent audit log</p>
-      </div>
+    <div className="space-y-7 pb-8">
+      <PageHeader
+        eyebrow="Administrative operations"
+        title="Service status"
+        description="Operational service signals and privacy-minimized audit activity. This view does not imply authorization enforcement."
+        aside={
+          <p className="text-xs text-ui-muted">
+            {freshAt
+              ? `Checked at ${freshAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+              : "Not yet checked"}
+          </p>
+        }
+      />
+      {roleCategory !== "operations" && (
+        <Alert title="Operations-oriented information" tone="info">
+          This page is labeled for administrative support, but the interface does not enforce
+          permissions. Follow your organization’s access policy.
+        </Alert>
+      )}
 
-      <div className="glass rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-4">Service Health</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Object.entries(health).map(([name, info]) => (
-            <div key={name} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-secondary/50 border border-white/5">
-              <span className={`w-2.5 h-2.5 rounded-full ${info?.status === "healthy" ? "bg-green-500" : "bg-amber-500"}`} />
-              <div>
-                <p className="text-sm font-medium text-white">{formatName(name)}</p>
-                <p className="text-xs text-white/40">
-                  {info?.status ?? "unknown"}
-                  {info?.latencyMs != null && ` · ${info.latencyMs}ms`}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-white/50 text-sm mt-4">{healthyCount}/{total} services healthy</p>
-      </div>
-
-      <div className="glass rounded-xl p-6">
-        <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-4">Recent Audit Log</h3>
-        {audit.length === 0 ? (
-          <p className="text-white/50 text-sm">No audit entries.</p>
-        ) : (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {audit.map((a) => (
-              <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl bg-surface-secondary/40 border border-white/5 text-sm">
-                <span className="text-white/40 font-mono shrink-0">{a.timestamp}</span>
-                <div className="min-w-0">
-                  <p className="text-white/90 font-medium">{a.service} · {a.action}</p>
-                  <p className="text-white/50 text-xs mt-0.5 truncate">{a.details}</p>
-                </div>
-                <span className={`shrink-0 px-2 py-0.5 rounded text-xs ${a.severity === "error" ? "bg-red-500/20 text-red-400" : a.severity === "warning" ? "bg-amber-500/20 text-amber-400" : "bg-white/10 text-white/60"}`}>
-                  {a.severity}
-                </span>
-              </div>
-            ))}
+      <section>
+        <SectionHeader
+          title="Service semantics"
+          description="Healthy means the latest health endpoint reported healthy; it does not guarantee every workflow."
+          count={services.length}
+        />
+        {services.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map(([name, info]) => {
+              const healthy = info?.status === "healthy";
+              return (
+                <Card key={name} variant="compact" padding="md">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-ui-ink">{formatName(name)}</h3>
+                      <p className="mt-1 text-xs text-ui-muted">
+                        {info?.latencyMs != null
+                          ? `Reported latency ${info.latencyMs} ms`
+                          : "No latency reported"}
+                      </p>
+                    </div>
+                    <Badge tone={healthy ? "success" : "warning"} dot>
+                      {healthy ? "Healthy" : info?.status || "Unknown"}
+                    </Badge>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
+        ) : (
+          <EmptyState
+            compact
+            title="No service status returned"
+            description="The health endpoint did not return service-level information."
+          />
         )}
-      </div>
+        <p className="mt-3 text-sm font-semibold text-ui-muted">
+          {healthyCount} of {services.length} reported healthy at the last check
+        </p>
+      </section>
+
+      <section>
+        <SectionHeader
+          title="Recent audit activity"
+          description="Details and user fields are intentionally omitted to reduce exposure of sensitive information."
+          count={audit.length}
+        />
+        <Card variant="compact" padding="none">
+          {audit.length ? (
+            <ul className="divide-y divide-ui-border">
+              {audit.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center"
+                >
+                  <time className="font-mono text-xs text-ui-faint">
+                    {new Date(entry.timestamp).toLocaleString()}
+                  </time>
+                  <p className="min-w-0 flex-1 text-sm font-semibold text-ui-ink">
+                    {entry.service} · {entry.action}
+                  </p>
+                  <Badge
+                    tone={
+                      entry.severity === "error"
+                        ? "danger"
+                        : entry.severity === "warning"
+                          ? "warning"
+                          : "neutral"
+                    }
+                  >
+                    {entry.severity}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="p-5">
+              <EmptyState compact title="No audit activity returned" />
+            </div>
+          )}
+        </Card>
+      </section>
+
+      <DiagnosticBundle
+        title="Privacy-safe support bundle"
+        description="Copies service health and aggregate audit counts only. Patient, user, and audit detail fields are excluded."
+        data={{ health, auditSummary: severityCounts, auditEntryCount: audit.length }}
+        context={{ checkedAt: freshAt?.toISOString(), application: "AURIXA Hospital Portal" }}
+      />
     </div>
   );
 }

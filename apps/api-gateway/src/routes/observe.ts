@@ -16,6 +16,9 @@ export async function observeRoutes(app: FastifyInstance) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(req.body),
     });
-    reply.status(res.status).type("application/json").send(await res.text());
+    reply
+      .status(res.status)
+      .type("application/json")
+      .send(await res.text());
   });
 }

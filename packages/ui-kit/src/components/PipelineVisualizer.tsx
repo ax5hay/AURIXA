@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
 
 export interface PipelineStep {
@@ -17,44 +17,45 @@ export interface PipelineVisualizerProps {
 
 const statusColors = {
   pending: {
-    bg: "bg-surface-elevated",
-    border: "border-white/10",
-    text: "text-gray-500",
-    dot: "bg-gray-500",
+    bg: "bg-ui-surface-inset",
+    border: "border-ui-border",
+    text: "text-ui-muted",
+    dot: "bg-ui-faint",
   },
   active: {
-    bg: "bg-aurixa-600/10",
-    border: "border-aurixa-500/40",
-    text: "text-aurixa-300",
-    dot: "bg-aurixa-500",
+    bg: "bg-ui-tint",
+    border: "border-ui-accent/40",
+    text: "text-ui-accent",
+    dot: "bg-ui-accent",
   },
   complete: {
-    bg: "bg-accent-success/10",
-    border: "border-accent-success/30",
-    text: "text-accent-success",
-    dot: "bg-accent-success",
+    bg: "bg-ui-success/10",
+    border: "border-ui-success/30",
+    text: "text-ui-success",
+    dot: "bg-ui-success",
   },
   error: {
-    bg: "bg-accent-error/10",
-    border: "border-accent-error/30",
-    text: "text-accent-error",
-    dot: "bg-accent-error",
+    bg: "bg-ui-danger/10",
+    border: "border-ui-danger/30",
+    text: "text-ui-danger",
+    dot: "bg-ui-danger",
   },
 };
 
 function StepIcon({ status }: { status: PipelineStep["status"] }) {
   const colors = statusColors[status];
+  const reduceMotion = useReducedMotion();
 
   if (status === "complete") {
     return (
       <motion.div
-        className={clsx(
-          "flex h-6 w-6 items-center justify-center rounded-full",
-          colors.dot
-        )}
-        initial={{ scale: 0 }}
+        aria-hidden="true"
+        className={clsx("flex h-6 w-6 items-center justify-center rounded-full", colors.dot)}
+        initial={reduceMotion ? false : { scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        transition={
+          reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 20 }
+        }
       >
         <svg
           width="12"
@@ -75,13 +76,13 @@ function StepIcon({ status }: { status: PipelineStep["status"] }) {
   if (status === "error") {
     return (
       <motion.div
-        className={clsx(
-          "flex h-6 w-6 items-center justify-center rounded-full",
-          colors.dot
-        )}
-        initial={{ scale: 0 }}
+        aria-hidden="true"
+        className={clsx("flex h-6 w-6 items-center justify-center rounded-full", colors.dot)}
+        initial={reduceMotion ? false : { scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        transition={
+          reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 20 }
+        }
       >
         <svg
           width="12"
@@ -102,16 +103,20 @@ function StepIcon({ status }: { status: PipelineStep["status"] }) {
 
   if (status === "active") {
     return (
-      <div className="relative flex items-center justify-center">
-        <motion.div
-          className={clsx("absolute h-6 w-6 rounded-full", "bg-aurixa-500/30")}
-          animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-        />
+      <div aria-hidden="true" className="relative flex items-center justify-center">
+        {!reduceMotion && (
+          <motion.div
+            className="absolute h-6 w-6 rounded-full bg-ui-accent/30"
+            animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
         <motion.div
           className={clsx("h-6 w-6 rounded-full", colors.dot)}
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          animate={reduceMotion ? undefined : { scale: [1, 1.1, 1] }}
+          transition={
+            reduceMotion ? { duration: 0 } : { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+          }
         />
       </div>
     );
@@ -119,10 +124,8 @@ function StepIcon({ status }: { status: PipelineStep["status"] }) {
 
   return (
     <div
-      className={clsx(
-        "h-6 w-6 rounded-full border-2",
-        "border-gray-600 bg-surface-tertiary"
-      )}
+      aria-hidden="true"
+      className="h-6 w-6 rounded-full border-2 border-ui-border-strong bg-ui-surface-inset"
     />
   );
 }
@@ -137,22 +140,22 @@ function Connector({
   orientation: "horizontal" | "vertical";
 }) {
   const isComplete = fromStatus === "complete";
-  const isActive =
-    fromStatus === "complete" &&
-    (toStatus === "active" || toStatus === "complete");
+  const isActive = fromStatus === "complete" && (toStatus === "active" || toStatus === "complete");
+  const reduceMotion = useReducedMotion();
 
   return (
     <div
+      aria-hidden="true"
       className={clsx(
         "relative overflow-hidden",
-        orientation === "horizontal" ? "h-0.5 flex-1 min-w-6" : "w-0.5 h-6 mx-auto"
+        orientation === "horizontal" ? "h-0.5 flex-1 min-w-6" : "w-0.5 h-6 mx-auto",
       )}
     >
       {/* Background track */}
       <div
         className={clsx(
-          "absolute bg-surface-elevated",
-          orientation === "horizontal" ? "inset-0" : "inset-0"
+          "absolute bg-ui-surface-inset",
+          orientation === "horizontal" ? "inset-0" : "inset-0",
         )}
       />
 
@@ -161,15 +164,21 @@ function Connector({
         className={clsx(
           "absolute",
           orientation === "horizontal" ? "inset-y-0 left-0" : "inset-x-0 top-0",
-          isComplete ? "bg-accent-success" : isActive ? "bg-aurixa-500" : "bg-surface-elevated"
+          isComplete ? "bg-ui-success" : isActive ? "bg-ui-accent" : "bg-ui-surface-inset",
         )}
-        initial={orientation === "horizontal" ? { width: "0%" } : { height: "0%" }}
+        initial={
+          reduceMotion ? false : orientation === "horizontal" ? { width: "0%" } : { height: "0%" }
+        }
         animate={
           orientation === "horizontal"
             ? { width: isComplete || isActive ? "100%" : "0%" }
             : { height: isComplete || isActive ? "100%" : "0%" }
         }
-        transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.5,
+          ease: "easeOut",
+          delay: reduceMotion ? 0 : 0.2,
+        }}
       />
     </div>
   );
@@ -185,56 +194,51 @@ function StepCard({
   orientation: "horizontal" | "vertical";
 }) {
   const colors = statusColors[step.status];
+  const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
+      role="listitem"
       className={clsx(
         "flex items-center gap-3 rounded-lg border px-3 py-2.5",
         colors.bg,
         colors.border,
-        orientation === "horizontal" ? "min-w-[140px]" : "w-full"
+        orientation === "horizontal" ? "min-w-[140px]" : "w-full",
       )}
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      transition={{ duration: reduceMotion ? 0 : 0.3, delay: reduceMotion ? 0 : index * 0.1 }}
     >
       <StepIcon status={step.status} />
 
       <div className="flex flex-col gap-0.5 min-w-0">
-        <span
-          className={clsx(
-            "text-sm font-medium truncate",
-            colors.text
-          )}
-        >
-          {step.label}
-        </span>
+        <span className={clsx("text-sm font-medium truncate", colors.text)}>{step.label}</span>
 
         {step.progress !== undefined && step.status === "active" && (
           <div className="flex items-center gap-2">
-            <div className="h-1 w-16 overflow-hidden rounded-full bg-surface-primary">
+            <div
+              role="progressbar"
+              aria-label={`${step.label} progress`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(Math.min(100, Math.max(0, step.progress)))}
+              className="h-1 w-16 overflow-hidden rounded-full bg-ui-surface-inset"
+            >
               <motion.div
-                className="h-full rounded-full bg-aurixa-500"
-                initial={{ width: 0 }}
+                className="h-full rounded-full bg-ui-accent"
+                initial={reduceMotion ? false : { width: 0 }}
                 animate={{ width: `${Math.min(100, Math.max(0, step.progress))}%` }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
+                transition={{ duration: reduceMotion ? 0 : 0.4, ease: "easeOut" }}
               />
             </div>
-            <span className="text-[10px] font-mono text-aurixa-400">
-              {Math.round(step.progress)}%
-            </span>
+            <span className="font-mono text-xs text-ui-accent">{Math.round(step.progress)}%</span>
           </div>
         )}
 
-        {step.status === "complete" && (
-          <span className="text-[10px] text-accent-success/70">Complete</span>
-        )}
-        {step.status === "error" && (
-          <span className="text-[10px] text-accent-error/70">Failed</span>
-        )}
-        {step.status === "pending" && (
-          <span className="text-[10px] text-gray-600">Pending</span>
-        )}
+        {step.status === "complete" && <span className="text-xs text-ui-success">Complete</span>}
+        {step.status === "error" && <span className="text-xs text-ui-danger">Failed</span>}
+        {step.status === "active" && <span className="text-xs text-ui-accent">Running</span>}
+        {step.status === "pending" && <span className="text-xs text-ui-faint">Pending</span>}
       </div>
     </motion.div>
   );
@@ -247,12 +251,14 @@ export function PipelineVisualizer({
 }: PipelineVisualizerProps) {
   return (
     <div
+      role="list"
+      aria-label="Pipeline progress"
       className={clsx(
         "flex",
         orientation === "horizontal"
           ? "flex-row items-center gap-0"
           : "flex-col items-stretch gap-0",
-        className
+        className,
       )}
     >
       {steps.map((step, index) => (

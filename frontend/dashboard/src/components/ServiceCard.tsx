@@ -30,27 +30,58 @@ const statusConfig: Record<ServiceStatus, { color: string; bg: string; label: st
   },
 };
 
-export default function ServiceCard({ name, status, latency, lastCheck, description }: ServiceCardProps) {
+export default function ServiceCard({
+  name,
+  status,
+  latency,
+  lastCheck,
+  description,
+}: ServiceCardProps) {
   const config = statusConfig[status];
 
   return (
     <div className="glass glass-hover rounded-xl p-5 cursor-default hover:-translate-y-0.5 hover:scale-[1.01] transition-transform duration-200">
       <div className="flex items-start justify-between mb-3">
         <h3 className="text-sm font-semibold text-white/90">{name}</h3>
-        <span className={cn("flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full", config.color, config.bg)}>
-          <span className={cn("w-1.5 h-1.5 rounded-full", status === "healthy" ? "bg-accent-success" : status === "degraded" ? "bg-accent-warning" : "bg-accent-error")} />
+        <span
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full",
+            config.color,
+            config.bg,
+          )}
+        >
+          <span
+            className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              status === "healthy"
+                ? "bg-accent-success"
+                : status === "degraded"
+                  ? "bg-accent-warning"
+                  : "bg-accent-error",
+            )}
+          />
           {config.label}
         </span>
       </div>
 
-      {description && (
-        <p className="text-xs text-white/40 mb-3">{description}</p>
-      )}
+      {description && <p className="text-xs text-white/40 mb-3">{description}</p>}
 
       <div className="flex items-center justify-between text-xs text-white/50">
         <div className="flex items-center gap-1">
-          <svg className="w-3.5 h-3.5 flex-shrink-0" width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          <svg
+            className="w-3.5 h-3.5 flex-shrink-0"
+            width={14}
+            height={14}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+            />
           </svg>
           <span>{latency}</span>
         </div>

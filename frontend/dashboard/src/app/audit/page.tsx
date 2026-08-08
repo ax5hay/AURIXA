@@ -1,132 +1,125 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, DataTable, DiagnosticBundle, EmptyState, PageHeader, Select } from "@aurixa/ui-kit";
 import { getAuditLog, type AuditEntry } from "@/app/services/api";
-
-const severityColors: Record<string, string> = {
-  info: "text-aurixa-400",
-  warning: "text-accent-warning",
-  error: "text-accent-error",
-};
-
-const severityDotColors: Record<string, string> = {
-  info: "bg-aurixa-400",
-  warning: "bg-accent-warning",
-  error: "bg-accent-error",
-};
+import { FilterBar, PageShell, StatusBadge } from "@/components/OperatorCompositions";
 
 export default function AuditPage() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [serviceFilter, setServiceFilter] = useState("All Services");
-  const [severityFilter, setSeverityFilter] = useState("all");
+  const [service, setService] = useState("all");
+  const [severity, setSeverity] = useState("all");
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     getAuditLog()
-      .then(setLogs)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .then((items) => {
+        setLogs(items);
+        setRefreshedAt(new Date());
+      })
+      .catch((reason) =>
+        setError(reason instanceof Error ? reason.message : "Audit events could not be loaded."),
+      )
       .finally(() => setLoading(false));
   }, []);
 
-  const serviceOptions = ["All Services", ...Array.from(new Set(logs.map((l) => l.service)))].sort((a, b) => (a === "All Services" ? -1 : a.localeCompare(b)));
-  const filteredLogs = logs.filter((log) => {
-    const matchesService = serviceFilter === "All Services" || log.service === serviceFilter;
-    const matchesSeverity = severityFilter === "all" || log.severity === severityFilter;
-    return matchesService && matchesSeverity;
-  });
-
-  if (error) {
-    return (
-      <div className="p-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Audit Log</h1>
-        <div className="glass rounded-xl p-6 text-accent-error border border-accent-error/30">{error}</div>
-      </div>
-    );
-  }
+  const services = useMemo(
+    () => Array.from(new Set(logs.map((log) => log.service))).sort(),
+    [logs],
+  );
+  const filtered = logs.filter(
+    (log) =>
+      (service === "all" || log.service === service) &&
+      (severity === "all" || log.severity === severity),
+  );
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
-      className="p-8 max-w-7xl mx-auto"
-    >
-      <h1 className="text-3xl font-bold text-white mb-2">Audit Log</h1>
-      <p className="text-white/50 text-sm mb-8">System activity and security events</p>
-
-      <div className="flex items-center gap-3 mb-6">
-        <select
-          value={serviceFilter}
-          onChange={(e) => setServiceFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white focus:outline-none focus:border-aurixa-500/50"
+    <PageShell>
+      <PageHeader
+        eyebrow="Investigate"
+        title="Audit activity"
+        description="Recorded platform actions. Entries shown here come directly from the audit API."
+        aside={
+          <DiagnosticBundle
+            title="Audit snapshot"
+            description="Copy the currently filtered entries."
+            data={() => filtered}
+            context={{ service, severity, refreshedAt }}
+            className="min-w-72 border-0 bg-transparent p-0"
+          />
+        }
+      />
+      {error && (
+        <Alert title="Audit activity unavailable" tone="danger" className="mb-5">
+          {error}
+        </Alert>
+      )}
+      <FilterBar
+        result={`${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}${refreshedAt ? ` · refreshed ${refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}`}
+      >
+        <Select
+          aria-label="Filter by service"
+          value={service}
+          onChange={(event) => setService(event.target.value)}
+          className="sm:max-w-60"
         >
-          {serviceOptions.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
+          <option value="all">All services</option>
+          {services.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
           ))}
-        </select>
-        <select
-          value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-xl bg-surface-secondary/80 border border-white/10 text-white focus:outline-none focus:border-aurixa-500/50"
+        </Select>
+        <Select
+          aria-label="Filter by severity"
+          value={severity}
+          onChange={(event) => setSeverity(event.target.value)}
+          className="sm:max-w-52"
         >
-          <option value="all">All Severities</option>
+          <option value="all">All severities</option>
           <option value="info">Info</option>
           <option value="warning">Warning</option>
           <option value="error">Error</option>
-        </select>
-        <span className="text-xs text-white/30 ml-2">{filteredLogs.length} entries</span>
-      </div>
-
-      <div className="glass rounded-xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/5">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">Timestamp</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">Service</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">Action</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">User</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-white/40 uppercase tracking-wider">Details</th>
+        </Select>
+      </FilterBar>
+      {!loading && !filtered.length ? (
+        <EmptyState
+          title="No matching audit entries"
+          description={
+            logs.length
+              ? "Adjust the filters to broaden the result."
+              : "The API returned no recorded activity."
+          }
+        />
+      ) : (
+        <DataTable
+          caption="Filtered platform audit activity"
+          headers={["Severity", "Timestamp", "Service", "Action", "User", "Details"]}
+        >
+          {loading ? (
+            <tr>
+              <td colSpan={6} className="table-cell py-10 text-center">
+                Loading audit activity…
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-white/50">Loading audit log...</td>
+          ) : (
+            filtered.map((log) => (
+              <tr key={log.id}>
+                <td className="table-cell">
+                  <StatusBadge status={log.severity} />
+                </td>
+                <td className="table-cell whitespace-nowrap font-mono text-xs">{log.timestamp}</td>
+                <td className="table-cell">{log.service}</td>
+                <td className="table-cell font-semibold text-white">{log.action}</td>
+                <td className="table-cell font-mono text-xs">{log.user}</td>
+                <td className="table-cell min-w-64">{log.details}</td>
               </tr>
-            ) : filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-8 text-center text-white/50">No audit entries</td>
-              </tr>
-            ) : (
-              filteredLogs.map((log, i) => (
-                <motion.tr
-                  key={log.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.02 }}
-                  className="hover:bg-white/[0.02] transition-colors"
-                >
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", severityDotColors[log.severity] || "bg-white/30")} />
-                      <span className="text-xs font-mono text-white/50">{log.timestamp}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-white/70">{log.service}</td>
-                  <td className="px-5 py-3">
-                    <span className={cn("text-sm font-medium", severityColors[log.severity] || "text-white/70")}>{log.action}</span>
-                  </td>
-                  <td className="px-5 py-3 text-xs font-mono text-white/40">{log.user}</td>
-                  <td className="px-5 py-3 text-xs text-white/40 max-w-xs truncate">{log.details}</td>
-                </motion.tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </motion.div>
+            ))
+          )}
+        </DataTable>
+      )}
+    </PageShell>
   );
 }

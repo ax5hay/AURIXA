@@ -60,12 +60,12 @@ So over **WebSocket**, the LLM response is streamed token-by-token (`text_delta`
 
 The **channel layer** is “how the user talks to the platform”: web, phone, etc.
 
-| Channel        | Protocol / API                    | “Streaming” in practice |
-|----------------|-----------------------------------|---------------------------|
-| **Webchat**    | REST: `POST /api/v1/orchestration/pipelines` | One request → one full text response. No token streaming; no voice. |
-| **Voice (web)**| REST: `POST /api/v1/voice/process`           | One request (audio or effectively one “turn”) → one response (transcript + text + optional audio). |
-| **Voice (web)**| WebSocket: `ws://host/ws/voice` → `/ws/stream` | Duplex: status + **LLM token stream** (`text_delta`) + final text + optional audio. Razor-sharp streaming. |
-| **Voice (phone)** | Planned (SIP/WebRTC gateway)              | Same as above: gateway would send audio to our WebSocket (or REST); we’d respond with audio. |
+| Channel           | Protocol / API                                 | “Streaming” in practice                                                                                    |
+| ----------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Webchat**       | REST: `POST /api/v1/orchestration/pipelines`   | One request → one full text response. No token streaming; no voice.                                        |
+| **Voice (web)**   | REST: `POST /api/v1/voice/process`             | One request (audio or effectively one “turn”) → one response (transcript + text + optional audio).         |
+| **Voice (web)**   | WebSocket: `ws://host/ws/voice` → `/ws/stream` | Duplex: status + **LLM token stream** (`text_delta`) + final text + optional audio. Razor-sharp streaming. |
+| **Voice (phone)** | Planned (SIP/WebRTC gateway)                   | Same as above: gateway would send audio to our WebSocket (or REST); we’d respond with audio.               |
 
 So:
 
@@ -74,6 +74,7 @@ So:
 - **Voice WebSocket**: the **channel** is streaming and the **LLM reply** is streamed token-by-token (`text_delta`); the client sees status updates and incremental text, then final text and optional TTS audio.
 
 **Orchestration** exposes:
+
 - `POST /api/v1/pipelines` — full pipeline, one JSON response (used by REST voice and webchat).
 - `POST /api/v1/pipelines/stream` — same pipeline but returns NDJSON stream (`status`, `text_delta`, `done`) for voice WebSocket and any client that wants token-level streaming.
 
@@ -93,29 +94,29 @@ Below is the full flow of the software as each type of user experiences it.
 
 **What they do:**
 
-1. **Log in / use Dashboard**  
+1. **Log in / use Dashboard**
    - Single front-end that talks to the API Gateway (port 3000). All backend services (orchestration, LLM, RAG, safety, voice, execution, observability) sit behind the gateway.
 
-2. **Tenants**  
-   - See list of tenants (e.g. hospitals/clinics).  
-   - Add new tenants (organizations).  
+2. **Tenants**
+   - See list of tenants (e.g. hospitals/clinics).
+   - Add new tenants (organizations).
    - Data is stored in the database; the gateway proxies admin API calls to the right services.
 
-3. **Services & health**  
-   - See status of backend services (orchestration, LLM router, RAG, safety, streaming-voice, execution, observability).  
+3. **Services & health**
+   - See status of backend services (orchestration, LLM router, RAG, safety, streaming-voice, execution, observability).
    - Health checks hit each service’s `/health` via the gateway.
 
-4. **Playground**  
-   - Run tests: “Run All Tests” hits multiple APIs (route, RAG, safety, agent, execution, knowledge, LLM, audit, health).  
-   - Full pipeline test: send a prompt and get a final response (same pipeline as chat/voice).  
+4. **Playground**
+   - Run tests: “Run All Tests” hits multiple APIs (route, RAG, safety, agent, execution, knowledge, LLM, audit, health).
+   - Full pipeline test: send a prompt and get a final response (same pipeline as chat/voice).
    - Execution actions: e.g. get appointments, check insurance, create appointment, request prescription refill (these go through the execution engine and DB).
 
-5. **Analytics / Observability**  
-   - Telemetry and performance data come from **Observability Core** (port 8008).  
+5. **Analytics / Observability**
+   - Telemetry and performance data come from **Observability Core** (port 8008).
    - Dashboard can show metrics, latency, cost; data is aggregated from events sent by orchestration, LLM router, etc.
 
-6. **Knowledge, configuration, audit, settings**  
-   - Manage knowledge base (for RAG), system configuration, audit logs, and app settings.  
+6. **Knowledge, configuration, audit, settings**
+   - Manage knowledge base (for RAG), system configuration, audit logs, and app settings.
    - All via the same gateway; gateway routes to the right microservice.
 
 **End-to-end (layman):**  
@@ -131,44 +132,45 @@ Admin opens Dashboard → uses menus (Tenants, Services, Playground, Analytics, 
 
 **What they do:**
 
-1. **Profile / home**  
-   - See their profile and a home screen.  
+1. **Profile / home**
+   - See their profile and a home screen.
    - Data loaded via API Gateway (e.g. patient info, appointments).
 
-2. **Chat (text)**  
-   - Go to **Chat**.  
-   - Type a message → browser sends `POST /api/v1/orchestration/pipelines` with `{ prompt, patient_id }`.  
-   - Gateway forwards to **Orchestration Engine**.  
-   - Orchestration: intent → RAG or agent → LLM → safety → one `final_response`.  
-   - Response shown in the chat UI.  
+2. **Chat (text)**
+   - Go to **Chat**.
+   - Type a message → browser sends `POST /api/v1/orchestration/pipelines` with `{ prompt, patient_id }`.
+   - Gateway forwards to **Orchestration Engine**.
+   - Orchestration: intent → RAG or agent → LLM → safety → one `final_response`.
+   - Response shown in the chat UI.
    - No voice, no streaming; one request per message.
 
-3. **Voice**  
-   - Go to **Voice** tab.  
-   - **Option A — Speak:**  
-     - Press mic, speak, release.  
-     - Browser encodes the recording to base64 and sends **one** `POST /api/v1/voice/process` with `{ audio_b64, patient_id, want_tts }`.  
-     - Gateway → **streaming-voice**.  
-     - Streaming-voice: STT → transcript → same orchestration pipeline (one call) → optional TTS → returns `{ transcript, response, audio_b64 }`.  
-     - UI shows transcript and reply; if “Play aloud” is on, it plays `audio_b64`.  
-   - **Option B — Type on Voice page:**  
-     - Type in the text box and send.  
-     - Text is sent either as pipeline-only (like chat) or via voice process; if “Play aloud” is on, the app may call `/api/v1/voice/tts` to speak the reply.  
+3. **Voice**
+   - Go to **Voice** tab.
+   - **Option A — Speak:**
+     - Press mic, speak, release.
+     - Browser encodes the recording to base64 and sends **one** `POST /api/v1/voice/process` with `{ audio_b64, patient_id, want_tts }`.
+     - Gateway → **streaming-voice**.
+     - Streaming-voice: STT → transcript → same orchestration pipeline (one call) → optional TTS → returns `{ transcript, response, audio_b64 }`.
+     - UI shows transcript and reply; if “Play aloud” is on, it plays `audio_b64`.
+   - **Option B — Type on Voice page:**
+     - Type in the text box and send.
+     - Text is sent either as pipeline-only (like chat) or via voice process; if “Play aloud” is on, the app may call `/api/v1/voice/tts` to speak the reply.
    - So for the patient, “streaming” in practice is: one question (voice or text) → one answer (text + optional speech). The **streaming-voice service** is what does STT and TTS; the **channel** is REST (one request, one response per turn).
 
-4. **Appointments**  
-   - View (and possibly manage) appointments.  
+4. **Appointments**
+   - View (and possibly manage) appointments.
    - API calls go through the gateway to orchestration/execution/database as needed.
 
-5. **Help**  
-   - View help/articles.  
+5. **Help**
+   - View help/articles.
    - May be backed by knowledge base or static content; again via gateway.
 
 **End-to-end (layman):**  
-Patient opens Patient Portal → chooses Chat or Voice.  
-- **Chat:** type → one API call (pipeline) → one text reply.  
+Patient opens Patient Portal → chooses Chat or Voice.
+
+- **Chat:** type → one API call (pipeline) → one text reply.
 - **Voice:** speak or type on Voice page → one (or two) API call(s) (voice/process and maybe TTS) → one text reply + optional played audio.  
-The “streaming” they might notice is the **audio** (recording sent, then reply played); under the hood it’s still one request/response per turn unless the app is later changed to use the WebSocket voice channel.
+  The “streaming” they might notice is the **audio** (recording sent, then reply played); under the hood it’s still one request/response per turn unless the app is later changed to use the WebSocket voice channel.
 
 ---
 
@@ -180,33 +182,33 @@ The “streaming” they might notice is the **audio** (recording sent, then rep
 
 **What they do:**
 
-1. **Identity**  
-   - “Logged in as” or role selection (e.g. reception, nurse, doctor).  
+1. **Identity**
+   - “Logged in as” or role selection (e.g. reception, nurse, doctor).
    - Used for context in chat and for any tenant-scoped data.
 
-2. **Chat (AI assistant)**  
-   - Staff use the in-app **Chat** to ask questions (e.g. policies, schedules, patient summaries).  
-   - Same mechanism as patient chat: `POST /api/v1/orchestration/pipelines` with prompt (and tenant/user context if sent).  
+2. **Chat (AI assistant)**
+   - Staff use the in-app **Chat** to ask questions (e.g. policies, schedules, patient summaries).
+   - Same mechanism as patient chat: `POST /api/v1/orchestration/pipelines` with prompt (and tenant/user context if sent).
    - One request per message; one full text response. No voice or message streaming in the current design.
 
-3. **Patients**  
-   - List and view patients (and possibly patient details).  
+3. **Patients**
+   - List and view patients (and possibly patient details).
    - API calls go through the gateway to backend services that read from the database.
 
-4. **Appointments**  
-   - View and manage appointments (create, reschedule, etc.).  
+4. **Appointments**
+   - View and manage appointments (create, reschedule, etc.).
    - Uses execution engine and DB via the gateway.
 
-5. **Schedule**  
-   - View schedule (slots, availability).  
+5. **Schedule**
+   - View schedule (slots, availability).
    - Again via gateway and backend.
 
-6. **Knowledge**  
-   - Access internal knowledge base (policies, procedures).  
+6. **Knowledge**
+   - Access internal knowledge base (policies, procedures).
    - RAG and knowledge APIs behind the gateway.
 
-7. **Status**  
-   - System status (e.g. health of services).  
+7. **Status**
+   - System status (e.g. health of services).
    - Same observability/health endpoints as admin, possibly with a simpler view.
 
 **End-to-end (layman):**  
@@ -216,11 +218,11 @@ Staff open Hospital Portal → pick identity → use Chat, Patients, Appointment
 
 ## Summary Table
 
-| User type        | App            | Main actions                    | Uses streaming-voice? | “Streaming” in practice        |
-|------------------|----------------|----------------------------------|------------------------|---------------------------------|
-| AURIXA admin     | Dashboard      | Tenants, services, playground, analytics, knowledge, audit, config | No  | N/A                             |
-| Patient          | Patient Portal | Chat (text), Voice (mic/text + play aloud), appointments, help | Yes (Voice tab) | Voice: one REST request per turn (audio in/out); optional WebSocket for future |
-| Hospital staff   | Hospital Portal | Chat, patients, appointments, schedule, knowledge, status | No  | Same as chat: one request, one reply |
+| User type      | App             | Main actions                                                       | Uses streaming-voice? | “Streaming” in practice                                                        |
+| -------------- | --------------- | ------------------------------------------------------------------ | --------------------- | ------------------------------------------------------------------------------ |
+| AURIXA admin   | Dashboard       | Tenants, services, playground, analytics, knowledge, audit, config | No                    | N/A                                                                            |
+| Patient        | Patient Portal  | Chat (text), Voice (mic/text + play aloud), appointments, help     | Yes (Voice tab)       | Voice: one REST request per turn (audio in/out); optional WebSocket for future |
+| Hospital staff | Hospital Portal | Chat, patients, appointments, schedule, knowledge, status          | No                    | Same as chat: one request, one reply                                           |
 
 ---
 
