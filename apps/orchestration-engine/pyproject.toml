@@ -18,3 +18,12 @@ dev-dependencies = [
     "pytest-asyncio>=0.25.0",
     "httpx>=0.28.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "live: integration test against running stack and LM Studio",
+]
+addopts = "-m 'not live'"

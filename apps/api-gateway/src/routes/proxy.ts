@@ -39,7 +39,7 @@ export async function proxyRoutes(app: FastifyInstance) {
         // Orchestration pipelines (LLM generation) need 2+ minutes; LM Studio can be slow
         const isPipeline = prefix === "orchestration" && (path ?? "").includes("pipeline");
         const isLlm = prefix === "llm";
-        const timeoutMs = isPipeline ? 180000 : isLlm ? 15000 : 30000;
+        const timeoutMs = isPipeline || isLlm ? 180000 : 30000;
         const response = await fetch(url, {
           method: req.method,
           headers,

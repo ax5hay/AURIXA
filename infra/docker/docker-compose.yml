@@ -202,6 +202,7 @@ services:
     env_file: ../../.env
     environment:
       RAG_SERVICE_PORT: 8004
+      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
     healthcheck:
       test:
