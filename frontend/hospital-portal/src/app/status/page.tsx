@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Badge,
   Card,
   DiagnosticBundle,
@@ -12,14 +11,12 @@ import {
   SectionHeader,
 } from "@aurixa/ui-kit";
 import { getAuditLog, getServiceHealth, type AuditEntry, type ServiceHealth } from "../api";
-import { useStaffContext } from "@/context/StaffContext";
 
 function formatName(name: string) {
   return name.replace(/-/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default function StatusPage() {
-  const { roleCategory } = useStaffContext();
   const [health, setHealth] = useState<ServiceHealth>({});
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +49,7 @@ export default function StatusPage() {
       <PageHeader
         eyebrow="Administrative operations"
         title="Service status"
-        description="Operational service signals and privacy-minimized audit activity. This view does not imply authorization enforcement."
+        description="Operational service signals and privacy-minimized audit activity, restricted to verified operations roles."
         aside={
           <p className="text-xs text-ui-muted">
             {freshAt
@@ -61,13 +58,6 @@ export default function StatusPage() {
           </p>
         }
       />
-      {roleCategory !== "operations" && (
-        <Alert title="Operations-oriented information" tone="info">
-          This page is labeled for administrative support, but the interface does not enforce
-          permissions. Follow your organization’s access policy.
-        </Alert>
-      )}
-
       <section>
         <SectionHeader
           title="Service semantics"

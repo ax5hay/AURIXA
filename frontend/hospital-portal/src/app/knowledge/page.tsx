@@ -9,25 +9,17 @@ import {
   PageHeader,
   PageLoader,
   SearchInput,
-  Select,
 } from "@aurixa/ui-kit";
-import { getKnowledgeArticles, getTenants, type KnowledgeArticle } from "../api";
+import { getKnowledgeArticles, type KnowledgeArticle } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
 
-function parseTenantId(value: string): number | undefined {
-  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
-  return value && !isNaN(parsed) ? parsed : undefined;
-}
-
 export default function KnowledgePage() {
-  const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
+  const { tenantId } = useStaffContext();
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
-  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const tid = tenantId ?? parseTenantId(tenantFilter);
-  const selectedTenant = tenants.find((tenant) => tenant.id === tenantFilter);
+  const tid = tenantId;
 
   useEffect(() => {
     setLoading(true);
@@ -40,12 +32,6 @@ export default function KnowledgePage() {
       })
       .finally(() => setLoading(false));
   }, [tid]);
-
-  useEffect(() => {
-    getTenants()
-      .then(setTenants)
-      .catch(() => setTenants([]));
-  }, []);
 
   const query = search.trim().toLowerCase();
   const filtered = articles.filter(
@@ -65,7 +51,7 @@ export default function KnowledgePage() {
         description="Search source articles returned by the knowledge service. Confirm guidance against current policy before care decisions."
         aside={
           <p className="text-xs font-semibold text-ui-muted">
-            Source: {selectedTenant?.name ?? "All organizations"}
+            Source: verified organization #{tenantId}
           </p>
         }
       />
@@ -74,25 +60,13 @@ export default function KnowledgePage() {
           No articles are shown. Try again after the service connection is restored.
         </Alert>
       )}
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+      <div>
         <SearchInput
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search titles and article text"
           aria-label="Search knowledge articles"
         />
-        <Select
-          value={tenantFilter}
-          onChange={(event) => setTenantFilter(event.target.value)}
-          aria-label="Filter knowledge by organization"
-        >
-          <option value="">All organizations</option>
-          {tenants.map((tenant) => (
-            <option key={tenant.id} value={tenant.id}>
-              {tenant.name}
-            </option>
-          ))}
-        </Select>
       </div>
       <p className="text-sm text-ui-muted">{filtered.length} source articles</p>
       {filtered.length ? (

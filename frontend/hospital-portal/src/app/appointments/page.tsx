@@ -1,33 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Alert,
   AppointmentCard,
   Button,
+  Card,
   Dialog,
   EmptyState,
   FieldShell,
   Input,
   PageHeader,
   PageLoader,
-  Select,
+  StatusBadge,
   useToast,
 } from "@aurixa/ui-kit";
 import {
   getAppointments,
   getPatients,
-  getTenants,
   updateAppointmentStatus,
   type Appointment,
 } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
-
-function parseTenantId(value: string): number | undefined {
-  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
-  return value && !isNaN(parsed) ? parsed : undefined;
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -39,45 +34,44 @@ function formatDate(iso: string) {
   });
 }
 
-function tone(status: string): "success" | "danger" | "warning" | "info" | "neutral" {
-  if (status === "confirmed") return "info";
-  if (status === "completed") return "success";
-  if (status === "cancelled") return "danger";
-  return "neutral";
+function formatHour(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function dayKey(iso: string) {
+  return new Date(iso).toISOString().slice(0, 10);
 }
 
 export default function AppointmentsPage() {
   const { toast } = useToast();
-  const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
+  const { tenantId, roleCategory } = useStaffContext();
+  const canCoordinate = roleCategory === "clinical" || roleCategory === "coordination";
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [patientMap, setPatientMap] = useState<Record<number, string>>({});
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() =>
     new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
   );
+  const [view, setView] = useState<"list" | "calendar">("list");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [pending, setPending] = useState<{
     appointment: Appointment;
-    status: "cancelled" | "completed";
+    status: "cancelled" | "completed" | "checked_in" | "in_room";
   } | null>(null);
   const [updating, setUpdating] = useState(false);
   const [freshAt, setFreshAt] = useState<Date | null>(null);
-  const tid = tenantId ?? parseTenantId(tenantFilter);
+  const tid = tenantId;
 
   useEffect(() => {
-    getTenants()
-      .then(setTenants)
-      .catch(() => setTenants([]));
-    getPatients()
+    getPatients(tid)
       .then((patients) =>
         setPatientMap(
           Object.fromEntries(patients.map((patient) => [patient.id, patient.fullName])),
         ),
       )
       .catch(() => setPatientMap({}));
-  }, []);
+  }, [tid]);
 
   useEffect(() => {
     setLoading(true);
@@ -94,6 +88,19 @@ export default function AppointmentsPage() {
       });
   }, [tid, dateFrom, dateTo]);
 
+  const byDay = useMemo(() => {
+    const map = new Map<string, Appointment[]>();
+    for (const appointment of [...appointments].sort(
+      (a, b) => +new Date(a.startTime) - +new Date(b.startTime),
+    )) {
+      const key = dayKey(appointment.startTime);
+      const bucket = map.get(key) ?? [];
+      bucket.push(appointment);
+      map.set(key, bucket);
+    }
+    return [...map.entries()];
+  }, [appointments]);
+
   const confirmUpdate = async () => {
     if (!pending) return;
     setUpdating(true);
@@ -105,7 +112,8 @@ export default function AppointmentsPage() {
         ),
       );
       toast({
-        title: pending.status === "completed" ? "Appointment completed" : "Appointment cancelled",
+        title: "Appointment updated",
+        description: `Status is now ${pending.status.replace(/_/g, " ")}.`,
         tone: "success",
       });
       setPending(null);
@@ -127,11 +135,27 @@ export default function AppointmentsPage() {
       <PageHeader
         eyebrow="Care coordination"
         title="Appointments"
-        description="Review visits and confirm status changes before they are sent."
+        description="List and day-board views for the selected range. Confirm consequential status changes."
         actions={
-          <Button asChild>
-            <Link href="/schedule">Schedule appointment</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={view === "list" ? "primary" : "secondary"}
+              onClick={() => setView("list")}
+            >
+              List
+            </Button>
+            <Button
+              variant={view === "calendar" ? "primary" : "secondary"}
+              onClick={() => setView("calendar")}
+            >
+              Day board
+            </Button>
+            {canCoordinate && (
+              <Button asChild>
+                <Link href="/schedule">Schedule appointment</Link>
+              </Button>
+            )}
+          </div>
         }
         aside={
           <p className="text-xs text-ui-muted">
@@ -148,7 +172,7 @@ export default function AppointmentsPage() {
         </Alert>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <FieldShell label="From" htmlFor="date-from">
           <Input
             id="date-from"
@@ -165,23 +189,19 @@ export default function AppointmentsPage() {
             onChange={(event) => setDateTo(event.target.value)}
           />
         </FieldShell>
-        <FieldShell label="Organization" htmlFor="appointment-tenant">
-          <Select
-            id="appointment-tenant"
-            value={tenantFilter}
-            onChange={(event) => setTenantFilter(event.target.value)}
-          >
-            <option value="">All organizations</option>
-            {tenants.map((tenant) => (
-              <option key={tenant.id} value={tenant.id}>
-                {tenant.name}
-              </option>
-            ))}
-          </Select>
-        </FieldShell>
       </div>
 
-      {appointments.length ? (
+      {!appointments.length ? (
+        <EmptyState
+          title="No appointments in this range"
+          description="No appointment records were returned for the selected dates and organization."
+          action={
+            <Button asChild>
+              <Link href="/schedule">Schedule a visit</Link>
+            </Button>
+          }
+        />
+      ) : view === "list" ? (
         <div className="space-y-3">
           {appointments.map((appointment) => {
             const patientName =
@@ -194,16 +214,15 @@ export default function AppointmentsPage() {
                 date={formatDate(appointment.startTime)}
                 detail={`Clinician: ${appointment.providerName}`}
                 status={appointment.status}
-                tone={tone(appointment.status)}
                 action={
                   <div className="flex flex-wrap gap-2">
-                    {appointment.status === "confirmed" && (
+                    {canCoordinate && appointment.status === "confirmed" && (
                       <>
                         <Button
                           variant="secondary"
-                          onClick={() => setPending({ appointment, status: "completed" })}
+                          onClick={() => setPending({ appointment, status: "checked_in" })}
                         >
-                          Complete
+                          Check in
                         </Button>
                         <Button
                           variant="quiet"
@@ -213,6 +232,23 @@ export default function AppointmentsPage() {
                         </Button>
                       </>
                     )}
+                    {canCoordinate && appointment.status === "checked_in" && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setPending({ appointment, status: "in_room" })}
+                      >
+                        Move to room
+                      </Button>
+                    )}
+                    {canCoordinate &&
+                      (appointment.status === "in_room" || appointment.status === "checked_in") && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPending({ appointment, status: "completed" })}
+                        >
+                          Complete
+                        </Button>
+                      )}
                     {appointment.patientId && (
                       <Button asChild variant="quiet">
                         <Link href={`/patients/${appointment.patientId}`}>Patient</Link>
@@ -225,23 +261,48 @@ export default function AppointmentsPage() {
           })}
         </div>
       ) : (
-        <EmptyState
-          title="No appointments in this range"
-          description="No appointment records were returned for the selected dates and organization."
-          action={
-            <Button asChild>
-              <Link href="/schedule">Schedule a visit</Link>
-            </Button>
-          }
-        />
+        <div className="grid gap-4 xl:grid-cols-2">
+          {byDay.map(([day, dayAppointments]) => (
+            <Card key={day}>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="font-display text-xl font-medium text-ui-ink">
+                  {new Date(`${day}T12:00:00`).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </h2>
+                <StatusBadge status="pending" label={`${dayAppointments.length} visits`} />
+              </div>
+              <ul className="space-y-3">
+                {dayAppointments.map((appointment) => (
+                  <li
+                    key={appointment.id}
+                    className="rounded-ui-md border border-ui-border bg-ui-surface-inset px-3 py-3"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-ui-ink">
+                          {formatHour(appointment.startTime)} ·{" "}
+                          {patientMap[appointment.patientId ?? 0] ??
+                            `Patient ${appointment.patientId ?? "?"}`}
+                        </p>
+                        <p className="text-sm text-ui-muted">{appointment.providerName}</p>
+                      </div>
+                      <StatusBadge status={appointment.status} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ))}
+        </div>
       )}
 
       <Dialog
         open={Boolean(pending)}
         onOpenChange={(open) => !open && setPending(null)}
-        title={
-          pending?.status === "completed" ? "Mark appointment complete?" : "Cancel appointment?"
-        }
+        title="Confirm appointment status change?"
         description="This updates the appointment record immediately after confirmation."
         footer={
           <>
@@ -253,7 +314,7 @@ export default function AppointmentsPage() {
               loading={updating}
               onClick={confirmUpdate}
             >
-              {pending?.status === "completed" ? "Confirm complete" : "Confirm cancellation"}
+              Confirm update
             </Button>
           </>
         }
@@ -266,6 +327,9 @@ export default function AppointmentsPage() {
             </p>
             <p className="mt-1 text-ui-muted">
               {formatDate(pending.appointment.startTime)} · {pending.appointment.providerName}
+            </p>
+            <p className="mt-3 text-ui-ink">
+              New status: <StatusBadge status={pending.status} />
             </p>
           </div>
         )}

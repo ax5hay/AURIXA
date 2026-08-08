@@ -145,7 +145,9 @@ class Appointment(Base):
     end_time: Mapped[datetime.datetime] = mapped_column()
     provider_name: Mapped[str] = mapped_column(String)  # e.g., Dr. Smith
     reason: Mapped[str] = mapped_column(String, nullable=True)  # e.g., "Annual checkup"
-    status: Mapped[str] = mapped_column(String, default="confirmed")  # confirmed, cancelled, completed
+    status: Mapped[str] = mapped_column(
+        String, default="confirmed"
+    )  # confirmed, checked_in, in_room, completed, cancelled
 
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"))
     tenant: Mapped["Tenant"] = relationship(back_populates="appointments")

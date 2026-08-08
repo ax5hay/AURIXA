@@ -47,6 +47,38 @@
   --ui-radius-xl: 1.75rem;
   --ui-font-body: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
   --ui-font-display: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
+  --ui-font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --ui-text-xs: 0.75rem;
+  --ui-text-sm: 0.875rem;
+  --ui-text-md: 1rem;
+  --ui-text-lg: 1.125rem;
+  --ui-text-xl: 1.5rem;
+  --ui-text-display: clamp(2.25rem, 5vw, 4.5rem);
+  --ui-leading-tight: 1.1;
+  --ui-leading-body: 1.55;
+  --ui-space-1: 0.25rem;
+  --ui-space-2: 0.5rem;
+  --ui-space-3: 0.75rem;
+  --ui-space-4: 1rem;
+  --ui-space-5: 1.5rem;
+  --ui-space-6: 2rem;
+  --ui-space-7: 3rem;
+  --ui-gutter: clamp(1rem, 3vw, 2rem);
+  --ui-section: clamp(1.5rem, 4vw, 3rem);
+  --ui-shell-sidebar: 17rem;
+  --ui-shell-content: 96rem;
+  --ui-duration-fast: 120ms;
+  --ui-duration-normal: 220ms;
+  --ui-duration-slow: 360ms;
+  --ui-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ui-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-focus-width: 3px;
+  --ui-focus-offset: 3px;
+  --ui-chart-1: #d6ff66;
+  --ui-chart-2: #82b7df;
+  --ui-chart-3: #e4c8ff;
+  --ui-chart-4: #e8b85d;
+  --ui-chart-5: #78c99c;
 }
 
 [data-theme="patient"] {
@@ -89,6 +121,11 @@
   --ui-shadow: 0 18px 48px rgba(82, 66, 47, 0.12);
   --ui-shadow-soft: 0 7px 24px rgba(82, 66, 47, 0.08);
   --ui-font-display: "Newsreader Variable", Georgia, serif;
+  --ui-chart-1: #285c46;
+  --ui-chart-2: #47778b;
+  --ui-chart-3: #e6a57e;
+  --ui-chart-4: #9b6a2f;
+  --ui-chart-5: #7b5b8d;
 }
 
 [data-theme="clinical"] {
@@ -130,6 +167,11 @@
   --ui-info-rgb: 56 109 131;
   --ui-shadow: 0 16px 40px rgba(28, 52, 47, 0.11);
   --ui-shadow-soft: 0 6px 22px rgba(28, 52, 47, 0.07);
+  --ui-chart-1: #176a5a;
+  --ui-chart-2: #386d83;
+  --ui-chart-3: #bd7859;
+  --ui-chart-4: #956927;
+  --ui-chart-5: #6a5c91;
 }
 
 * {
@@ -154,8 +196,8 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
-  outline-offset: 3px;
+  outline: var(--ui-focus-width) solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  outline-offset: var(--ui-focus-offset);
 }
 
 @keyframes ui-toast-in {
@@ -187,5 +229,19 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: Highlight;
+  }
+
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    forced-color-adjust: auto;
   }
 }

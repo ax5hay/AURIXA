@@ -5,8 +5,6 @@ import Link from "next/link";
 import { Alert, Button, ChatPanel, Input, PageHeader } from "@aurixa/ui-kit";
 import { processVoice, sendMessage, synthesizeSpeech } from "../api";
 
-const DEMO_PATIENT_ID = 1;
-
 interface Message {
   id: number;
   text: string;
@@ -65,7 +63,7 @@ export default function VoicePage() {
         setStatus("processing");
         setErrorMsg(null);
         try {
-          const res = await processVoice(b64, DEMO_PATIENT_ID, wantTts);
+          const res = await processVoice(b64, wantTts);
           awaitingResponseRef.current = false;
           if (res.transcript) {
             setMessages((prev) => [
@@ -121,7 +119,7 @@ export default function VoicePage() {
       setStatus("processing");
       setErrorMsg(null);
       try {
-        const res = await sendMessage(text.trim(), DEMO_PATIENT_ID);
+        const res = await sendMessage(text.trim());
         const responseText = res.final_response?.trim() || "No response.";
         setMessages((prev) => [
           ...prev,

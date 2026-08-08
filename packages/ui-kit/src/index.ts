@@ -32,10 +32,38 @@ export type { DialogProps, MenuItem, TabItem } from "./components/Overlay";
 export { Alert, Banner, EmptyState, Skeleton, PageLoader } from "./components/Feedback";
 export type { FeedbackTone } from "./components/Feedback";
 
-export { PageHeader, SectionHeader, AppFrame, Avatar } from "./components/Layout";
+export { PageHeader, SectionHeader, PortalShell, AppFrame, Avatar } from "./components/Layout";
+export type { PortalShellProps, PortalDensity } from "./components/Layout";
+
+export { Icon } from "./components/Icon";
+export type { IconName, IconProps } from "./components/Icon";
+
+export { AsyncBoundary } from "./components/AsyncBoundary";
+export type { AsyncBoundaryProps } from "./components/AsyncBoundary";
+
+export { SearchSelect } from "./components/SearchSelect";
+export type { SearchSelectOption, SearchSelectProps } from "./components/SearchSelect";
 
 export { Badge, Metric, DataTable, WorkQueue, Timeline } from "./components/DataDisplay";
 export type { BadgeTone } from "./components/DataDisplay";
+
+export {
+  DateTime,
+  StatusBadge,
+  formatDateTime,
+  humanizeStatus,
+  productStatus,
+  resolveProductStatus,
+  toDate,
+} from "./components/Production";
+export type {
+  DateTimeFormatOptions,
+  ProductStatus,
+  StatusDefinition,
+} from "./components/Production";
+
+export { HealthcareDisclaimer } from "./components/Healthcare";
+export type { HealthcareDisclaimerVariant } from "./components/Healthcare";
 
 export { ChatPanel, AppointmentCard } from "./components/Domain";
 export type { ChatPanelMessage } from "./components/Domain";

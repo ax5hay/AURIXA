@@ -2,251 +2,98 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { Avatar, Badge, Menu, Select } from "@aurixa/ui-kit";
-import { getStaff, getTenants, type Staff } from "../app/api";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Icon,
+  type IconName,
+  PortalShell,
+} from "@aurixa/ui-kit";
 import { useStaffContext, type StaffRoleCategory } from "@/context/StaffContext";
+import { CommandPalette } from "./CommandPalette";
 
-const ICONS = {
-  home: "⌂",
-  patients: "◎",
-  appointments: "▣",
-  schedule: "+",
-  chat: "✦",
-  knowledge: "≡",
-  status: "◇",
-};
-
-const TABS = [
-  {
-    id: "today",
-    href: "/",
-    label: "Today",
-    icon: "home",
-    roles: ["clinical", "coordination", "operations"],
-  },
-  {
-    id: "patients",
-    href: "/patients",
-    label: "Patients",
-    icon: "patients",
-    roles: ["clinical", "coordination", "operations"],
-  },
-  {
-    id: "appointments",
-    href: "/appointments",
-    label: "Appointments",
-    icon: "appointments",
-    roles: ["clinical", "coordination", "operations"],
-  },
-  {
-    id: "schedule",
-    href: "/schedule",
-    label: "Schedule",
-    icon: "schedule",
-    roles: ["coordination", "clinical", "operations"],
-  },
-  {
-    id: "chat",
-    href: "/chat",
-    label: "Assistant",
-    icon: "chat",
-    roles: ["clinical", "coordination", "operations"],
-  },
-  {
-    id: "knowledge",
-    href: "/knowledge",
-    label: "Knowledge",
-    icon: "knowledge",
-    roles: ["clinical", "coordination", "operations"],
-  },
-  { id: "status", href: "/status", label: "Operations", icon: "status", roles: ["operations"] },
-] as const;
+const TABS: {
+  id: string;
+  href: string;
+  label: string;
+  icon: IconName;
+  roles: StaffRoleCategory[];
+}[] = [
+  { id: "today", href: "/", label: "Today", icon: "home", roles: ["clinical", "coordination", "operations"] },
+  { id: "patients", href: "/patients", label: "Patients", icon: "user", roles: ["clinical", "coordination", "operations"] },
+  { id: "appointments", href: "/appointments", label: "Appointments", icon: "calendar", roles: ["clinical", "coordination", "operations"] },
+  { id: "schedule", href: "/schedule", label: "Schedule", icon: "clock", roles: ["clinical", "coordination"] },
+  { id: "chat", href: "/chat", label: "Assistant", icon: "message", roles: ["clinical", "coordination"] },
+  { id: "knowledge", href: "/knowledge", label: "Knowledge", icon: "search", roles: ["clinical", "coordination", "operations"] },
+  { id: "status", href: "/status", label: "Operations", icon: "settings", roles: ["operations"] },
+];
 
 function roleLabel(role: string) {
   return role.replace(/[-_]/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export function StaffNav() {
+function NavLink({ tab, compact = false }: { tab: (typeof TABS)[number]; compact?: boolean }) {
   const pathname = usePathname();
-  const { staff, setStaff, tenantFilter, setTenantFilter, roleCategory } = useStaffContext();
-  const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
-  const [staffError, setStaffError] = useState(false);
+  const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+  return (
+    <Link
+      href={tab.href}
+      aria-current={active ? "page" : undefined}
+      className={`${compact ? "flex min-h-16 flex-col justify-center gap-1 px-2 text-[10px]" : "inline-flex min-h-11 items-center gap-2 rounded-ui-md px-3 text-sm"} font-semibold ${
+        active ? "bg-ui-tint text-ui-accent" : "text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink"
+      }`}
+    >
+      <Icon name={tab.icon} size={compact ? "md" : "sm"} />
+      {tab.label}
+    </Link>
+  );
+}
 
-  useEffect(() => {
-    getStaff()
-      .then((list) => {
-        setStaffList(list);
-        setStaffError(false);
-      })
-      .catch(() => {
-        setStaffList([]);
-        setStaffError(true);
-      });
-    getTenants()
-      .then(setTenants)
-      .catch(() => setTenants([]));
-  }, []);
-
-  const rankedTabs = useMemo(() => {
-    const category: StaffRoleCategory =
-      roleCategory === "unassigned" ? "coordination" : roleCategory;
-    return [...TABS].sort((a, b) => {
-      const aRank = a.roles.indexOf(category as never);
-      const bRank = b.roles.indexOf(category as never);
-      return (aRank < 0 ? 99 : aRank) - (bRank < 0 ? 99 : bRank);
-    });
-  }, [roleCategory]);
-
-  const primaryMobile = rankedTabs.filter((tab) => tab.id !== "status").slice(0, 4);
-  const primaryMobileIds = new Set<string>(primaryMobile.map((tab) => tab.id));
-  const moreMobile = rankedTabs.filter((tab) => !primaryMobileIds.has(tab.id));
+export function StaffNav({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const { staff, roleCategory, tenantId, demo } = useStaffContext();
+  if (pathname.startsWith("/auth/")) return <>{children}</>;
+  const tabs = TABS.filter((tab) => tab.roles.includes(roleCategory));
+  const mobileTabs = tabs.slice(0, 5);
 
   return (
-    <>
-      <header className="relative z-40 mb-7 pt-4 sm:pt-5">
-        <div className="rounded-ui-lg border border-ui-border bg-ui-surface shadow-ui-soft">
-          <div className="flex min-h-16 items-center gap-4 px-3 sm:px-4">
-            <Link href="/" className="flex min-h-11 items-center gap-3 rounded-ui-md px-1">
-              <span className="flex h-10 w-10 items-center justify-center rounded-ui-md border border-ui-border-strong bg-ui-tint text-sm font-bold text-ui-accent">
-                A
-              </span>
-              <span className="hidden sm:block">
-                <span className="block text-sm font-bold tracking-[0.12em] text-ui-ink">
-                  AURIXA
-                </span>
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-ui-muted">
-                  Clinical workspace
-                </span>
-              </span>
-            </Link>
-
-            <nav
-              aria-label="Staff navigation"
-              className="ml-auto hidden items-center gap-0.5 xl:flex"
-            >
-              {rankedTabs.map((tab) => {
-                const active = pathname === tab.href;
-                return (
-                  <Link
-                    key={tab.id}
-                    href={tab.href}
-                    aria-current={active ? "page" : undefined}
-                    className={`inline-flex min-h-11 items-center gap-2 rounded-ui-md px-3 text-sm font-semibold ${
-                      active
-                        ? "bg-ui-tint text-ui-accent"
-                        : "text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink"
-                    }`}
-                  >
-                    <span aria-hidden="true">{ICONS[tab.icon]}</span>
-                    {tab.label}
-                  </Link>
-                );
-              })}
-            </nav>
-
-            <div className="ml-auto flex items-center gap-2 xl:ml-2">
-              {staff ? (
-                <>
-                  <Avatar name={staff.fullName} size="sm" />
-                  <div className="hidden min-w-0 sm:block">
-                    <p className="max-w-36 truncate text-xs font-semibold text-ui-ink">
-                      {staff.fullName}
-                    </p>
-                    <p className="text-[11px] text-ui-muted">{roleLabel(staff.role)}</p>
-                  </div>
-                </>
-              ) : (
-                <Badge tone="warning">Select staff</Badge>
-              )}
+    <PortalShell
+      density="compact"
+      brand={
+        <Link href="/" className="flex min-h-11 items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-ui-md bg-ui-accent font-bold text-ui-accent-ink">A</span>
+          <span>
+            <span className="block text-sm font-bold tracking-[0.12em]">AURIXA</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-ui-muted">Clinical workspace</span>
+          </span>
+        </Link>
+      }
+      navigation={<div className="flex items-center justify-center gap-1">{tabs.map((tab) => <NavLink key={tab.id} tab={tab} />)}</div>}
+      actions={
+        <>
+          <CommandPalette navigation={tabs} />
+          <div className="hidden items-center gap-2 sm:flex">
+            <Avatar name={staff?.fullName ?? "Staff"} size="sm" />
+            <div>
+              <p className="max-w-36 truncate text-xs font-semibold">{staff?.fullName}</p>
+              <p className="text-[11px] text-ui-muted">{roleLabel(staff?.role ?? "")}</p>
             </div>
           </div>
-
-          <div className="grid gap-3 border-t border-ui-border bg-ui-canvas-subtle/40 p-3 sm:grid-cols-2 sm:p-4">
-            <label className="text-xs font-semibold text-ui-muted">
-              Acting staff member
-              <Select
-                className="mt-1.5"
-                value={staff ? String(staff.id) : ""}
-                onChange={(event) => {
-                  const selected = staffList.find((item) => String(item.id) === event.target.value);
-                  setStaff(selected ?? null);
-                }}
-              >
-                <option value="">Select staff member</option>
-                {staffList.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.fullName} · {roleLabel(item.role)}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="text-xs font-semibold text-ui-muted">
-              Organization context
-              <Select
-                className="mt-1.5"
-                value={tenantFilter}
-                onChange={(event) => setTenantFilter(event.target.value)}
-              >
-                <option value="">All organizations</option>
-                {tenants.map((tenant) => (
-                  <option key={tenant.id} value={tenant.id}>
-                    {tenant.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          </div>
-          {staffError && (
-            <p
-              role="status"
-              className="border-t border-ui-border px-4 py-2 text-xs text-ui-warning"
-            >
-              Staff directory unavailable. Existing context is retained; check the API connection.
-            </p>
-          )}
+          <form action="/api/auth/logout" method="post">
+            <Button type="submit" variant="quiet" size="sm">Sign out</Button>
+          </form>
+        </>
+      }
+      context={
+        <div className="mx-auto flex max-w-[var(--ui-shell-content)] items-center justify-between gap-3 px-ui-gutter py-2 text-xs">
+          <span className="font-semibold text-ui-muted">Organization #{tenantId} · verified session scope</span>
+          {demo && <Badge tone="warning">Demo access</Badge>}
         </div>
-      </header>
-
-      <nav
-        aria-label="Staff mobile navigation"
-        className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-5 gap-1 rounded-ui-lg border border-ui-border-strong bg-ui-surface p-1.5 shadow-ui xl:hidden"
-      >
-        {primaryMobile.map((tab) => {
-          const active = pathname === tab.href;
-          return (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              aria-current={active ? "page" : undefined}
-              className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-ui-sm px-1 text-[10px] font-semibold ${
-                active ? "bg-ui-tint text-ui-accent" : "text-ui-muted"
-              }`}
-            >
-              <span aria-hidden="true" className="text-base leading-none">
-                {ICONS[tab.icon]}
-              </span>
-              {tab.label}
-            </Link>
-          );
-        })}
-        <Menu
-          label="More navigation"
-          trigger={
-            <button
-              type="button"
-              className="flex min-h-12 w-full flex-col items-center justify-center gap-0.5 rounded-ui-sm px-1 text-[10px] font-semibold text-ui-muted"
-            >
-              <span aria-hidden="true" className="text-base leading-none">
-                •••
-              </span>
-              More
-            </button>
-          }
-          items={moreMobile.map((tab) => ({ label: tab.label, href: tab.href }))}
-        />
-      </nav>
-    </>
+      }
+      bottomNavigation={<div className="grid" style={{ gridTemplateColumns: `repeat(${mobileTabs.length}, minmax(0, 1fr))` }}>{mobileTabs.map((tab) => <NavLink key={tab.id} tab={tab} compact />)}</div>}
+    >
+      {children}
+    </PortalShell>
   );
 }

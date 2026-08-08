@@ -3,12 +3,13 @@
 import {
   createContext,
   useContext,
-  useState,
-  useCallback,
   ReactNode,
   useMemo,
   useEffect,
+  useState,
 } from "react";
+import { Alert, PageLoader } from "@aurixa/ui-kit";
+import { usePathname } from "next/navigation";
 
 export interface Staff {
   id: number;
@@ -20,16 +21,13 @@ export interface Staff {
 
 interface StaffContextValue {
   staff: Staff | null;
-  setStaff: (s: Staff | null) => void;
   tenantId: number | undefined;
   tenantFilter: string;
-  setTenantFilter: (v: string) => void;
   roleCategory: StaffRoleCategory;
+  demo: boolean;
 }
 
 export type StaffRoleCategory = "clinical" | "coordination" | "operations" | "unassigned";
-
-const STORAGE_KEY = "aurixa.hospital.staff-context";
 
 export function getRoleCategory(role?: string): StaffRoleCategory {
   const normalized = role?.toLowerCase().trim() ?? "";
@@ -53,61 +51,72 @@ const StaffContext = createContext<StaffContextValue | null>(null);
 
 const DEFAULT_VALUE: StaffContextValue = {
   staff: null,
-  setStaff: () => {},
   tenantId: undefined,
   tenantFilter: "",
-  setTenantFilter: () => {},
   roleCategory: "unassigned",
+  demo: false,
 };
 
 export function StaffProvider({ children }: { children: ReactNode }) {
-  const [staff, setStaffState] = useState<Staff | null>(null);
-  const [tenantFilter, setTenantFilter] = useState<string>("");
-  const [restored, setRestored] = useState(false);
+  const pathname = usePathname();
+  const [staff, setStaff] = useState<Staff | null>(null);
+  const [demo, setDemo] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as { staff?: Staff | null; tenantFilter?: string };
-        setStaffState(parsed.staff ?? null);
-        setTenantFilter(parsed.tenantFilter ?? "");
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } finally {
-      setRestored(true);
+    if (pathname.startsWith("/auth/")) {
+      setLoading(false);
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    if (!restored) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ staff, tenantFilter }));
-  }, [restored, staff, tenantFilter]);
-
-  const setStaff = useCallback((s: Staff | null) => {
-    setStaffState(s);
-    if (s != null && typeof s.tenantId === "number") {
-      setTenantFilter(`t-${String(s.tenantId).padStart(3, "0")}`);
-    } else {
-      setTenantFilter("");
-    }
-  }, []);
+    setLoading(true);
+    setFailed(false);
+    fetch("/api/auth/session", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Staff session unavailable");
+        return response.json() as Promise<{
+          session: Staff & { staffId: number; demo: boolean };
+        }>;
+      })
+      .then(({ session }) => {
+        setStaff({
+          id: session.staffId,
+          fullName: session.fullName,
+          email: session.email,
+          role: session.role,
+          tenantId: session.tenantId,
+        });
+        setDemo(session.demo);
+      })
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
+  }, [pathname]);
 
   const tenantId = staff != null && typeof staff.tenantId === "number" ? staff.tenantId : undefined;
+  const tenantFilter = tenantId ? String(tenantId) : "";
   const roleCategory = getRoleCategory(staff?.role);
   const value: StaffContextValue = useMemo(
     () => ({
       staff,
-      setStaff,
       tenantId,
       tenantFilter,
-      setTenantFilter,
       roleCategory,
+      demo,
     }),
-    [staff, tenantId, tenantFilter, roleCategory, setStaff],
+    [staff, tenantId, tenantFilter, roleCategory, demo],
   );
 
+  if (pathname.startsWith("/auth/")) return <>{children}</>;
+  if (loading) return <PageLoader label="Verifying staff access" />;
+  if (failed || !staff) {
+    return (
+      <div className="mx-auto max-w-xl p-6">
+        <Alert title="Staff access could not be verified" tone="danger">
+          No clinical data is displayed. Sign in again or contact your administrator.
+        </Alert>
+      </div>
+    );
+  }
   return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;
 }
 

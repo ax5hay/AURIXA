@@ -22,6 +22,13 @@ module.exports = {
           warning: "rgb(var(--ui-warning-rgb) / <alpha-value>)",
           success: "rgb(var(--ui-success-rgb) / <alpha-value>)",
           info: "rgb(var(--ui-info-rgb) / <alpha-value>)",
+          chart: {
+            1: "var(--ui-chart-1)",
+            2: "var(--ui-chart-2)",
+            3: "var(--ui-chart-3)",
+            4: "var(--ui-chart-4)",
+            5: "var(--ui-chart-5)",
+          },
         },
         aurixa: {
           50: "#f0f4ff",
@@ -52,7 +59,11 @@ module.exports = {
       fontFamily: {
         sans: ["var(--ui-font-body)", "system-ui", "sans-serif"],
         display: ["var(--ui-font-display)", "Georgia", "serif"],
-        mono: ["JetBrains Mono", "monospace"],
+        mono: ["var(--ui-font-mono)", "monospace"],
+      },
+      spacing: {
+        "ui-gutter": "var(--ui-gutter)",
+        "ui-section": "var(--ui-section)",
       },
       borderRadius: {
         "ui-sm": "var(--ui-radius-sm)",

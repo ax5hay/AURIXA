@@ -211,7 +211,7 @@ function JobContent({ id }: { id: string }) {
           {error} Showing the latest available job snapshot.
         </Alert>
       )}
-      <div className="mb-7 grid gap-4 rounded-lg border border-white/10 bg-[#0c1828] p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <div className="mb-7 grid gap-4 rounded-ui-lg border border-ui-border bg-ui-surface p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <ProgressBar
           progress={job.progress}
           label={stateLabel(job.state)}
@@ -248,7 +248,7 @@ function JobContent({ id }: { id: string }) {
                           ? ` · Finished ${new Date(step.finishedAt).toLocaleString()}`
                           : ""}
                       </p>
-                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md border border-white/10 bg-black/20 p-4 font-mono text-xs leading-5 text-ui-muted">
+                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-ui-md border border-ui-border bg-ui-surface-inset p-4 font-mono text-xs leading-5 text-ui-muted">
                         {step.logExcerpt ?? "No log excerpt was provided."}
                       </pre>
                     </div>
@@ -286,7 +286,7 @@ function JobContent({ id }: { id: string }) {
                           href={check.url}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-semibold text-teal-300 hover:underline"
+                          className="font-semibold text-ui-accent hover:underline"
                         >
                           Open ↗
                         </a>
@@ -352,7 +352,7 @@ function JobContent({ id }: { id: string }) {
                       href={job.workflowUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="font-semibold text-teal-300 hover:underline"
+                      className="font-semibold text-ui-accent hover:underline"
                     >
                       Open workflow ↗
                     </a>

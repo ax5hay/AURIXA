@@ -17,18 +17,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" data-theme="clinical">
       <body className="min-h-screen font-sans text-ui-ink antialiased">
         <ToastProvider>
-          <a
-            href="#main-content"
-            className="sr-only z-[200] rounded-ui-md bg-ui-accent px-4 py-3 text-ui-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-          >
-            Skip to content
-          </a>
           <StaffProvider>
             <ErrorBoundary>
-              <main id="main-content" tabIndex={-1} className="portal-container">
-                <StaffNav />
-                {children}
-              </main>
+              <StaffNav>{children}</StaffNav>
             </ErrorBoundary>
           </StaffProvider>
         </ToastProvider>

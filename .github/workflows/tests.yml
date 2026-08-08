@@ -106,15 +106,57 @@ jobs:
           fi
           echo "### ${{ matrix.service }}: tests passed" >> "$GITHUB_STEP_SUMMARY"
 
+  frontend-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: UI kit unit tests
+        run: pnpm --filter @aurixa/ui-kit test
+
+      - name: Build UI kit
+        run: pnpm --filter @aurixa/ui-kit build
+
+      - name: Build portals for budgets
+        env:
+          PATIENT_DEMO_AUTH_ENABLED: "true"
+          STAFF_DEMO_AUTH_ENABLED: "true"
+          AUTH_SECRET: "ci-auth-secret-at-least-32-characters-long"
+          PATIENT_SESSION_SECRET: "ci-patient-session-secret-32chars!!"
+          STAFF_SESSION_SECRET: "ci-staff-session-secret-32-chars!!"
+        run: |
+          pnpm --filter @aurixa/dashboard build
+          pnpm --filter @aurixa/patient-portal build
+          pnpm --filter @aurixa/hospital-portal build
+
+      - name: Enforce frontend bundle budgets
+        run: pnpm run budget:frontends
+
   all-tests:
     if: always()
-    needs: [test-typescript, test-python]
+    needs: [test-typescript, test-python, frontend-quality]
     runs-on: ubuntu-latest
     steps:
       - name: Check test results
         run: |
           if [[ "${{ needs.test-typescript.result }}" != "success" ||
-                "${{ needs.test-python.result }}" != "success" ]]; then
+                "${{ needs.test-python.result }}" != "success" ||
+                "${{ needs.frontend-quality.result }}" != "success" ]]; then
             echo "One or more required test jobs did not succeed."
             exit 1
           fi

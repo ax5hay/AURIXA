@@ -1,6 +1,135 @@
 import React from "react";
 import clsx from "clsx";
 
+export type PortalDensity = "comfortable" | "compact";
+
+export interface PortalShellProps {
+  children: React.ReactNode;
+  /** Product mark or tenant identity shown at the start of the header. */
+  brand?: React.ReactNode;
+  /** Primary navigation. On narrow viewports prefer bottomNavigation. */
+  navigation?: React.ReactNode;
+  /** Optional desktop navigation or contextual rail. */
+  sidebar?: React.ReactNode;
+  /** Mobile primary navigation, anchored above the device safe area. */
+  bottomNavigation?: React.ReactNode;
+  /** Persistent header actions such as search, alerts, and account controls. */
+  actions?: React.ReactNode;
+  /** Context shown before the page content, such as a patient banner. */
+  context?: React.ReactNode;
+  header?: React.ReactNode;
+  density?: PortalDensity;
+  mainId?: string;
+  skipLabel?: string;
+  className?: string;
+  contentClassName?: string;
+}
+
+/**
+ * Shared responsive application frame. Slots deliberately accept product-owned
+ * content while the shell owns landmarks, focus order, safe areas, and density.
+ */
+export function PortalShell({
+  children,
+  brand,
+  navigation,
+  sidebar,
+  bottomNavigation,
+  actions,
+  context,
+  header,
+  density = "comfortable",
+  mainId = "main-content",
+  skipLabel = "Skip to main content",
+  className,
+  contentClassName,
+}: PortalShellProps) {
+  const hasHeader = Boolean(header || brand || navigation || actions);
+
+  return (
+    <div
+      className={clsx(
+        "min-h-dvh bg-ui-canvas text-ui-ink",
+        bottomNavigation && "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0",
+        className,
+      )}
+      data-density={density}
+    >
+      <a
+        href={`#${mainId}`}
+        className="sr-only z-[200] rounded-ui-md bg-ui-accent px-4 py-3 font-semibold text-ui-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        {skipLabel}
+      </a>
+
+      {hasHeader &&
+        (header ?? (
+          <header className="sticky top-0 z-40 border-b border-ui-border bg-ui-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-ui-canvas/85">
+            <div
+              className={clsx(
+                "mx-auto flex w-full items-center gap-4 px-ui-gutter",
+                density === "compact" ? "min-h-14" : "min-h-16",
+              )}
+            >
+              {brand && <div className="shrink-0">{brand}</div>}
+              {navigation && (
+                <nav aria-label="Primary" className="hidden min-w-0 flex-1 lg:block">
+                  {navigation}
+                </nav>
+              )}
+              {actions && <div className="ml-auto flex shrink-0 items-center gap-2">{actions}</div>}
+            </div>
+          </header>
+        ))}
+
+      <div
+        className={clsx(
+          "mx-auto grid w-full",
+          sidebar && "lg:grid-cols-[var(--ui-shell-sidebar)_minmax(0,1fr)]",
+        )}
+      >
+        {sidebar && (
+          <aside
+            aria-label="Workspace navigation"
+            className="hidden border-r border-ui-border bg-ui-canvas-subtle lg:block"
+          >
+            <div className="sticky top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto p-ui-gutter">
+              {sidebar}
+            </div>
+          </aside>
+        )}
+        <div className="min-w-0">
+          {context && (
+            <section aria-label="Current context" className="border-b border-ui-border">
+              {context}
+            </section>
+          )}
+          <main
+            id={mainId}
+            tabIndex={-1}
+            className={clsx(
+              "mx-auto w-full max-w-[var(--ui-shell-content)] px-ui-gutter py-ui-section",
+              density === "compact" && "py-5",
+              contentClassName,
+            )}
+          >
+            {children}
+          </main>
+        </div>
+      </div>
+
+      {bottomNavigation && (
+        <nav
+          aria-label="Primary"
+          className="fixed inset-x-0 bottom-0 z-50 border-t border-ui-border bg-ui-surface/95 pb-[env(safe-area-inset-bottom)] shadow-ui-soft backdrop-blur lg:hidden"
+        >
+          <div className="mx-auto min-h-16 max-w-lg">{bottomNavigation}</div>
+        </nav>
+      )}
+    </div>
+  );
+}
+
 export function PageHeader({
   eyebrow,
   title,
@@ -77,13 +206,9 @@ export function AppFrame({
   context?: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-ui-canvas text-ui-ink">
-      {navigation}
-      <div className="min-w-0">
-        {context}
-        {children}
-      </div>
-    </div>
+    <PortalShell navigation={navigation} context={context}>
+      {children}
+    </PortalShell>
   );
 }
 

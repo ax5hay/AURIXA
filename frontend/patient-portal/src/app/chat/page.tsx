@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Alert, Button, ChatPanel, Input, useToast } from "@aurixa/ui-kit";
-import { getConversations, sendMessage } from "../api";
-
-const DEMO_PATIENT_ID = 1;
+import { Alert, Button, ChatPanel, Input, PageLoader, useToast } from "@aurixa/ui-kit";
+import { getConversations, sendMessage, type ConversationSummary } from "../api";
 
 const SAMPLE_PROMPTS = [
   "When is my next appointment?",
@@ -14,7 +12,7 @@ const SAMPLE_PROMPTS = [
 ];
 
 interface Message {
-  id: number;
+  id: number | string;
   text: string;
   sender: "user" | "assistant";
 }
@@ -30,24 +28,57 @@ export default function ChatPage() {
   ]);
   const [inputText, setInputText] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [hasHistory, setHasHistory] = useState(false);
 
   useEffect(() => {
-    getConversations(DEMO_PATIENT_ID)
-      .then(() => {})
-      .catch(() => {});
+    getConversations()
+      .then((conversations) => {
+        const history = conversations
+          .slice()
+          .sort((left, right) => (left.createdAt ?? "").localeCompare(right.createdAt ?? ""))
+          .flatMap((conversation: ConversationSummary) => {
+            const entries: Message[] = [];
+            if (conversation.prompt) {
+              entries.push({
+                id: `history-${conversation.id}-prompt`,
+                text: conversation.prompt,
+                sender: "user",
+              });
+            }
+            if (conversation.response) {
+              entries.push({
+                id: `history-${conversation.id}-response`,
+                text: conversation.response,
+                sender: "assistant",
+              });
+            }
+            return entries;
+          });
+        if (history.length > 0) {
+          setMessages((current) => [current[0], ...history]);
+          setHasHistory(true);
+        }
+      })
+      .catch(() =>
+        setHistoryError("Saved messages could not be loaded. New messages are still available."),
+      )
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
-    const newMsg: Message = { id: Date.now(), text: inputText, sender: "user" };
+    const pendingText = inputText.trim();
+    const newMsg: Message = { id: Date.now(), text: pendingText, sender: "user" };
     setMessages((prev) => [...prev, newMsg]);
     setInputText("");
     setChatLoading(true);
 
     try {
-      const res = await sendMessage(inputText, DEMO_PATIENT_ID);
+      const res = await sendMessage(pendingText);
       setMessages((prev) => [
         ...prev,
         {
@@ -60,6 +91,7 @@ export default function ChatPage() {
       ]);
       toast({ title: "Response ready", tone: "success", duration: 5000 });
     } catch {
+      setInputText(pendingText);
       setMessages((prev) => [
         ...prev,
         {
@@ -75,12 +107,24 @@ export default function ChatPage() {
       });
     } finally {
       setChatLoading(false);
-      getConversations(DEMO_PATIENT_ID).catch(() => {});
     }
   };
 
+  if (historyLoading) return <PageLoader label="Loading your saved messages" />;
+
   return (
     <div className="py-8 sm:py-10">
+      {historyError && (
+        <Alert title="Message history is unavailable" tone="warning" className="mb-5">
+          {historyError}
+        </Alert>
+      )}
+      {!hasHistory && !historyError && (
+        <Alert title="Start a new conversation" tone="info" className="mb-5">
+          There are no saved messages yet. Messages supported by the care service will appear here
+          the next time you return.
+        </Alert>
+      )}
       <ChatPanel
         title="Care messages"
         subtitle="Practical help, with clear limits"
@@ -109,6 +153,7 @@ export default function ChatPage() {
                 onChange={(event) => setInputText(event.target.value)}
                 placeholder="Ask about an appointment, refill, bill, or next step"
                 disabled={chatLoading}
+                maxLength={4000}
               />
               <Button type="submit" disabled={chatLoading || !inputText.trim()}>
                 Send

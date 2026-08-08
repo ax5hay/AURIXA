@@ -22,13 +22,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     : "operator";
 
   return (
-    <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
-      <body className="font-sans antialiased">
+    <html lang="en" data-theme="operator" className="dark" style={{ colorScheme: "dark" }}>
+      <body className="bg-ui-canvas font-sans text-ui-ink antialiased">
         <OperatorProvider initialRole={initialRole}>
           <ToastProvider>
             <a
               href="#main-content"
-              className="sr-only z-[200] rounded-md bg-white px-4 py-3 text-black focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+              className="sr-only z-[200] rounded-ui-md bg-ui-accent px-4 py-3 font-semibold text-ui-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
             >
               Skip to content
             </a>

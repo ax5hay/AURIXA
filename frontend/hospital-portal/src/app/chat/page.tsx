@@ -8,6 +8,7 @@ import {
   Banner,
   Button,
   ChatPanel,
+  HealthcareDisclaimer,
   Input,
   type ChatPanelMessage,
   useToast,
@@ -41,7 +42,7 @@ const PROMPTS = {
 export default function ChatPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const { roleCategory, tenantFilter } = useStaffContext();
+  const { roleCategory, tenantFilter, tenantId } = useStaffContext();
   const parsedPatientId = parseInt(searchParams.get("patientId") ?? "", 10);
   const patientId = isNaN(parsedPatientId) ? undefined : parsedPatientId;
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -55,6 +56,7 @@ export default function ChatPage() {
   ]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!patientId) {
@@ -62,7 +64,7 @@ export default function ChatPage() {
       setPatientUnavailable(false);
       return;
     }
-    getPatient(patientId)
+    getPatient(patientId, tenantId)
       .then((record) => {
         setPatient(record);
         setPatientUnavailable(false);
@@ -71,7 +73,7 @@ export default function ChatPage() {
         setPatient(null);
         setPatientUnavailable(true);
       });
-  }, [patientId]);
+  }, [patientId, tenantId]);
 
   const prompts = useMemo(() => PROMPTS[roleCategory], [roleCategory]);
 
@@ -87,6 +89,7 @@ export default function ChatPage() {
         patientId,
         tenantId: tenantFilter || undefined,
       });
+      setLastSessionId(response.session_id);
       setMessages((current) => [
         ...current,
         {
@@ -180,6 +183,18 @@ export default function ChatPage() {
           </form>
         }
       />
+      <HealthcareDisclaimer variant="assistant-limits" />
+      <Alert title="Evidence and provenance" tone="info">
+        {patient
+          ? `Verified context supplied: ${patient.fullName}, patient record #${patient.id}, organization #${tenantId}.`
+          : `No verified patient record was supplied. Organization scope: #${tenantId}.`}{" "}
+        The orchestration API does not yet return per-claim citations, confidence, author, or review
+        dates. Treat every answer as an unverified aid and confirm it against the source record and
+        approved clinical guidance before acting.
+        {lastSessionId && (
+          <span className="mt-2 block font-mono text-xs">Response trace: {lastSessionId}</span>
+        )}
+      </Alert>
     </div>
   );
 }

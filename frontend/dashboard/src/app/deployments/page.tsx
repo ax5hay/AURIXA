@@ -48,18 +48,22 @@ function EnvironmentCard({ environment }: { environment: DeploymentEnvironment }
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow">{environment.name}</p>
-          <h2 className="text-xl font-semibold capitalize text-white">{environment.name}</h2>
+          <h2 className="text-xl font-semibold capitalize text-ui-ink">{environment.name}</h2>
         </div>
         <StatusBadge status={environment.health} label={stateLabel(environment.health)} />
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 border-y border-white/10 py-4 text-sm">
+      <div className="mt-5 grid grid-cols-2 gap-3 border-y border-ui-border py-4 text-sm">
         <div>
           <p className="text-xs text-ui-faint">Configuration drift</p>
-          <p className="mt-1 font-semibold">{environment.drift ? "Detected" : "In sync"}</p>
+          <p className="mt-1 font-semibold text-ui-ink">
+            {environment.drift ? "Detected" : "In sync"}
+          </p>
         </div>
         <div>
           <p className="text-xs text-ui-faint">Freshness</p>
-          <p className="mt-1 font-semibold">{formatFreshness(environment.checkedAt)}</p>
+          <p className="mt-1 font-semibold text-ui-ink">
+            {formatFreshness(environment.checkedAt)}
+          </p>
         </div>
       </div>
       {environment.activeDeployment ? (
@@ -69,7 +73,7 @@ function EnvironmentCard({ environment }: { environment: DeploymentEnvironment }
               <p className="text-xs text-ui-faint">Active rollout</p>
               <Link
                 href={`/deployments/${environment.activeDeployment.id}`}
-                className="mt-1 block font-mono text-sm font-semibold text-teal-300 hover:underline"
+                className="mt-1 block font-mono text-sm font-semibold text-ui-accent hover:underline"
               >
                 {environment.activeDeployment.release}
               </Link>
@@ -85,13 +89,13 @@ function EnvironmentCard({ environment }: { environment: DeploymentEnvironment }
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ui-faint">
           Service revisions
         </p>
-        <ul className="divide-y divide-white/10">
+        <ul className="divide-y divide-ui-border">
           {environment.services.map((service) => (
             <li
               key={service.service}
               className="flex items-center justify-between gap-3 py-2.5 text-sm"
             >
-              <span className="min-w-0 truncate">{service.service}</span>
+              <span className="min-w-0 truncate text-ui-ink">{service.service}</span>
               <span className="flex shrink-0 items-center gap-2">
                 {service.desiredRevision && service.desiredRevision !== service.revision && (
                   <Badge tone="warning">Drift</Badge>
@@ -103,6 +107,97 @@ function EnvironmentCard({ environment }: { environment: DeploymentEnvironment }
         </ul>
       </div>
     </article>
+  );
+}
+
+function EnvironmentComparison({ environments }: { environments: DeploymentEnvironment[] }) {
+  const staging = environments.find((environment) => environment.name === "staging");
+  const production = environments.find((environment) => environment.name === "production");
+  if (!staging || !production) return null;
+
+  const stagingServices = new Map(staging.services.map((service) => [service.service, service]));
+  const productionServices = new Map(
+    production.services.map((service) => [service.service, service]),
+  );
+  const serviceNames = [
+    ...new Set([...stagingServices.keys(), ...productionServices.keys()]),
+  ].sort();
+  const mismatches = serviceNames.filter((name) => {
+    const left = stagingServices.get(name)?.revision;
+    const right = productionServices.get(name)?.revision;
+    return left && right && left !== right;
+  });
+
+  const risks = [
+    staging.drift || production.drift
+      ? "Configuration drift is present in at least one environment."
+      : null,
+    staging.activeDeployment || production.activeDeployment
+      ? "An active rollout is in progress."
+      : null,
+    mismatches.length
+      ? `${mismatches.length} service revision${mismatches.length === 1 ? "" : "s"} differ between staging and production.`
+      : null,
+    production.health !== "healthy" && production.health !== "unknown"
+      ? `Production health is currently ${production.health}.`
+      : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <section className="mt-8" aria-labelledby="comparison-heading">
+      <SectionHeader
+        title="Environment comparison"
+        description="Revision and risk summary before promoting a release."
+      />
+      <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
+        <article className="surface-card overflow-x-auto">
+          <DataTable
+            caption="Staging versus production revisions"
+            headers={["Service", "Staging", "Production", "Delta"]}
+          >
+            {serviceNames.length ? (
+              serviceNames.map((name) => {
+                const left = stagingServices.get(name)?.revision ?? "—";
+                const right = productionServices.get(name)?.revision ?? "—";
+                const delta = left !== "—" && right !== "—" && left !== right ? "Mismatch" : "Match";
+                return (
+                  <tr key={name}>
+                    <td className="table-cell font-medium text-ui-ink">{name}</td>
+                    <td className="table-cell font-mono text-xs">{left}</td>
+                    <td className="table-cell font-mono text-xs">{right}</td>
+                    <td className="table-cell">
+                      <Badge tone={delta === "Mismatch" ? "warning" : "success"}>{delta}</Badge>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td className="table-cell" colSpan={4}>
+                  No service revisions reported yet.
+                </td>
+              </tr>
+            )}
+          </DataTable>
+        </article>
+        <article className="surface-card">
+          <h3 className="text-sm font-semibold text-ui-ink">Risk summary</h3>
+          {risks.length ? (
+            <ul className="mt-4 space-y-3 text-sm text-ui-muted">
+              {risks.map((risk) => (
+                <li key={risk} className="rounded-ui-md border border-ui-border px-3 py-2">
+                  {risk}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-ui-muted">
+              No active drift, mismatched revisions, or unhealthy production signals were reported.
+            </p>
+          )}
+        </article>
+      </div>
+    </section>
   );
 }
 
@@ -241,7 +336,7 @@ function DeploymentComposer({
             {services.map((service) => (
               <label
                 key={service}
-                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-white/10 px-3 text-sm hover:bg-white/[0.03]"
+                className="flex min-h-11 cursor-pointer items-center gap-3 rounded-ui-md border border-ui-border px-3 text-sm hover:bg-ui-tint"
               >
                 <input
                   type="checkbox"
@@ -253,7 +348,7 @@ function DeploymentComposer({
                         : current.filter((item) => item !== service),
                     )
                   }
-                  className="h-4 w-4 accent-teal-400"
+                  className="h-4 w-4 accent-[rgb(var(--ui-accent-rgb))]"
                 />
                 {service}
               </label>
@@ -371,6 +466,7 @@ function DeploymentsContent() {
               />
             )}
           </section>
+          <EnvironmentComparison environments={overview.environments} />
           <section className="mt-8">
             <SectionHeader
               title="Recent deployment history"
@@ -385,10 +481,12 @@ function DeploymentsContent() {
                 {history.map((deployment) => (
                   <tr key={deployment.id}>
                     <td className="table-cell">
-                      <span className="block font-mono font-semibold text-white">
+                      <span className="block font-mono font-semibold text-ui-ink">
                         {deployment.release}
                       </span>
-                      <span className="text-xs">{deployment.services.join(", ")}</span>
+                      <span className="text-xs text-ui-muted">
+                        {deployment.services.join(", ")}
+                      </span>
                     </td>
                     <td className="table-cell capitalize">{deployment.environment}</td>
                     <td className="table-cell">
@@ -425,7 +523,7 @@ function DeploymentsContent() {
         onOpenChange={setComposerOpen}
         services={overview?.availableServices ?? []}
         onCreated={(id) => {
-          window.location.assign(`/deployments/${encodeURIComponent(id)}`);
+          window.location.href = `/deployments/${encodeURIComponent(id)}`;
         }}
       />
     </PageShell>

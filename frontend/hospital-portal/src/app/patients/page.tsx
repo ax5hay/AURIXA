@@ -15,22 +15,16 @@ import {
   PageHeader,
   PageLoader,
   SearchInput,
-  Select,
   useToast,
 } from "@aurixa/ui-kit";
-import { createPatient, getPatients, getTenants, type Patient } from "../api";
+import { createPatient, getPatients, type Patient } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
-
-function parseTenantId(value: string): number | undefined {
-  const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
-  return value && !isNaN(parsed) ? parsed : undefined;
-}
 
 export default function PatientsPage() {
   const { toast } = useToast();
-  const { tenantFilter, setTenantFilter, tenantId } = useStaffContext();
+  const { tenantId, roleCategory } = useStaffContext();
+  const canCreatePatient = roleCategory === "clinical" || roleCategory === "coordination";
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -38,7 +32,7 @@ export default function PatientsPage() {
   const [form, setForm] = useState({ fullName: "", email: "", phoneNumber: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const tid = tenantId ?? parseTenantId(tenantFilter);
+  const tid = tenantId;
 
   useEffect(() => {
     setLoading(true);
@@ -51,12 +45,6 @@ export default function PatientsPage() {
       })
       .finally(() => setLoading(false));
   }, [tid]);
-
-  useEffect(() => {
-    getTenants()
-      .then(setTenants)
-      .catch(() => setTenants([]));
-  }, []);
 
   const filtered = patients.filter((patient) => {
     const query = search.trim().toLowerCase();
@@ -106,7 +94,9 @@ export default function PatientsPage() {
         eyebrow="Care directory"
         title="Patients"
         description="Find patient context quickly. Identity remains visible before any care action."
-        actions={<Button onClick={() => setDialogOpen(true)}>Add patient</Button>}
+        actions={
+          canCreatePatient ? <Button onClick={() => setDialogOpen(true)}>Add patient</Button> : undefined
+        }
       />
 
       {loadError && (
@@ -115,25 +105,13 @@ export default function PatientsPage() {
         </Alert>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
+      <div>
         <SearchInput
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search name, email, or phone"
           aria-label="Search patients"
         />
-        <Select
-          value={tenantFilter}
-          onChange={(event) => setTenantFilter(event.target.value)}
-          aria-label="Filter patients by organization"
-        >
-          <option value="">All organizations</option>
-          {tenants.map((tenant) => (
-            <option key={tenant.id} value={tenant.id}>
-              {tenant.name}
-            </option>
-          ))}
-        </Select>
       </div>
       <p className="text-sm text-ui-muted">{filtered.length} patient records</p>
 
@@ -191,7 +169,9 @@ export default function PatientsPage() {
               ? "Try a name, email, or phone number."
               : "No patient records were returned for this organization."
           }
-          action={<Button onClick={() => setDialogOpen(true)}>Add patient</Button>}
+          action={
+            canCreatePatient ? <Button onClick={() => setDialogOpen(true)}>Add patient</Button> : undefined
+          }
         />
       )}
 

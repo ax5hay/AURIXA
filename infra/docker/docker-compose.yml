@@ -202,7 +202,6 @@ services:
     env_file: ../../.env
     environment:
       RAG_SERVICE_PORT: 8004
-      DATABASE_URL: postgresql+asyncpg://aurixa:aurixa@postgres:5432/aurixa
       OBSERVABILITY_CORE_HOST: http://observability-core:8008
     healthcheck:
       test:
@@ -348,9 +347,11 @@ services:
       - "3100:3100"
     env_file: ../../.env
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:3100
       DEPLOYMENT_GATEWAY_URL: http://api-gateway:3000/api/v1/admin/deployments
+      DEPLOYMENT_DEV_AUTH_ENABLED: "true"
     depends_on:
       api-gateway:
         condition: service_healthy
@@ -363,8 +364,15 @@ services:
       dockerfile: frontend/patient-portal/Dockerfile
     ports:
       - "3300:3300"
+    env_file: ../../.env
     environment:
+      NODE_ENV: development
       NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+      API_GATEWAY_URL: http://api-gateway:3000
+      PATIENT_DEMO_AUTH_ENABLED: "true"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     networks:
       - aurixa
 
@@ -374,8 +382,15 @@ services:
       dockerfile: frontend/hospital-portal/Dockerfile
     ports:
       - "3400:3400"
+    env_file: ../../.env
     environment:
+      NODE_ENV: development
       NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
+      API_GATEWAY_URL: http://api-gateway:3000
+      STAFF_DEMO_AUTH_ENABLED: "true"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
     networks:
       - aurixa
 

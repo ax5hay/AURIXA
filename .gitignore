@@ -47,10 +47,9 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .pyre/
-.venv
-.venv-live-tests/
 *.pyc
-
+.venv/
+.venv-live-tests/
 # -----------------------------------------------------------------------------
 # IDEs & editors
 # -----------------------------------------------------------------------------
@@ -87,6 +86,12 @@ temp/
 coverage/
 .nyc_output/
 *.lcov
+storybook-static/
+test-results/
+playwright-report/
+blob-report/
+e2e/**/*-snapshots/
+.tmp-ui-captures/
 
 # -----------------------------------------------------------------------------
 # Terraform local state and provider cache

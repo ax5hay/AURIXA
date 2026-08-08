@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
+  Alert,
+  AsyncBoundary,
   Avatar,
   Button,
   Card,
   EmptyState,
+  HealthcareDisclaimer,
   Metric,
   PageLoader,
   SectionHeader,
@@ -22,8 +25,6 @@ import {
   type ConversationSummary,
 } from "./api";
 
-const DEMO_PATIENT_ID = 1;
-
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
     weekday: "short",
@@ -34,28 +35,42 @@ const formatDate = (iso: string) =>
   });
 
 export default function DashboardPage() {
+  return (
+    <AsyncBoundary loadingLabel="Preparing your care overview" resetKeys={["patient-home"]}>
+      <DashboardContent />
+    </AsyncBoundary>
+  );
+}
+
+function DashboardContent() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      getPatient(DEMO_PATIENT_ID)
-        .then(setPatient)
-        .catch(() => null),
-      getAppointments(DEMO_PATIENT_ID)
-        .then(setAppointments)
-        .catch(() => []),
-      getKnowledgeArticles(1)
-        .then(setArticles)
-        .catch(() => []),
-      getConversations(DEMO_PATIENT_ID)
-        .then(setConversations)
-        .catch(() => []),
-    ]).finally(() => setLoading(false));
-  }, []);
+    setLoading(true);
+    setError(null);
+    Promise.allSettled([
+      getPatient().then(setPatient),
+      getAppointments().then(setAppointments),
+      getKnowledgeArticles().then(setArticles),
+      getConversations().then(setConversations),
+    ]).then((results) => {
+      const failures = results.filter((result) => result.status === "rejected").length;
+      if (failures === results.length) {
+        setError("Your care overview could not be loaded. Check your connection and try again.");
+      } else if (failures > 0) {
+        setError("Some of your care information is temporarily unavailable.");
+      }
+      setLastUpdated(new Date());
+      setLoading(false);
+    });
+  }, [reloadKey]);
 
   const upcomingAppointments = appointments
     .filter((a) => a.status === "confirmed" && new Date(a.startTime) > new Date())
@@ -70,6 +85,27 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-10 py-8 sm:py-10">
+      {error && (
+        <Alert
+          title={patient ? "Some information is unavailable" : "We couldn’t load your overview"}
+          tone={patient ? "warning" : "danger"}
+        >
+          <p>{error}</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={() => setReloadKey((key) => key + 1)}
+          >
+            Try again
+          </Button>
+        </Alert>
+      )}
+      {lastUpdated && (
+        <p className="text-xs text-ui-faint">
+          Updated {lastUpdated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+        </p>
+      )}
       <header className="max-w-3xl">
         <p className="eyebrow">{firstName ? `Welcome back, ${firstName}` : "Your care portal"}</p>
         <h1 className="font-display text-[clamp(2.7rem,7vw,5.5rem)] font-medium leading-[0.92] tracking-[-0.05em] text-ui-ink">
@@ -96,7 +132,7 @@ export default function DashboardPage() {
               questions, symptoms, or medication changes you want to discuss.
             </p>
             <Button asChild className="mt-6">
-              <Link href="/appointments">See visit details</Link>
+              <Link href={`/appointments/${nextAppointment.id}`}>See visit details</Link>
             </Button>
           </Card>
         ) : (
@@ -110,7 +146,7 @@ export default function DashboardPage() {
 
       <section aria-label="Choose what you need">
         <SectionHeader title="Choose what you need" />
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
             {
               href: "/chat",
@@ -126,6 +162,21 @@ export default function DashboardPage() {
               href: "/help",
               title: "Find support",
               text: "Read care guidance and see where to turn when you need a person.",
+            },
+            {
+              href: "/records",
+              title: "Review my records",
+              text: "See connected visit history and guidance for results and documents.",
+            },
+            {
+              href: "/medications",
+              title: "Medicines and refills",
+              text: "Find medication safety and refill guidance without an incomplete list.",
+            },
+            {
+              href: "/billing",
+              title: "Billing and insurance",
+              text: "Prepare for balance, statement, coverage, or authorization questions.",
             },
           ].map((action) => (
             <Link key={action.href} href={action.href} className="group block rounded-ui-lg">
@@ -165,7 +216,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <Avatar name={patient?.fullName || "Patient"} size="lg" />
             <div>
-              <h2 className="font-display text-2xl font-medium text-ui-ink">Your profile</h2>
+              <h2 className="font-display text-2xl font-medium text-ui-ink">Your account</h2>
               <p className="text-sm text-ui-muted">{patient?.fullName || "Profile unavailable"}</p>
             </div>
           </div>
@@ -189,8 +240,13 @@ export default function DashboardPage() {
               We couldn’t load your profile details. Your other portal tools are still available.
             </p>
           )}
+          <Button asChild variant="secondary" size="sm" className="mt-5">
+            <Link href="/account">Open account</Link>
+          </Button>
         </Card>
       </section>
+
+      <HealthcareDisclaimer variant="emergency" />
     </div>
   );
 }

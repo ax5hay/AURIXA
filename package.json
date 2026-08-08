@@ -19,7 +19,10 @@
     "deploy:verify": "node scripts/deploy.js verify",
     "deploy:up": "node scripts/deploy.js up",
     "deploy:down": "node scripts/deploy.js down",
-    "deploy:status": "node scripts/deploy.js status"
+    "deploy:status": "node scripts/deploy.js status",
+    "test:e2e": "pnpm --filter @aurixa/e2e test:smoke",
+    "test:visual": "pnpm --filter @aurixa/e2e test:visual",
+    "budget:frontends": "node scripts/frontend-bundle-budget.mjs"
   },
   "devDependencies": {
     "prettier": "^3.5.0",

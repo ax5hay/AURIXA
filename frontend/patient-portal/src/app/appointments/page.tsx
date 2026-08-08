@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Alert,
   AppointmentCard,
+  Button,
   Card,
   EmptyState,
   PageHeader,
@@ -11,8 +13,6 @@ import {
   SectionHeader,
 } from "@aurixa/ui-kit";
 import { getAppointments, type Appointment } from "../api";
-
-const DEMO_PATIENT_ID = 1;
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -26,13 +26,17 @@ const formatDate = (iso: string) =>
 export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    getAppointments(DEMO_PATIENT_ID)
+    setLoading(true);
+    setError(null);
+    getAppointments()
       .then(setAppointments)
-      .catch(() => [])
+      .catch(() => setError("Your appointments could not be loaded."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   const upcoming = appointments.filter(
     (a) => a.status === "confirmed" && new Date(a.startTime) > new Date(),
@@ -53,6 +57,20 @@ export default function AppointmentsPage() {
         description="See what’s coming next and review the visits already in your record."
       />
 
+      {error && (
+        <Alert title="Appointments are unavailable" tone="danger">
+          <p>{error} Check your connection and try again.</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={() => setReloadKey((key) => key + 1)}
+          >
+            Try again
+          </Button>
+        </Alert>
+      )}
+
       <Alert title="A little preparation can help">
         Before a visit, write down your questions, current medicines, and any symptoms that have
         changed. Contact your care team if you need directions, accessibility support, or visit
@@ -65,7 +83,7 @@ export default function AppointmentsPage() {
           count={upcoming.length}
           description="Confirmed visits on your current schedule."
         />
-        {upcoming.length === 0 ? (
+        {error ? null : upcoming.length === 0 ? (
           <EmptyState
             title="No upcoming visits"
             description="If you need to arrange care, contact your care team through their usual channel."
@@ -80,6 +98,11 @@ export default function AppointmentsPage() {
                 detail="Confirm any visit-specific instructions with your care team."
                 status={a.status}
                 tone="success"
+                action={
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href={`/appointments/${a.id}`}>Details</Link>
+                  </Button>
+                }
               />
             ))}
           </div>
@@ -92,7 +115,7 @@ export default function AppointmentsPage() {
           count={past.length}
           description="Appointments that are complete or in the past."
         />
-        {past.length === 0 ? (
+        {error ? null : past.length === 0 ? (
           <EmptyState
             title="No past visits on record"
             description="Completed visits will appear here when they are available."
@@ -108,6 +131,11 @@ export default function AppointmentsPage() {
                     date={formatDate(a.startTime)}
                     status={a.status}
                     compact
+                    action={
+                      <Button asChild variant="quiet" size="sm">
+                        <Link href={`/appointments/${a.id}`}>Details</Link>
+                      </Button>
+                    }
                   />
                 </div>
               ))}

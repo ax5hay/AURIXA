@@ -11,6 +11,17 @@
     scroll-behavior: smooth;
   }
 
+  html[data-patient-large-text="true"] {
+    font-size: 18px;
+  }
+
+  html[data-patient-high-contrast="true"] {
+    --ui-muted: #334155;
+    --ui-faint: #475569;
+    --ui-border: #94a3b8;
+    --ui-border-strong: #64748b;
+  }
+
   body {
     @apply min-h-screen antialiased;
     background: var(--ui-canvas);
@@ -118,4 +129,13 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+html[data-patient-reduce-motion="true"] *,
+html[data-patient-reduce-motion="true"] *::before,
+html[data-patient-reduce-motion="true"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }

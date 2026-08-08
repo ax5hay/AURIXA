@@ -1,4 +1,9 @@
-import { Badge, Metric, type BadgeTone } from "@aurixa/ui-kit";
+import {
+  Metric,
+  StatusBadge as UiStatusBadge,
+  humanizeStatus,
+  type BadgeTone,
+} from "@aurixa/ui-kit";
 import { cn } from "@/lib/utils";
 
 export function PageShell({
@@ -25,39 +30,9 @@ export function MetricStrip({
   );
 }
 
+/** Operator-facing status chip using the shared ui-kit vocabulary. */
 export function StatusBadge({ status, label }: { status?: string; label?: string }) {
-  const normalized = status?.toLowerCase() ?? "unknown";
-  const tone: BadgeTone =
-    normalized === "healthy" ||
-    normalized === "active" ||
-    normalized === "pass" ||
-    normalized === "approved" ||
-    normalized === "succeeded" ||
-    normalized === "rolled_back"
-      ? "success"
-      : normalized === "degraded" ||
-          normalized === "pending" ||
-          normalized === "queued" ||
-          normalized === "running" ||
-          normalized === "rolling_back" ||
-          normalized === "awaiting_approval" ||
-          normalized === "warning"
-        ? "warning"
-        : normalized === "down" ||
-            normalized === "error" ||
-            normalized === "fail" ||
-            normalized === "failed" ||
-            normalized === "rejected" ||
-            normalized === "cancelled" ||
-            normalized === "unavailable" ||
-            normalized === "suspended"
-          ? "danger"
-          : "neutral";
-  return (
-    <Badge tone={tone} dot>
-      {label ?? status ?? "Unknown"}
-    </Badge>
-  );
+  return <UiStatusBadge status={status ?? "unknown"} label={label ?? humanizeStatus(status)} />;
 }
 
 export function FilterBar({

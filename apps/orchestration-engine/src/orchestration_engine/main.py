@@ -544,18 +544,33 @@ async def create_appointment(data: CreateApptIn, db: AsyncSession = Depends(get_
     }
 
 
+ALLOWED_APPOINTMENT_STATUSES = {
+    "confirmed",
+    "checked_in",
+    "in_room",
+    "completed",
+    "cancelled",
+}
+
+
 class AppointmentUpdateIn(BaseModel):
-    status: str  # cancelled, completed, confirmed
+    status: str  # confirmed, checked_in, in_room, completed, cancelled
 
 
 @app.patch("/api/v1/appointments/{appointment_id}", summary="Update appointment status")
 async def update_appointment(appointment_id: int, data: AppointmentUpdateIn, db: AsyncSession = Depends(get_db_session)):
-    """Update appointment status (e.g. cancel)."""
+    """Update appointment status (e.g. check-in, complete, cancel)."""
+    status = (data.status or "").strip().lower()
+    if status not in ALLOWED_APPOINTMENT_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported appointment status. Allowed: {', '.join(sorted(ALLOWED_APPOINTMENT_STATUSES))}",
+        )
     result = await db.execute(select(db_models.Appointment).where(db_models.Appointment.id == appointment_id))
     apt = result.scalar_one_or_none()
     if not apt:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    apt.status = data.status
+    apt.status = status
     await db.commit()
     await db.refresh(apt)
     audit = db_models.AuditLog(

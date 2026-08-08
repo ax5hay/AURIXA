@@ -18,13 +18,17 @@ import { getKnowledgeArticles, type KnowledgeArticle } from "../api";
 export default function HelpPage() {
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    getKnowledgeArticles(1)
+    setLoading(true);
+    setError(null);
+    getKnowledgeArticles()
       .then(setArticles)
-      .catch(() => [])
+      .catch(() => setError("Provider guidance could not be loaded."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   if (loading) {
     return <PageLoader label="Loading support information" />;
@@ -47,6 +51,20 @@ export default function HelpPage() {
         Do not wait for a portal response. Contact your local emergency services now. This portal
         cannot monitor urgent symptoms.
       </Alert>
+
+      {error && (
+        <Alert title="Help articles are unavailable" tone="warning">
+          <p>{error} You can still use the support paths below.</p>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3"
+            onClick={() => setReloadKey((key) => key + 1)}
+          >
+            Try again
+          </Button>
+        </Alert>
+      )}
 
       <section aria-label="Ways to get support">
         <SectionHeader title="Choose a support path" />
@@ -93,7 +111,7 @@ export default function HelpPage() {
           count={articles.length}
           description="Plain-language guidance available from your provider."
         />
-        {articles.length === 0 ? (
+        {error ? null : articles.length === 0 ? (
           <EmptyState
             title="No articles are available right now"
             description="You can still use care messages for a general question or contact your care team directly."

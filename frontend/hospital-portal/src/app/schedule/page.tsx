@@ -11,11 +11,20 @@ import {
   FieldShell,
   Input,
   PageHeader,
+  SearchSelect,
   Select,
   useToast,
 } from "@aurixa/ui-kit";
-import { createAppointment, getPatients, getStaff, type Patient } from "../api";
+import {
+  createAppointment,
+  getAppointments,
+  getPatients,
+  getStaff,
+  type Appointment,
+  type Patient,
+} from "../api";
 import { useStaffContext } from "@/context/StaffContext";
+import { findSchedulingConflict } from "@/lib/scheduling";
 
 function parseTenantId(value: string): number | undefined {
   const parsed = parseInt(value.replace(/^t-0*/, ""), 10);
@@ -36,16 +45,31 @@ export default function SchedulePage() {
   const [step, setStep] = useState<"details" | "review" | "success">("details");
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+  const [directoryError, setDirectoryError] = useState(false);
   const tid = tenantId ?? parseTenantId(tenantFilter);
 
   useEffect(() => {
     getPatients(tid)
-      .then(setPatients)
-      .catch(() => setPatients([]));
+      .then((records) => {
+        setPatients(records);
+        setDirectoryError(false);
+      })
+      .catch(() => {
+        setPatients([]);
+        setDirectoryError(true);
+      });
     getStaff({ role: "doctor", tenantId: tid })
       .then((staff) => setDoctors(staff.map((item) => ({ id: item.id, fullName: item.fullName }))))
       .catch(() => setDoctors([]));
   }, [tid]);
+
+  useEffect(() => {
+    if (!date) return;
+    getAppointments({ tenantId: tid, dateFrom: date, dateTo: date, limit: 200 })
+      .then(setExistingAppointments)
+      .catch(() => setExistingAppointments([]));
+  }, [date, tid]);
 
   useEffect(() => {
     if (doctors.length && !doctors.some((doctor) => String(doctor.id) === providerId)) {
@@ -61,6 +85,11 @@ export default function SchedulePage() {
     () => doctors.find((doctor) => String(doctor.id) === providerId),
     [doctors, providerId],
   );
+  const conflict = useMemo(
+    () =>
+      findSchedulingConflict(existingAppointments, selectedDoctor?.fullName, date, time),
+    [date, existingAppointments, selectedDoctor, time],
+  );
 
   const validate = () => {
     const next: string[] = [];
@@ -69,6 +98,7 @@ export default function SchedulePage() {
     if (!date) next.push("Choose a visit date.");
     if (!time) next.push("Choose a visit time.");
     if (!reason.trim()) next.push("Enter a reason for the visit.");
+    if (conflict) next.push("Choose another time; this clinician has an overlapping appointment.");
     setErrors(next);
     return next.length === 0;
   };
@@ -140,27 +170,28 @@ export default function SchedulePage() {
               continue until a clinician is available.
             </Alert>
           )}
+          {directoryError && (
+            <Alert title="Patient directory unavailable" tone="danger">
+              Booking is disabled because patient identity cannot be verified.
+            </Alert>
+          )}
           <Card variant="standard" padding="lg">
             <div className="space-y-5">
-              <FieldShell
+              <SearchSelect
                 label="Patient"
-                htmlFor="schedule-patient"
                 required
-                hint="Patient identity will remain visible during review."
-              >
-                <Select
-                  id="schedule-patient"
-                  value={patientId}
-                  onChange={(event) => setPatientId(event.target.value)}
-                >
-                  <option value="">Select patient</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.fullName}
-                    </option>
-                  ))}
-                </Select>
-              </FieldShell>
+                value={patientId}
+                onChange={(value) => setPatientId(value ?? "")}
+                options={patients.map((patient) => ({
+                  value: String(patient.id),
+                  label: patient.fullName,
+                  description: `Record #${patient.id}${patient.phoneNumber ? ` · ${patient.phoneNumber}` : ""}`,
+                }))}
+                placeholder="Find patient"
+                searchPlaceholder="Search name, record, or phone"
+                emptyMessage="No matching patient in this organization"
+                disabled={directoryError}
+              />
               <FieldShell label="Clinician" htmlFor="schedule-provider" required>
                 <Select
                   id="schedule-provider"
@@ -180,6 +211,7 @@ export default function SchedulePage() {
                   <Input
                     id="schedule-date"
                     type="date"
+                    min={new Date().toISOString().slice(0, 10)}
                     value={date}
                     onChange={(event) => setDate(event.target.value)}
                   />
@@ -193,6 +225,13 @@ export default function SchedulePage() {
                   />
                 </FieldShell>
               </div>
+              {conflict && (
+                <Alert title="Potential scheduling conflict" tone="warning">
+                  {selectedDoctor?.fullName} has another non-cancelled appointment within 30 minutes
+                  of this time. Choose another slot. The scheduling API does not enforce conflict
+                  prevention, so this check is advisory and required before submission.
+                </Alert>
+              )}
               <FieldShell
                 label="Reason for visit"
                 htmlFor="schedule-reason"

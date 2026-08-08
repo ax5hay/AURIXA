@@ -1,6 +1,6 @@
 /** API client for AURIXA Hospital Portal - staff interface. */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:3000";
+const API_BASE = "/api/hospital";
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;
 
@@ -80,17 +80,21 @@ export interface AuditEntry {
 export async function getPatients(tenantId?: number): Promise<Patient[]> {
   const url =
     tenantId != null
-      ? `${API_BASE}/api/v1/admin/patients?tenant_id=${tenantId}`
-      : `${API_BASE}/api/v1/admin/patients`;
+      ? `${API_BASE}/admin/patients?tenant_id=${tenantId}`
+      : `${API_BASE}/admin/patients`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error("Failed to fetch patients");
   return res.json();
 }
 
-export async function getPatient(patientId: number): Promise<Patient> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/patients/${patientId}`);
+export async function getPatient(patientId: number, expectedTenantId?: number): Promise<Patient> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/patients/${patientId}`);
   if (!res.ok) throw new Error("Failed to fetch patient");
-  return res.json();
+  const patient = (await res.json()) as Patient;
+  if (expectedTenantId != null && patient.tenantId !== expectedTenantId) {
+    throw new Error("Patient is outside the verified organization scope");
+  }
+  return patient;
 }
 
 export async function createPatient(data: {
@@ -99,7 +103,7 @@ export async function createPatient(data: {
   phone_number?: string;
   tenant_id?: number;
 }): Promise<Patient> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/patients`, {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/patients`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -112,20 +116,22 @@ export async function getAppointments(opts?: {
   tenantId?: number;
   dateFrom?: string;
   dateTo?: string;
+  limit?: number;
 }): Promise<Appointment[]> {
   const params = new URLSearchParams();
   if (opts?.tenantId) params.set("tenant_id", String(opts.tenantId));
   if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
   if (opts?.dateTo) params.set("date_to", opts.dateTo);
+  if (opts?.limit) params.set("limit", String(opts.limit));
   const qs = params.toString();
-  const url = `${API_BASE}/api/v1/admin/appointments${qs ? `?${qs}` : ""}`;
+  const url = `${API_BASE}/admin/appointments${qs ? `?${qs}` : ""}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error("Failed to fetch appointments");
   return res.json();
 }
 
 export async function getPatientAppointments(patientId: number): Promise<Appointment[]> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/patients/${patientId}/appointments`);
+  const res = await fetchWithTimeout(`${API_BASE}/admin/patients/${patientId}/appointments`);
   if (!res.ok) throw new Error("Failed to fetch appointments");
   return res.json();
 }
@@ -133,15 +139,15 @@ export async function getPatientAppointments(patientId: number): Promise<Appoint
 export async function getKnowledgeArticles(tenantId?: number): Promise<KnowledgeArticle[]> {
   const url =
     tenantId != null
-      ? `${API_BASE}/api/v1/admin/knowledge/articles?tenant_id=${tenantId}`
-      : `${API_BASE}/api/v1/admin/knowledge/articles`;
+      ? `${API_BASE}/admin/knowledge/articles?tenant_id=${tenantId}`
+      : `${API_BASE}/admin/knowledge/articles`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error("Failed to fetch knowledge");
   return res.json();
 }
 
 export async function getTenants(): Promise<Tenant[]> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/tenants`);
+  const res = await fetchWithTimeout(`${API_BASE}/admin/tenants`);
   if (!res.ok) throw new Error("Failed to fetch tenants");
   return res.json();
 }
@@ -151,7 +157,7 @@ export async function getStaff(opts?: { tenantId?: number; role?: string }): Pro
   if (opts?.tenantId) params.set("tenant_id", String(opts.tenantId));
   if (opts?.role) params.set("role", opts.role);
   const qs = params.toString();
-  const url = `${API_BASE}/api/v1/admin/staff${qs ? `?${qs}` : ""}`;
+  const url = `${API_BASE}/admin/staff${qs ? `?${qs}` : ""}`;
   const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error("Failed to fetch staff");
   return res.json();
@@ -165,7 +171,7 @@ export async function createAppointment(data: {
   date?: string;
   start_time?: string;
 }): Promise<Appointment> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/appointments`, {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/appointments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -178,7 +184,7 @@ export async function updateAppointmentStatus(
   appointmentId: number,
   status: string,
 ): Promise<{ id: number; status: string }> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/appointments/${appointmentId}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/appointments/${appointmentId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -195,7 +201,7 @@ export async function sendMessage(
   if (opts?.patientId) body.patient_id = opts.patientId;
   if (opts?.tenantId) body.tenant_id = opts.tenantId;
   const res = await fetchWithTimeout(
-    `${API_BASE}/api/v1/orchestration/pipelines`,
+    `${API_BASE}/orchestration/pipelines`,
     { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
     PIPELINE_TIMEOUT_MS,
   );
@@ -210,7 +216,7 @@ export async function executeAction(
   actionName: string,
   params: Record<string, unknown>,
 ): Promise<{ status: string; result?: { message: string } }> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/execute/execute`, {
+  const res = await fetchWithTimeout(`${API_BASE}/execute/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action_name: actionName, params }),
@@ -220,7 +226,7 @@ export async function executeAction(
 }
 
 export async function listExecutionActions(): Promise<{ actions: string[] }> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/execute/actions`);
+  const res = await fetchWithTimeout(`${API_BASE}/execute/actions`);
   if (!res.ok) return { actions: [] };
   return res.json();
 }
@@ -237,7 +243,7 @@ export async function getServiceHealth(): Promise<ServiceHealth> {
 }
 
 export async function getAuditLog(limit = 30): Promise<AuditEntry[]> {
-  const res = await fetchWithTimeout(`${API_BASE}/api/v1/admin/audit?limit=${limit}`);
+  const res = await fetchWithTimeout(`${API_BASE}/admin/audit?limit=${limit}`);
   if (!res.ok) return [];
   return res.json();
 }
