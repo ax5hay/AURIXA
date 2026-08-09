@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { STAFF_SESSION_COOKIE, verifyStaffSessionToken } from "@/lib/staff-session";
+import { STAFF_SESSION_COOKIE, resolveStaffSession } from "@/lib/staff-session";
 
 const GATEWAY_URL = process.env.API_GATEWAY_URL || "http://localhost:3000";
 const ALLOWED_ROOTS = new Set(["admin", "orchestration", "execute", "health"]);
@@ -23,7 +23,7 @@ function targetUrl(path: string[], requestUrl: string) {
 
 async function authorizedSession() {
   const cookieStore = await cookies();
-  return verifyStaffSessionToken(cookieStore.get(STAFF_SESSION_COOKIE)?.value);
+  return resolveStaffSession(cookieStore.get(STAFF_SESSION_COOKIE)?.value);
 }
 
 async function patientBelongsToTenant(patientId: string, tenantId: number) {

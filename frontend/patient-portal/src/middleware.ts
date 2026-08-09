@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PATIENT_SESSION_COOKIE, verifyPatientSessionToken } from "@/lib/patient-session";
+import {
+  isPatientLivePathOpen,
+  PATIENT_SESSION_COOKIE,
+  verifyPatientSessionToken,
+} from "@/lib/patient-session";
 
 export async function middleware(request: NextRequest) {
+  if (isPatientLivePathOpen()) return NextResponse.next();
+
   const token = request.cookies.get(PATIENT_SESSION_COOKIE)?.value;
   const session = await verifyPatientSessionToken(token);
   if (session) return NextResponse.next();

@@ -60,9 +60,46 @@ function isPatientSession(value: unknown): value is PatientSession {
   );
 }
 
+const LOCAL_DEMO_SESSION_SECRET = "aurixa-local-patient-demo-session-secret";
+
 export function getPatientSessionSecret(): string | null {
   const secret = process.env.PATIENT_SESSION_SECRET;
-  return secret && secret.length >= 32 ? secret : null;
+  if (secret && secret.length >= 32) return secret;
+  if (isPatientLivePathOpen()) return LOCAL_DEMO_SESSION_SECRET;
+  return null;
+}
+
+export function buildLocalPatientDemoSession(): PatientSession | null {
+  if (!isPatientLivePathOpen()) return null;
+
+  const patientId = Number(runtimeEnv("PATIENT_DEMO_PATIENT_ID") ?? "1");
+  const tenantId = Number(runtimeEnv("PATIENT_DEMO_TENANT_ID") ?? "1");
+  if (
+    !Number.isSafeInteger(patientId) ||
+    patientId < 1 ||
+    !Number.isSafeInteger(tenantId) ||
+    tenantId < 1
+  ) {
+    return null;
+  }
+
+  const issuedAt = Math.floor(Date.now() / 1000);
+  return {
+    patientId,
+    tenantId,
+    subject: `local-demo-patient-${patientId}`,
+    demo: true,
+    issuedAt,
+    expiresAt: issuedAt + PATIENT_SESSION_MAX_AGE_SECONDS,
+  };
+}
+
+export async function resolvePatientSession(
+  token: string | undefined,
+): Promise<PatientSession | null> {
+  const verified = await verifyPatientSessionToken(token);
+  if (verified) return verified;
+  return buildLocalPatientDemoSession();
 }
 
 export async function createPatientSessionToken(
@@ -101,6 +138,17 @@ export async function verifyPatientSessionToken(
   }
 }
 
+function runtimeEnv(name: string): string | undefined {
+  return process.env[name];
+}
+
 export function isLocalPatientDemoEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.PATIENT_DEMO_AUTH_ENABLED === "true";
+  return (
+    runtimeEnv("NODE_ENV") !== "production" &&
+    runtimeEnv("PATIENT_DEMO_AUTH_ENABLED") === "true"
+  );
+}
+
+export function isPatientLivePathOpen(): boolean {
+  return runtimeEnv("PATIENT_DEMO_AUTH_ENABLED") === "true";
 }

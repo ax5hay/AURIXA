@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildLocalPatientDemoSession,
   createPatientSessionToken,
   isLocalPatientDemoEnabled,
+  resolvePatientSession,
   verifyPatientSessionToken,
 } from "./patient-session";
 
@@ -45,5 +47,18 @@ describe("patient session", () => {
 
     vi.stubEnv("NODE_ENV", "production");
     expect(isLocalPatientDemoEnabled()).toBe(false);
+  });
+
+  it("resolves a local demo session without a cookie when demo auth is enabled", async () => {
+    vi.stubEnv("PATIENT_DEMO_AUTH_ENABLED", "true");
+    vi.stubEnv("PATIENT_DEMO_PATIENT_ID", "1");
+    vi.stubEnv("PATIENT_DEMO_TENANT_ID", "1");
+
+    await expect(resolvePatientSession(undefined)).resolves.toMatchObject({
+      patientId: 1,
+      tenantId: 1,
+      demo: true,
+    });
+    expect(buildLocalPatientDemoSession()).toMatchObject({ patientId: 1, tenantId: 1, demo: true });
   });
 });

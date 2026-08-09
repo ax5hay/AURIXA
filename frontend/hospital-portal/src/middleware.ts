@@ -1,7 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { STAFF_SESSION_COOKIE, verifyStaffSessionToken } from "@/lib/staff-session";
+import {
+  isStaffLivePathOpen,
+  STAFF_SESSION_COOKIE,
+  verifyStaffSessionToken,
+} from "@/lib/staff-session";
 
 export async function middleware(request: NextRequest) {
+  if (isStaffLivePathOpen()) return NextResponse.next();
+
   const token = request.cookies.get(STAFF_SESSION_COOKIE)?.value;
   const session = await verifyStaffSessionToken(token);
   if (session) {

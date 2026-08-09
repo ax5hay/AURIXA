@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
   PATIENT_SESSION_COOKIE,
-  verifyPatientSessionToken,
+  resolvePatientSession,
   type PatientSession,
 } from "@/lib/patient-session";
 
@@ -16,7 +16,7 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 
 async function currentSession(): Promise<PatientSession | null> {
   const store = await cookies();
-  return verifyPatientSessionToken(store.get(PATIENT_SESSION_COOKIE)?.value);
+  return resolvePatientSession(store.get(PATIENT_SESSION_COOKIE)?.value);
 }
 
 async function gatewayFetch(path: string, init?: RequestInit): Promise<Response> {

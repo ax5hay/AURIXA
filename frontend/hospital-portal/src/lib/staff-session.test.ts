@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildLocalStaffDemoSession,
   createStaffSessionToken,
   isLocalStaffDemoEnabled,
+  resolveStaffSession,
   verifyStaffSessionToken,
 } from "./staff-session";
 
@@ -38,5 +40,19 @@ describe("staff session", () => {
     expect(isLocalStaffDemoEnabled()).toBe(true);
     vi.stubEnv("NODE_ENV", "production");
     expect(isLocalStaffDemoEnabled()).toBe(false);
+  });
+
+  it("resolves a local demo session without a cookie when demo auth is enabled", async () => {
+    vi.stubEnv("STAFF_DEMO_AUTH_ENABLED", "true");
+    vi.stubEnv("STAFF_DEMO_STAFF_ID", "1");
+    vi.stubEnv("STAFF_DEMO_TENANT_ID", "1");
+
+    await expect(resolveStaffSession(undefined)).resolves.toMatchObject({
+      staffId: 1,
+      tenantId: 1,
+      demo: true,
+      role: "clinician",
+    });
+    expect(buildLocalStaffDemoSession()).toMatchObject({ staffId: 1, tenantId: 1, demo: true });
   });
 });

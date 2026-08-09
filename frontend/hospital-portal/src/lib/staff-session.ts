@@ -68,9 +68,52 @@ function isStaffSession(value: unknown): value is StaffSession {
   );
 }
 
+const LOCAL_DEMO_SESSION_SECRET = "aurixa-local-staff-demo-session-secret";
+
 export function getStaffSessionSecret(): string | null {
   const secret = process.env.STAFF_SESSION_SECRET;
-  return secret && secret.length >= 32 ? secret : null;
+  if (secret && secret.length >= 32) return secret;
+  if (isStaffLivePathOpen()) return LOCAL_DEMO_SESSION_SECRET;
+  return null;
+}
+
+export function buildLocalStaffDemoSession(): StaffSession | null {
+  if (!isStaffLivePathOpen()) return null;
+
+  const staffId = Number(runtimeEnv("STAFF_DEMO_STAFF_ID") ?? "1");
+  const tenantId = Number(runtimeEnv("STAFF_DEMO_TENANT_ID") ?? "1");
+  const fullName = runtimeEnv("STAFF_DEMO_FULL_NAME")?.trim() || "Demo Clinician";
+  const email = runtimeEnv("STAFF_DEMO_EMAIL")?.trim() || "demo-clinician@localhost";
+  const role = runtimeEnv("STAFF_DEMO_ROLE")?.trim() || "clinician";
+  if (
+    !Number.isSafeInteger(staffId) ||
+    staffId < 1 ||
+    !Number.isSafeInteger(tenantId) ||
+    tenantId < 1
+  ) {
+    return null;
+  }
+
+  const issuedAt = Math.floor(Date.now() / 1000);
+  return {
+    staffId,
+    tenantId,
+    fullName,
+    email,
+    role,
+    subject: `local-demo-staff-${staffId}`,
+    demo: true,
+    issuedAt,
+    expiresAt: issuedAt + STAFF_SESSION_MAX_AGE_SECONDS,
+  };
+}
+
+export async function resolveStaffSession(
+  token: string | undefined,
+): Promise<StaffSession | null> {
+  const verified = await verifyStaffSessionToken(token);
+  if (verified) return verified;
+  return buildLocalStaffDemoSession();
 }
 
 export async function createStaffSessionToken(
@@ -107,6 +150,17 @@ export async function verifyStaffSessionToken(
   }
 }
 
+function runtimeEnv(name: string): string | undefined {
+  return process.env[name];
+}
+
 export function isLocalStaffDemoEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.STAFF_DEMO_AUTH_ENABLED === "true";
+  return (
+    runtimeEnv("NODE_ENV") !== "production" &&
+    runtimeEnv("STAFF_DEMO_AUTH_ENABLED") === "true"
+  );
+}
+
+export function isStaffLivePathOpen(): boolean {
+  return runtimeEnv("STAFF_DEMO_AUTH_ENABLED") === "true";
 }

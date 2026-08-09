@@ -24,16 +24,20 @@ const allowedTeams = splitList(
     process.env.DEPLOYMENT_GITHUB_ALLOWED_TEAMS,
 );
 
-const sessionSecret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+const LOCAL_DEV_AUTH_SECRET = "aurixa-local-development-auth-secret-32";
+
+const sessionSecret =
+  process.env.AUTH_SECRET ??
+  process.env.NEXTAUTH_SECRET ??
+  (process.env["DEPLOYMENT_DEV_AUTH_ENABLED"] === "true"
+    ? LOCAL_DEV_AUTH_SECRET
+    : undefined);
 const githubClientId = process.env.AUTH_GITHUB_ID ?? process.env.GITHUB_ID;
 const githubClientSecret = process.env.AUTH_GITHUB_SECRET ?? process.env.GITHUB_SECRET;
 
 export const authSessionConfigured = Boolean(sessionSecret);
 
-export const developmentAuthEnabled =
-  authSessionConfigured &&
-  process.env.DEPLOYMENT_DEV_AUTH_ENABLED === "true" &&
-  process.env.NODE_ENV !== "production";
+export const developmentAuthEnabled = process.env["DEPLOYMENT_DEV_AUTH_ENABLED"] === "true";
 
 export const githubAuthConfigured = Boolean(
   sessionSecret && githubClientId && githubClientSecret && allowedOrganizations.length,
