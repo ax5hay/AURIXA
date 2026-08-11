@@ -443,11 +443,18 @@ flowchart TD
 - [x] Rename inventory published  
 - [x] Migration strategy documented  
 
-**Next phase:** Phase 1 — implement schema in `packages/db` with Alembic migrations and RE seed data.
+## 16. Phase 1 status
+
+- [x] `packages/db` models rewritten for real estate domain  
+- [x] Alembic migration `20260811_0002_real_estate_domain`  
+- [x] `seed.py` replaced with brokerage, PM, and developer demo data  
+- [x] Backward-compat aliases (`Patient`, `Appointment`, etc.) for Phase 2 transition  
+
+**Next phase:** Phase 2 — rename API routes and execution tools in gateway / orchestration / execution-engine.
 
 ---
 
-## 16. Document index
+## 17. Document index
 
 | Document | Purpose |
 | --- | --- |

@@ -1,4 +1,4 @@
-"""Script to seed the database with mock data."""
+"""Seed the database with real estate demo data."""
 
 import asyncio
 import datetime
@@ -8,16 +8,70 @@ from loguru import logger
 
 from aurixa_db.database import AsyncSessionLocal, engine
 from aurixa_db.models import (
-    Tenant, User, Patient, Appointment, KnowledgeBaseArticle,
-    AuditLog, PlatformConfig, Conversation, Base,
-    PatientInsurance, Prescription, AvailabilitySlot, Staff,
+    Application,
+    AuditLog,
+    AvailabilitySlot,
+    Base,
+    Client,
+    ClientFinancing,
+    Conversation,
+    Deal,
     DeploymentEnvironment,
+    Document,
+    KnowledgeBaseArticle,
+    Lead,
+    Listing,
+    ListingMedia,
+    Offer,
+    PipelineStage,
+    PlatformConfig,
+    Property,
+    ServiceRequest,
+    Showing,
+    Staff,
+    Tenant,
+    User,
 )
 
 
-async def seed_database():
-    """Wipe and re-seed the database with mock data."""
-    
+RESIDENTIAL_STAGES = [
+    ("new", "New", 0, False),
+    ("contacted", "Contacted", 1, False),
+    ("qualified", "Qualified", 2, False),
+    ("showing_scheduled", "Showing Scheduled", 3, False),
+    ("showing_completed", "Showing Completed", 4, False),
+    ("offer_submitted", "Offer Submitted", 5, False),
+    ("under_contract", "Under Contract", 6, False),
+    ("closed", "Closed", 7, True),
+    ("lost", "Lost", 8, True),
+]
+
+PM_STAGES = [
+    ("inquiry", "Inquiry", 0, False),
+    ("tour_scheduled", "Tour Scheduled", 1, False),
+    ("tour_completed", "Tour Completed", 2, False),
+    ("application_started", "Application Started", 3, False),
+    ("application_submitted", "Application Submitted", 4, False),
+    ("approved", "Approved", 5, False),
+    ("lease_signed", "Lease Signed", 6, True),
+    ("moved_in", "Moved In", 7, True),
+    ("lost", "Lost", 8, True),
+]
+
+DEVELOPER_STAGES = [
+    ("inquiry", "Inquiry", 0, False),
+    ("model_home_scheduled", "Model Home Scheduled", 1, False),
+    ("model_home_completed", "Model Home Completed", 2, False),
+    ("reservation", "Reservation", 3, False),
+    ("under_contract", "Under Contract", 4, False),
+    ("closed", "Closed", 5, True),
+    ("lost", "Lost", 6, True),
+]
+
+
+async def seed_database() -> None:
+    """Wipe and re-seed the database with real estate mock data."""
+
     async with engine.begin() as conn:
         logger.info("Dropping all tables...")
         await conn.run_sync(Base.metadata.drop_all)
@@ -25,24 +79,47 @@ async def seed_database():
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as db:
-        logger.info("Seeding database...")
+        logger.info("Seeding real estate database...")
 
-        # Create Tenants (AURIXA healthcare tenants)
         tenants = [
-            Tenant(name="General Hospital", domain="generalhospital.com", plan="enterprise", status="active", api_key_count=5),
-            Tenant(name="Downtown Clinic", domain="downtownclinic.org", plan="professional", status="active", api_key_count=3),
-            Tenant(name="Sunrise Medical Center", domain="sunrisemedical.com", plan="enterprise", status="active", api_key_count=8),
-            Tenant(name="Family Care Associates", domain="familycare.net", plan="starter", status="active", api_key_count=1),
-            Tenant(name="Metro Health Systems", domain="metrohealth.io", plan="professional", status="suspended", api_key_count=2),
-            Tenant(name="Valley View Hospital", domain="valleyview.org", plan="enterprise", status="active", api_key_count=6),
-            Tenant(name="Riverside Clinic", domain="riversideclinic.com", plan="starter", status="pending", api_key_count=0),
+            Tenant(
+                name="Harbor Realty Group",
+                domain="harborrealty.com",
+                org_type="brokerage",
+                plan="enterprise",
+                status="active",
+                api_key_count=5,
+            ),
+            Tenant(
+                name="Urban Living PM",
+                domain="urbanlivingpm.com",
+                org_type="pm",
+                plan="professional",
+                status="active",
+                api_key_count=3,
+            ),
+            Tenant(
+                name="Summit Homes Development",
+                domain="summithomes.dev",
+                org_type="developer",
+                plan="enterprise",
+                status="active",
+                api_key_count=4,
+            ),
+            Tenant(
+                name="Lakeview Brokers",
+                domain="lakeviewbrokers.com",
+                org_type="brokerage",
+                plan="starter",
+                status="active",
+                api_key_count=1,
+            ),
         ]
-        for t in tenants:
-            db.add(t)
+        db.add_all(tenants)
         await db.commit()
+        for tenant in tenants:
+            await db.refresh(tenant)
 
-        # Local/demo deployment targets. Cloud environments should be provisioned
-        # through the authenticated deployment API with the real repository name.
         deployment_repository = os.getenv("GITHUB_REPOSITORY", "aurixa/aurixa")
         db.add_all(
             [
@@ -64,211 +141,559 @@ async def seed_database():
                 ),
             ]
         )
+
+        for tenant, stages, segment in [
+            (tenants[0], RESIDENTIAL_STAGES, "residential"),
+            (tenants[1], PM_STAGES, "pm"),
+            (tenants[2], DEVELOPER_STAGES, "developer"),
+        ]:
+            for slug, display_name, sort_order, is_terminal in stages:
+                db.add(
+                    PipelineStage(
+                        tenant_id=tenant.id,
+                        segment=segment,
+                        slug=slug,
+                        display_name=display_name,
+                        sort_order=sort_order,
+                        is_terminal=is_terminal,
+                    )
+                )
         await db.commit()
 
-        # Create Users
         users = [
-            User(email="admin@generalhospital.com", hashed_password="fake-password", full_name="Admin GH", tenant_id=tenants[0].id),
-            User(email="staff@downtownclinic.org", hashed_password="fake-password", full_name="Staff DC", tenant_id=tenants[1].id),
+            User(
+                email="admin@harborrealty.com",
+                hashed_password="fake-password",
+                full_name="Harbor Admin",
+                tenant_id=tenants[0].id,
+            ),
+            User(
+                email="ops@urbanlivingpm.com",
+                hashed_password="fake-password",
+                full_name="Urban Ops",
+                tenant_id=tenants[1].id,
+            ),
         ]
-        for u in users:
-            db.add(u)
+        db.add_all(users)
         await db.commit()
 
-        # Create Staff (hospital workers per tenant)
         staff_list = [
-            Staff(full_name="Sarah Chen", email="sarah.chen@generalhospital.com", role="reception", tenant_id=tenants[0].id),
-            Staff(full_name="Mike Johnson", email="mike.j@generalhospital.com", role="nurse", tenant_id=tenants[0].id),
-            Staff(full_name="Dr. Adams", email="adam.m@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
-            Staff(full_name="Dr. Bell", email="bell.d@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
-            Staff(full_name="Dr. Chen", email="chen.l@generalhospital.com", role="doctor", tenant_id=tenants[0].id),
-            Staff(full_name="Emma Wilson", email="emma.w@generalhospital.com", role="scheduler", tenant_id=tenants[0].id),
-            Staff(full_name="Admin GH", email="admin@generalhospital.com", role="admin", tenant_id=tenants[0].id),
-            Staff(full_name="Reception DC", email="reception@downtownclinic.org", role="reception", tenant_id=tenants[1].id),
-            Staff(full_name="Dr. Bell", email="bell.d@downtownclinic.org", role="doctor", tenant_id=tenants[1].id),
+            Staff(
+                full_name="Alex Rivera",
+                email="alex.rivera@harborrealty.com",
+                role="agent",
+                tenant_id=tenants[0].id,
+            ),
+            Staff(
+                full_name="Jordan Lee",
+                email="jordan.lee@harborrealty.com",
+                role="broker",
+                tenant_id=tenants[0].id,
+            ),
+            Staff(
+                full_name="Sam Ortiz",
+                email="sam.ortiz@harborrealty.com",
+                role="showing_coordinator",
+                tenant_id=tenants[0].id,
+            ),
+            Staff(
+                full_name="Harbor Admin",
+                email="admin@harborrealty.com",
+                role="admin",
+                tenant_id=tenants[0].id,
+            ),
+            Staff(
+                full_name="Morgan Chen",
+                email="morgan.chen@urbanlivingpm.com",
+                role="leasing_coordinator",
+                tenant_id=tenants[1].id,
+            ),
+            Staff(
+                full_name="Riley Park",
+                email="riley.park@urbanlivingpm.com",
+                role="property_manager",
+                tenant_id=tenants[1].id,
+            ),
+            Staff(
+                full_name="Casey Brooks",
+                email="casey.brooks@summithomes.dev",
+                role="agent",
+                tenant_id=tenants[2].id,
+            ),
         ]
-        for s in staff_list:
-            db.add(s)
+        db.add_all(staff_list)
         await db.commit()
+        for member in staff_list:
+            await db.refresh(member)
 
-        # Create Conversations (for analytics)
         conversations = [
-            Conversation(session_id="conv-001", meta_data={"tenant_id": 1, "user_id": "u1"}),
-            Conversation(session_id="conv-002", meta_data={"tenant_id": 1, "user_id": "u2"}),
-            Conversation(session_id="conv-003", meta_data={"tenant_id": 2, "user_id": "u1"}),
+            Conversation(session_id="conv-001", meta_data={"tenant_id": 1, "client_id": 1}),
+            Conversation(session_id="conv-002", meta_data={"tenant_id": 1, "listing_id": 1}),
+            Conversation(session_id="conv-003", meta_data={"tenant_id": 2, "client_id": 3}),
         ]
-        for c in conversations:
-            db.add(c)
+        db.add_all(conversations)
         await db.commit()
 
-        # Create Patients (linked to tenants)
-        patients = [
-            Patient(full_name="John Doe", email="john.doe@email.com", tenant_id=tenants[0].id),
-            Patient(full_name="Jane Smith", phone_number="123-456-7890", tenant_id=tenants[1].id),
-            Patient(full_name="Alice Johnson", email="alice.j@email.com", phone_number="555-0101", tenant_id=tenants[0].id),
-            Patient(full_name="Bob Williams", email="bob.w@email.com", tenant_id=tenants[0].id),
-            Patient(full_name="Carol Davis", phone_number="555-0102", tenant_id=tenants[1].id),
+        clients = [
+            Client(
+                full_name="Jane Smith",
+                email="jane.smith@email.com",
+                phone_number="555-0101",
+                client_type="buyer",
+                tenant_id=tenants[0].id,
+                preferences={"areas": ["Downtown", "Westside"], "budget_max": 500000, "beds_min": 3},
+            ),
+            Client(
+                full_name="Michael Torres",
+                email="m.torres@email.com",
+                phone_number="555-0102",
+                client_type="buyer",
+                tenant_id=tenants[0].id,
+                preferences={"areas": ["Suburbs"], "budget_max": 650000, "beds_min": 4},
+            ),
+            Client(
+                full_name="Emily Nguyen",
+                email="emily.nguyen@email.com",
+                phone_number="555-0103",
+                client_type="renter",
+                tenant_id=tenants[1].id,
+                preferences={"beds_min": 2, "pets": True},
+            ),
+            Client(
+                full_name="David Kim",
+                email="david.kim@email.com",
+                client_type="seller",
+                tenant_id=tenants[0].id,
+            ),
+            Client(
+                full_name="Sarah Patel",
+                email="sarah.patel@email.com",
+                phone_number="555-0104",
+                client_type="buyer",
+                tenant_id=tenants[2].id,
+            ),
         ]
-        for p in patients:
-            db.add(p)
+        db.add_all(clients)
         await db.commit()
+        for client in clients:
+            await db.refresh(client)
 
-        # Create Appointments (use naive UTC for TIMESTAMP WITHOUT TIME ZONE columns)
-        # Use naive UTC for PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+        properties = [
+            Property(
+                tenant_id=tenants[0].id,
+                address_line1="123 Oak Street",
+                city="Portland",
+                state="OR",
+                postal_code="97201",
+                property_type="single_family",
+                beds=3,
+                baths=2.0,
+                sqft=1850,
+                year_built=1998,
+            ),
+            Property(
+                tenant_id=tenants[0].id,
+                address_line1="456 Maple Avenue",
+                city="Portland",
+                state="OR",
+                postal_code="97209",
+                property_type="townhouse",
+                beds=4,
+                baths=2.5,
+                sqft=2100,
+                year_built=2015,
+            ),
+            Property(
+                tenant_id=tenants[1].id,
+                address_line1="789 River View #204",
+                city="Portland",
+                state="OR",
+                postal_code="97204",
+                property_type="condo",
+                beds=2,
+                baths=2.0,
+                sqft=1100,
+                year_built=2018,
+            ),
+            Property(
+                tenant_id=tenants[2].id,
+                address_line1="12 Summit Ridge Lane",
+                city="Beaverton",
+                state="OR",
+                postal_code="97005",
+                property_type="single_family",
+                beds=4,
+                baths=3.0,
+                sqft=2450,
+                year_built=2024,
+            ),
+        ]
+        db.add_all(properties)
+        await db.commit()
+        for prop in properties:
+            await db.refresh(prop)
+
         now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        appointments = [
-            Appointment(
-                start_time=now + datetime.timedelta(days=1),
-                end_time=now + datetime.timedelta(days=1, hours=1),
-                provider_name="Dr. Adams",
-                reason="Annual checkup",
+        listings = [
+            Listing(
+                tenant_id=tenants[0].id,
+                property_id=properties[0].id,
+                listing_type="sale",
+                status="active",
+                list_price=485000,
+                marketing_title="Charming 3BR Craftsman near parks",
+                marketing_description="Updated kitchen, fenced yard, walkable neighborhood.",
+                published_at=now - datetime.timedelta(days=14),
+            ),
+            Listing(
+                tenant_id=tenants[0].id,
+                property_id=properties[1].id,
+                listing_type="sale",
+                status="active",
+                list_price=625000,
+                marketing_title="Modern townhouse with garage",
+                marketing_description="Open floor plan, primary suite, low HOA.",
+                published_at=now - datetime.timedelta(days=7),
+            ),
+            Listing(
+                tenant_id=tenants[1].id,
+                property_id=properties[2].id,
+                listing_type="rent",
+                status="active",
+                rent_amount=2400,
+                marketing_title="2BR river-view condo",
+                marketing_description="Pet-friendly building with gym and rooftop deck.",
+                published_at=now - datetime.timedelta(days=3),
+            ),
+            Listing(
+                tenant_id=tenants[2].id,
+                property_id=properties[3].id,
+                listing_type="sale",
+                status="active",
+                list_price=789000,
+                marketing_title="New construction at Summit Ridge",
+                marketing_description="Model home now open — energy-efficient build with smart home package.",
+                published_at=now - datetime.timedelta(days=1),
+            ),
+        ]
+        db.add_all(listings)
+        await db.commit()
+        for listing in listings:
+            await db.refresh(listing)
+
+        db.add_all(
+            [
+                ListingMedia(
+                    listing_id=listings[0].id,
+                    media_type="photo",
+                    url="https://images.example.com/oak-street/front.jpg",
+                    caption="Front exterior",
+                    sort_order=0,
+                ),
+                ListingMedia(
+                    listing_id=listings[0].id,
+                    media_type="virtual_tour",
+                    url="https://tours.example.com/oak-street",
+                    caption="3D walkthrough",
+                    sort_order=1,
+                ),
+            ]
+        )
+
+        showings = [
+            Showing(
+                start_time=now + datetime.timedelta(days=1, hours=14),
+                end_time=now + datetime.timedelta(days=1, hours=14, minutes=30),
+                agent_name="Alex Rivera",
+                staff_id=staff_list[0].id,
+                notes="First-time buyer",
+                showing_type="private_tour",
                 status="confirmed",
                 tenant_id=tenants[0].id,
-                patient_id=patients[0].id,
+                client_id=clients[0].id,
+                listing_id=listings[0].id,
             ),
-            Appointment(
-                start_time=now + datetime.timedelta(days=2),
-                end_time=now + datetime.timedelta(days=2, hours=1),
-                provider_name="Dr. Bell",
-                reason="Follow-up",
+            Showing(
+                start_time=now + datetime.timedelta(days=2, hours=11),
+                end_time=now + datetime.timedelta(days=2, hours=11, minutes=30),
+                agent_name="Alex Rivera",
+                staff_id=staff_list[0].id,
+                notes="Second showing",
+                showing_type="private_tour",
+                status="confirmed",
+                tenant_id=tenants[0].id,
+                client_id=clients[1].id,
+                listing_id=listings[1].id,
+            ),
+            Showing(
+                start_time=now + datetime.timedelta(days=3, hours=16),
+                end_time=now + datetime.timedelta(days=3, hours=16, minutes=30),
+                agent_name="Morgan Chen",
+                staff_id=staff_list[4].id,
+                notes="Rental tour",
+                showing_type="private_tour",
                 status="confirmed",
                 tenant_id=tenants[1].id,
-                patient_id=patients[1].id,
+                client_id=clients[2].id,
+                listing_id=listings[2].id,
             ),
-            Appointment(
-                start_time=now + datetime.timedelta(days=3),
-                end_time=now + datetime.timedelta(days=3, hours=1),
-                provider_name="Dr. Chen",
-                reason="Lab review",
+            Showing(
+                start_time=now - datetime.timedelta(days=2),
+                end_time=now - datetime.timedelta(days=2) + datetime.timedelta(minutes=45),
+                agent_name="Casey Brooks",
+                staff_id=staff_list[6].id,
+                notes="Model home visit",
+                showing_type="open_house",
                 status="completed",
-                tenant_id=tenants[0].id,
-                patient_id=patients[0].id,
-            ),
-            Appointment(
-                start_time=now + datetime.timedelta(days=5),
-                end_time=now + datetime.timedelta(days=5, hours=1),
-                provider_name="Dr. Adams",
-                reason="General visit",
-                status="confirmed",
-                tenant_id=tenants[0].id,
-                patient_id=patients[2].id,
+                tenant_id=tenants[2].id,
+                client_id=clients[4].id,
+                listing_id=listings[3].id,
             ),
         ]
-        for a in appointments:
-            db.add(a)
+        db.add_all(showings)
         await db.commit()
 
-        # Create Patient Insurance
-        insurances = [
-            PatientInsurance(patient_id=patients[0].id, plan_name="In-Network PPO", payer="Aetna", copay="$25", status="active"),
-            PatientInsurance(patient_id=patients[1].id, plan_name="UnitedHealthcare", payer="UHC", member_id="UHC-12345", copay="$30", status="active"),
-            PatientInsurance(patient_id=patients[2].id, plan_name="Blue Cross PPO", payer="BCBS", copay="$20", status="active"),
-            PatientInsurance(patient_id=patients[3].id, plan_name="Medicare", payer="CMS", copay="$0", status="active"),
-        ]
-        for i in insurances:
-            db.add(i)
-        await db.commit()
+        db.add_all(
+            [
+                ClientFinancing(
+                    client_id=clients[0].id,
+                    program_name="Conventional 30-year fixed",
+                    lender="First National Bank",
+                    reference_id="FNB-2026-8842",
+                    deposit_amount="$12,000",
+                    approved_amount=450000,
+                    status="pre_approved",
+                ),
+                ClientFinancing(
+                    client_id=clients[0].id,
+                    program_name="Legacy active plan",
+                    lender="First National Bank",
+                    deposit_amount="$25",
+                    status="active",
+                ),
+                ClientFinancing(
+                    client_id=clients[1].id,
+                    program_name="Jumbo loan",
+                    lender="Pacific Mortgage",
+                    deposit_amount="$25,000",
+                    approved_amount=600000,
+                    status="pending",
+                ),
+            ]
+        )
 
-        # Create Prescriptions
-        prescriptions = [
-            Prescription(patient_id=patients[0].id, medication_name="Lisinopril 10mg", status="active"),
-            Prescription(patient_id=patients[0].id, medication_name="Metformin 500mg", status="active"),
-            Prescription(patient_id=patients[2].id, medication_name="Amlodipine 5mg", status="active"),
-        ]
-        for pr in prescriptions:
-            db.add(pr)
-        await db.commit()
+        db.add_all(
+            [
+                ServiceRequest(
+                    client_id=clients[2].id,
+                    category="maintenance",
+                    title="Kitchen faucet leak",
+                    description="Slow drip under sink in unit 204",
+                    status="open",
+                    requested_at=now - datetime.timedelta(hours=6),
+                    listing_id=listings[2].id,
+                ),
+                ServiceRequest(
+                    client_id=clients[0].id,
+                    category="application_follow_up",
+                    title="Home warranty renewal",
+                    description="Legacy execution-tool demo row",
+                    status="active",
+                ),
+            ]
+        )
 
-        # Create Availability Slots (next 7 days)
+        db.add_all(
+            [
+                Lead(
+                    tenant_id=tenants[0].id,
+                    client_id=clients[1].id,
+                    listing_id=listings[1].id,
+                    assigned_staff_id=staff_list[0].id,
+                    full_name="Michael Torres",
+                    email="m.torres@email.com",
+                    phone_number="555-0102",
+                    source="website",
+                    stage="showing_scheduled",
+                    segment="residential",
+                ),
+                Lead(
+                    tenant_id=tenants[0].id,
+                    listing_id=listings[0].id,
+                    assigned_staff_id=staff_list[0].id,
+                    full_name="Chris Anderson",
+                    email="chris.anderson@email.com",
+                    source="zillow",
+                    stage="new",
+                    segment="residential",
+                ),
+                Lead(
+                    tenant_id=tenants[1].id,
+                    client_id=clients[2].id,
+                    listing_id=listings[2].id,
+                    assigned_staff_id=staff_list[4].id,
+                    full_name="Emily Nguyen",
+                    email="emily.nguyen@email.com",
+                    source="apartments.com",
+                    stage="tour_scheduled",
+                    segment="pm",
+                ),
+            ]
+        )
+
+        db.add(
+            Application(
+                tenant_id=tenants[1].id,
+                client_id=clients[2].id,
+                listing_id=listings[2].id,
+                application_type="rental",
+                status="submitted",
+                submitted_at=now - datetime.timedelta(days=1),
+            )
+        )
+
+        offer = Offer(
+            tenant_id=tenants[0].id,
+            client_id=clients[0].id,
+            listing_id=listings[0].id,
+            amount=475000,
+            status="submitted",
+            contingencies={"inspection": "10 days", "financing": "21 days"},
+            submitted_at=now - datetime.timedelta(hours=12),
+        )
+        db.add(offer)
+        await db.commit()
+        await db.refresh(offer)
+
+        db.add(
+            Deal(
+                tenant_id=tenants[0].id,
+                client_id=clients[0].id,
+                listing_id=listings[0].id,
+                offer_id=offer.id,
+                status="under_contract",
+                milestone="inspection_scheduled",
+            )
+        )
+
+        db.add(
+            Document(
+                tenant_id=tenants[1].id,
+                client_id=clients[2].id,
+                listing_id=listings[2].id,
+                document_type="application",
+                title="Rental application packet",
+                status="uploaded",
+            )
+        )
+
         today = datetime.date.today()
-        providers = ["Dr. Adams", "Dr. Bell", "Dr. Chen"]
-        for d in range(7):
-            slot_date = today + datetime.timedelta(days=d)
-            for prov in providers:
-                for st, et in [("09:00", "09:30"), ("10:00", "10:30"), ("14:00", "14:30")]:
-                    db.add(AvailabilitySlot(
-                        slot_date=slot_date,
-                        start_time=st,
-                        end_time=et,
-                        provider_name=prov,
-                        tenant_id=tenants[0].id,
-                    ))
+        agents = ["Alex Rivera", "Jordan Lee", "Morgan Chen"]
+        for day_offset in range(7):
+            slot_date = today + datetime.timedelta(days=day_offset)
+            for agent in agents:
+                for start_time, end_time in [("09:00", "09:30"), ("10:00", "10:30"), ("14:00", "14:30")]:
+                    db.add(
+                        AvailabilitySlot(
+                            slot_date=slot_date,
+                            start_time=start_time,
+                            end_time=end_time,
+                            agent_name=agent,
+                            tenant_id=tenants[0].id,
+                        )
+                    )
         await db.commit()
 
-        # Create Knowledge Base Articles (patient-facing FAQ + admin)
         kb_articles = [
             KnowledgeBaseArticle(
-                title="Billing Inquiries",
-                content="For billing questions, please call 555-123-4567 or visit our patient portal. We accept most major insurance plans.",
+                title="Buyer Process Overview",
+                content="Learn the steps from pre-approval to closing. Your agent will guide showings, offers, and inspections.",
                 tenant_id=tenants[0].id,
             ),
             KnowledgeBaseArticle(
-                title="Operating Hours",
-                content="Our clinic is open Monday to Friday, 9am to 5pm. We are closed on weekends and public holidays.",
+                title="Scheduling a Showing",
+                content="Book a private tour through the client portal or ask the assistant for available times.",
+                tenant_id=tenants[0].id,
+            ),
+            KnowledgeBaseArticle(
+                title="Fair Housing Policy",
+                content="We do not discriminate based on race, color, religion, sex, disability, familial status, or national origin.",
+                tenant_id=tenants[0].id,
+            ),
+            KnowledgeBaseArticle(
+                title="Rental Application Checklist",
+                content="Bring photo ID, proof of income, and references. Application fee may apply.",
                 tenant_id=tenants[1].id,
             ),
             KnowledgeBaseArticle(
-                title="Appointment Scheduling",
-                content="Schedule appointments through our patient portal or by calling 555-987-6543. Same-day appointments may be available.",
-                tenant_id=tenants[0].id,
+                title="Pet Policy — River View",
+                content="Cats and dogs under 50 lbs welcome with deposit. Breed restrictions apply per building policy.",
+                tenant_id=tenants[1].id,
             ),
             KnowledgeBaseArticle(
-                title="Lab Results",
-                content="Lab results are typically available within 24-48 hours. You can view them in the patient portal under Results.",
-                tenant_id=tenants[0].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Prescription Refills",
-                content="Request prescription refills through the patient portal or by calling our pharmacy line at 555-321-7654. Allow 24 hours for processing.",
-                tenant_id=tenants[0].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Contact Your Provider",
-                content="Send a secure message to your provider anytime through the patient portal. Urgent matters should call our main line.",
-                tenant_id=tenants[0].id,
+                title="New Construction Incentives",
+                content="Summit Ridge Phase 2 includes closing cost credits for contracts signed before month end.",
+                tenant_id=tenants[2].id,
             ),
         ]
-        for kb in kb_articles:
-            db.add(kb)
-        await db.commit()
+        db.add_all(kb_articles)
 
-        # Create Audit Logs
         audit_logs = [
-            AuditLog(service="Auth Service", action="User Login", user="admin@aurixa.io", details="Successful admin login from 192.168.1.1", severity="info"),
-            AuditLog(service="API Gateway", action="Rate Limit Hit", user="tenant-key-03", details="Rate limit approached: 180 req/min on /api/v1/pipelines", severity="warning"),
-            AuditLog(service="Orchestration Engine", action="Pipeline Complete", user="system", details="Pipeline session conv-abc123 completed successfully", severity="info"),
-            AuditLog(service="Notification Hub", action="Service Degraded", user="system", details="High memory usage detected: 85% utilization", severity="error"),
-            AuditLog(service="Orchestration Engine", action="Deployment", user="deploy-bot", details="Successfully deployed v0.1.0 to production", severity="info"),
-            AuditLog(service="Auth Service", action="API Key Created", user="admin@generalhospital.com", details="New API key issued for General Hospital (prod-key-06)", severity="info"),
-            AuditLog(service="RAG Service", action="Threshold Alert", user="system", details="Retrieval latency p95 exceeded 500ms", severity="warning"),
-            AuditLog(service="LLM Router", action="Provider Fallback", user="system", details="OpenAI timeout, fell back to Anthropic", severity="warning"),
-            AuditLog(service="API Gateway", action="Config Update", user="admin@aurixa.io", details="Updated CORS policy for tenant Downtown Clinic", severity="info"),
-            AuditLog(service="Safety Guardrails", action="Content Filter", user="system", details="Blocked inappropriate content in pipeline session xyz789", severity="info"),
+            AuditLog(
+                service="API Gateway",
+                action="client.view",
+                user="alex.rivera@harborrealty.com",
+                details="Viewed client profile Jane Smith (id=1)",
+                severity="info",
+            ),
+            AuditLog(
+                service="Execution Engine",
+                action="showing.create",
+                user="system",
+                details="Created showing for client 1 at listing 1",
+                severity="info",
+            ),
+            AuditLog(
+                service="Safety Guardrails",
+                action="fair_housing.flag",
+                user="system",
+                details="Sanitized steering language in session conv-002",
+                severity="warning",
+            ),
+            AuditLog(
+                service="Orchestration Engine",
+                action="Pipeline Complete",
+                user="system",
+                details="Pipeline session conv-001 completed successfully",
+                severity="info",
+            ),
+            AuditLog(
+                service="RAG Service",
+                action="Knowledge Retrieved",
+                user="system",
+                details="Retrieved Fair Housing Policy for tenant 1",
+                severity="info",
+            ),
         ]
-        for log in audit_logs:
-            db.add(log)
-        await db.commit()
+        db.add_all(audit_logs)
 
-        # Create Platform Config (for Configuration page)
         config_entries = [
             PlatformConfig(key="rate_limit_per_minute", value="200", category="rate_limit"),
             PlatformConfig(key="max_conversations_per_tenant", value="10000", category="rate_limit"),
             PlatformConfig(key="feature_rag_enabled", value="true", category="feature"),
             PlatformConfig(key="feature_voice_enabled", value="true", category="feature"),
             PlatformConfig(key="feature_safety_guardrails", value="true", category="feature"),
-            PlatformConfig(key="api_gateway_timeout_ms", value="30000", category="api"),
+            PlatformConfig(key="domain", value="real_estate", category="general"),
             PlatformConfig(key="default_llm_provider", value="openai", category="api"),
             PlatformConfig(key="environment", value="development", category="general"),
-            PlatformConfig(key="maintenance_mode", value="false", category="general"),
         ]
-        for c in config_entries:
-            db.add(c)
+        db.add_all(config_entries)
         await db.commit()
 
-        logger.info("Database seeding complete.")
+        logger.info("Real estate database seeding complete.")
 
 
-async def main():
+async def main() -> None:
     try:
         await seed_database()
     finally:
