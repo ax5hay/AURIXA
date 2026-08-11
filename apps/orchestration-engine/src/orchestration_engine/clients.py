@@ -65,16 +65,16 @@ async def call_rag_service(prompt: str, intent: dict) -> dict:
         raise
 
 
-async def call_agent_runtime(prompt: str, patient_id: int | None = None) -> dict:
-    """Call the Agent Runtime for tool-using tasks (appointments, scheduling, knowledge search)."""
+async def call_agent_runtime(prompt: str, client_id: int | None = None) -> dict:
+    """Call the Agent Runtime for tool-using tasks (showings, listings, knowledge search)."""
     if not AGENT_RUNTIME_URL:
         logger.warning("AGENT_RUNTIME_URL not set, skipping call.")
         return {"mock": "agent_runtime_response", "output": None}
 
     try:
         task_dict: dict = {"prompt": prompt}
-        if patient_id is not None:
-            task_dict["metadata"] = {"patient_id": patient_id}
+        if client_id is not None:
+            task_dict["metadata"] = {"client_id": client_id, "patient_id": client_id}
         response = await _request_with_retry(
             "POST", f"{AGENT_RUNTIME_URL}/api/v1/run", json={"task": task_dict}, timeout=30.0
         )
@@ -149,8 +149,9 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
     try:
         formatted_context = _format_rag_context(context)
         system_content = (
-            "You are a helpful healthcare assistant for AURIXA. "
-            "Use the provided knowledge base context to answer the user's question accurately. "
+            "You are a helpful real estate assistant for AURIXA. "
+            "Use the provided knowledge base context to answer accurately. "
+            "Do not give legal or tax advice. Use fair-housing neutral language. "
             "If the context does not contain relevant information, say so politely."
         )
         user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"

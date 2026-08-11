@@ -450,11 +450,20 @@ flowchart TD
 - [x] `seed.py` replaced with brokerage, PM, and developer demo data  
 - [x] Backward-compat aliases (`Patient`, `Appointment`, etc.) for Phase 2 transition  
 
-**Next phase:** Phase 2 — rename API routes and execution tools in gateway / orchestration / execution-engine.
+**Next phase:** Phase 3 — LLM intents, RAG content, safety guardrails for real estate.
+
+### Phase 2 status
+
+- [x] Gateway admin routes: `/clients`, `/showings`, `/listings`, `/properties`, `/leads` + legacy aliases
+- [x] Orchestration `admin_api.py` with full RE CRUD and legacy `/patients`, `/appointments`
+- [x] Execution engine tools: `get_showings`, `create_showing`, `get_listings`, `get_client_financing`, etc.
+- [x] Agent runtime keyword → RE tool mapping
+- [x] Pipeline `client_id` metadata (+ legacy `patient_id`)
+- [x] Real estate system prompt in orchestration LLM client
 
 ---
 
-## 17. Document index
+## 18. Document index
 
 | Document | Purpose |
 | --- | --- |

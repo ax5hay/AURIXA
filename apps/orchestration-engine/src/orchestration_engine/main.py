@@ -47,13 +47,16 @@ def _set_cached(key: str, text: str) -> None:
         _response_cache.pop(oldest_key, None)
     _response_cache[key] = (text, now)
 
-# Prompt phrases that suggest agent tool use (appointments, scheduling, knowledge search, etc.)
+# Prompt phrases that suggest agent tool use (showings, listings, knowledge, etc.)
 AGENT_WORTHY_PHRASES = [
-    "appointment", "schedule", "book", "reschedule", "cancel appointment",
-    "callback", "schedule a call", "get appointment", "my appointments",
-    "weather", "search", "knowledge", "refill", "prescription refill",
+    "showing", "tour", "viewing", "schedule", "book", "reschedule", "cancel",
+    "appointment", "listing", "property", "available", "open house",
+    "callback", "schedule a call", "get showing", "my showings",
+    "search", "knowledge", "maintenance", "financing", "pre-approval",
+    "refill", "prescription", "insurance",
 ]
 from .models import PipelineRequest, ConversationState, PipelineStep as PydanticPipelineStep
+from .admin_api import router as admin_router
 
 async def _ensure_db_tables():
     """Create tables with retry when Postgres may still be starting."""
@@ -91,6 +94,7 @@ app = FastAPI(
     lifespan=lifespan,
     description="Service for orchestrating complex conversational AI pipelines.",
 )
+app.include_router(admin_router)
 
 
 def _is_agent_worthy(prompt: str) -> bool:
@@ -305,331 +309,6 @@ async def list_audit(db: AsyncSession = Depends(get_db_session), limit: int = 50
     ]
 
 
-@app.get("/api/v1/patients", summary="List patients (optionally by tenant)")
-async def list_patients(
-    db: AsyncSession = Depends(get_db_session),
-    tenant_id: int | None = None,
-):
-    q = select(db_models.Patient)
-    if tenant_id:
-        q = q.where(db_models.Patient.tenant_id == tenant_id)
-    result = await db.execute(q.order_by(db_models.Patient.id))
-    patients = result.scalars().all()
-    return [
-        {
-            "id": p.id,
-            "fullName": p.full_name,
-            "email": p.email,
-            "phoneNumber": p.phone_number,
-        }
-        for p in patients
-    ]
-
-
-class PatientCreateIn(BaseModel):
-    full_name: str
-    email: str | None = None
-    phone_number: str | None = None
-    tenant_id: int = 1
-
-
-@app.post("/api/v1/patients", summary="Create a patient")
-async def create_patient(data: PatientCreateIn, db: AsyncSession = Depends(get_db_session)):
-    p = db_models.Patient(
-        full_name=data.full_name,
-        email=data.email,
-        phone_number=data.phone_number,
-        tenant_id=data.tenant_id,
-    )
-    db.add(p)
-    await db.commit()
-    await db.refresh(p)
-    audit = db_models.AuditLog(
-        service="Orchestration Engine",
-        action="Patient Created",
-        user="admin",
-        details=f"Created patient '{p.full_name}' (id={p.id}, tenant_id={p.tenant_id})",
-        severity="info",
-    )
-    db.add(audit)
-    await db.commit()
-    return {"id": p.id, "fullName": p.full_name, "email": p.email, "phoneNumber": p.phone_number}
-
-
-@app.get("/api/v1/patients/{patient_id}", summary="Get a single patient by ID")
-async def get_patient(
-    patient_id: int,
-    db: AsyncSession = Depends(get_db_session),
-):
-    result = await db.execute(
-        select(db_models.Patient).where(db_models.Patient.id == patient_id)
-    )
-    p = result.scalar_one_or_none()
-    if not p:
-        raise HTTPException(status_code=404, detail="Patient not found")
-    return {
-        "id": p.id,
-        "fullName": p.full_name,
-        "email": p.email or "",
-        "phoneNumber": p.phone_number or "",
-        "tenantId": p.tenant_id,
-    }
-
-
-@app.get("/api/v1/patients/{patient_id}/conversations", summary="List conversations (calls/chat) for a patient")
-async def list_patient_conversations(
-    patient_id: int,
-    db: AsyncSession = Depends(get_db_session),
-    limit: int = 20,
-):
-    """Return recent conversations where meta_data contains patient_id (voice calls, portal chat)."""
-    stmt = (
-        select(db_models.Conversation)
-        .where(text("(meta_data->>'patient_id')::int = :pid").bindparams(pid=patient_id))
-        .order_by(db_models.Conversation.created_at.desc())
-        .limit(limit)
-    )
-    result = await db.execute(stmt)
-    convos = result.scalars().all()
-    out = []
-    for c in convos:
-        steps = await db.execute(
-            select(db_models.PipelineStep)
-            .where(db_models.PipelineStep.conversation_id == c.id)
-            .order_by(db_models.PipelineStep.start_time.asc())
-        )
-        steps_list = steps.scalars().all()
-        prompt_step = next((s for s in steps_list if s.step_name == "classify_intent"), None)
-        gen_step = next((s for s in steps_list if s.step_name == "generate_response"), None)
-        prompt = (prompt_step.input or {}).get("prompt", "") if prompt_step else ""
-        response = ""
-        if gen_step and gen_step.output:
-            response = (gen_step.output or {}).get("content", "")
-        out.append({
-            "id": c.id,
-            "sessionId": c.session_id,
-            "prompt": prompt[:200],
-            "response": response[:500] if response else "",
-            "createdAt": c.created_at.isoformat() if c.created_at else None,
-        })
-    return out
-
-
-@app.get("/api/v1/appointments", summary="List appointments (staff view, filterable by tenant/date)")
-async def list_appointments(
-    db: AsyncSession = Depends(get_db_session),
-    tenant_id: int | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    limit: int = 100,
-):
-    """List appointments for hospital staff. Optional filters: tenant_id, date_from (YYYY-MM-DD), date_to."""
-    q = select(db_models.Appointment).order_by(db_models.Appointment.start_time.desc())
-    if tenant_id:
-        q = q.where(db_models.Appointment.tenant_id == tenant_id)
-    if date_from:
-        try:
-            dt = datetime.datetime.strptime(date_from[:10], "%Y-%m-%d")
-            q = q.where(db_models.Appointment.start_time >= dt)
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            dt = datetime.datetime.strptime(date_to[:10], "%Y-%m-%d")
-            dt = dt.replace(hour=23, minute=59, second=59)
-            q = q.where(db_models.Appointment.start_time <= dt)
-        except ValueError:
-            pass
-    result = await db.execute(q.limit(limit))
-    appointments = result.scalars().all()
-    return [
-        {
-            "id": a.id,
-            "startTime": a.start_time.isoformat() if a.start_time else None,
-            "endTime": a.end_time.isoformat() if a.end_time else None,
-            "providerName": a.provider_name,
-            "status": a.status,
-            "patientId": a.patient_id,
-            "tenantId": a.tenant_id,
-        }
-        for a in appointments
-    ]
-
-
-@app.get("/api/v1/staff", summary="List hospital staff (optionally by tenant/role)")
-async def list_staff(
-    db: AsyncSession = Depends(get_db_session),
-    tenant_id: int | None = None,
-    role: str | None = None,
-):
-    """List staff for hospital portal. Optional filters: tenant_id, role."""
-    q = select(db_models.Staff).where(db_models.Staff.is_active == True)
-    if tenant_id:
-        q = q.where(db_models.Staff.tenant_id == tenant_id)
-    if role:
-        q = q.where(db_models.Staff.role == role)
-    result = await db.execute(q.order_by(db_models.Staff.id))
-    staff = result.scalars().all()
-    return [
-        {
-            "id": s.id,
-            "fullName": s.full_name,
-            "email": s.email or "",
-            "role": s.role,
-            "tenantId": s.tenant_id,
-        }
-        for s in staff
-    ]
-
-
-class CreateApptIn(BaseModel):
-    patient_id: int
-    tenant_id: int | None = None
-    provider_name: str = "Dr. Adams"
-    reason: str = "General visit"
-    date: str | None = None
-    start_time: str = "09:00"
-
-
-@app.post("/api/v1/appointments", summary="Create an appointment (staff booking)")
-async def create_appointment(data: CreateApptIn, db: AsyncSession = Depends(get_db_session)):
-    """Create appointment via DB write."""
-    pt = await db.get(db_models.Patient, data.patient_id)
-    if not pt:
-        raise HTTPException(status_code=404, detail="Patient not found")
-    tenant_id = data.tenant_id or pt.tenant_id or 1
-    dt = datetime.date.today() + datetime.timedelta(days=1)
-    if data.date:
-        try:
-            dt = datetime.datetime.strptime(str(data.date)[:10], "%Y-%m-%d").date()
-        except ValueError:
-            pass
-    hour, minute = 9, 0
-    try:
-        parts = str(data.start_time).replace(":", " ").split()[:2]
-        hour, minute = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
-    except Exception:
-        pass
-    start_dt = datetime.datetime(dt.year, dt.month, dt.day, hour, minute, 0)
-    end_dt = start_dt + datetime.timedelta(minutes=30)
-    appointment = db_models.Appointment(
-        start_time=start_dt,
-        end_time=end_dt,
-        provider_name=data.provider_name,
-        reason=data.reason,
-        status="confirmed",
-        tenant_id=tenant_id,
-        patient_id=data.patient_id,
-    )
-    db.add(appointment)
-    await db.commit()
-    await db.refresh(appointment)
-    audit = db_models.AuditLog(
-        service="Orchestration Engine",
-        action="Appointment Created",
-        user="staff",
-        details=f"Created appointment APT-{appointment.id} for patient {data.patient_id}: {data.reason} with {data.provider_name}",
-        severity="info",
-    )
-    db.add(audit)
-    await db.commit()
-    return {
-        "id": appointment.id,
-        "startTime": start_dt.isoformat(),
-        "endTime": end_dt.isoformat(),
-        "providerName": data.provider_name,
-        "status": "confirmed",
-        "patientId": data.patient_id,
-        "tenantId": tenant_id,
-    }
-
-
-ALLOWED_APPOINTMENT_STATUSES = {
-    "confirmed",
-    "checked_in",
-    "in_room",
-    "completed",
-    "cancelled",
-}
-
-
-class AppointmentUpdateIn(BaseModel):
-    status: str  # confirmed, checked_in, in_room, completed, cancelled
-
-
-@app.patch("/api/v1/appointments/{appointment_id}", summary="Update appointment status")
-async def update_appointment(appointment_id: int, data: AppointmentUpdateIn, db: AsyncSession = Depends(get_db_session)):
-    """Update appointment status (e.g. check-in, complete, cancel)."""
-    status = (data.status or "").strip().lower()
-    if status not in ALLOWED_APPOINTMENT_STATUSES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported appointment status. Allowed: {', '.join(sorted(ALLOWED_APPOINTMENT_STATUSES))}",
-        )
-    result = await db.execute(select(db_models.Appointment).where(db_models.Appointment.id == appointment_id))
-    apt = result.scalar_one_or_none()
-    if not apt:
-        raise HTTPException(status_code=404, detail="Appointment not found")
-    apt.status = status
-    await db.commit()
-    await db.refresh(apt)
-    audit = db_models.AuditLog(
-        service="Orchestration Engine",
-        action="Appointment Updated",
-        user="staff",
-        details=f"Updated appointment {appointment_id} status to {data.status}",
-        severity="info",
-    )
-    db.add(audit)
-    await db.commit()
-    return {
-        "id": apt.id,
-        "status": apt.status,
-    }
-
-
-@app.get("/api/v1/patients/{patient_id}/appointments", summary="List appointments for a patient")
-async def list_patient_appointments(
-    patient_id: int,
-    db: AsyncSession = Depends(get_db_session),
-):
-    result = await db.execute(
-        select(db_models.Appointment)
-        .where(db_models.Appointment.patient_id == patient_id)
-        .order_by(db_models.Appointment.start_time.desc())
-    )
-    appointments = result.scalars().all()
-    return [
-        {
-            "id": a.id,
-            "startTime": a.start_time.isoformat() if a.start_time else None,
-            "endTime": a.end_time.isoformat() if a.end_time else None,
-            "providerName": a.provider_name,
-            "status": a.status,
-        }
-        for a in appointments
-    ]
-
-
-@app.get("/api/v1/analytics/summary", summary="DB-backed analytics summary")
-async def get_analytics_summary(db: AsyncSession = Depends(get_db_session)):
-    """Aggregate counts from DB for dashboards."""
-    conv = await db.execute(select(func.count(db_models.Conversation.id)))
-    tenants = await db.execute(select(func.count(db_models.Tenant.id)))
-    audit = await db.execute(select(func.count(db_models.AuditLog.id)))
-    kb = await db.execute(select(func.count(db_models.KnowledgeBaseArticle.id)))
-    patients = await db.execute(select(func.count(db_models.Patient.id)))
-    appointments = await db.execute(select(func.count(db_models.Appointment.id)))
-    return {
-        "conversations_total": conv.scalar() or 0,
-        "tenants_count": tenants.scalar() or 0,
-        "audit_entries_count": audit.scalar() or 0,
-        "knowledge_articles_count": kb.scalar() or 0,
-        "patients_count": patients.scalar() or 0,
-        "appointments_count": appointments.scalar() or 0,
-    }
-
-
 @app.get("/api/v1/config/summary", summary="Platform configuration summary")
 async def get_config_summary(db: AsyncSession = Depends(get_db_session)):
     """Platform config for Configuration page."""
@@ -760,7 +439,7 @@ async def run_pipeline(
             # Still persist conversation with minimal steps
             conversation = db_models.Conversation(
                 session_id=request.session_id,
-                meta_data={"user_id": request.user_id, "tenant_id": request.tenant_id, "patient_id": request.patient_id},
+                meta_data={"user_id": request.user_id, "tenant_id": request.tenant_id, "client_id": request.client_id or request.patient_id, "patient_id": request.client_id or request.patient_id},
             )
             db.add(conversation)
             await db.commit()
@@ -775,8 +454,10 @@ async def run_pipeline(
 
     # Create a new conversation record in the database
     meta = {"user_id": request.user_id, "tenant_id": request.tenant_id}
-    if request.patient_id is not None:
-        meta["patient_id"] = request.patient_id
+    client_id = request.client_id if request.client_id is not None else request.patient_id
+    if client_id is not None:
+        meta["client_id"] = client_id
+        meta["patient_id"] = client_id  # legacy voice/portal BFF
     conversation = db_models.Conversation(
         session_id=request.session_id,
         meta_data=meta
@@ -796,8 +477,8 @@ async def run_pipeline(
         generated_text = ""
         if _is_agent_worthy(request.prompt):
             agent_result, _ = await execute_step(
-                db, conversation, "agent_execution", {"prompt": request.prompt, "patient_id": request.patient_id},
-                clients.call_agent_runtime(request.prompt, request.patient_id)
+                db, conversation, "agent_execution", {"prompt": request.prompt, "client_id": client_id, "patient_id": client_id},
+                clients.call_agent_runtime(request.prompt, client_id)
             )
             agent_output = agent_result.get("output")
             if agent_output:
@@ -895,7 +576,7 @@ async def run_pipeline_stream(request: PipelineRequest):
 
             if _is_agent_worthy(request.prompt):
                 yield _ndjson_line({"event": "status", "message": "Running agent..."})
-                agent_result = await clients.call_agent_runtime(request.prompt, request.patient_id)
+                agent_result = await clients.call_agent_runtime(request.prompt, request.client_id or request.patient_id)
                 generated_text = (agent_result.get("output") or "").strip()
             else:
                 yield _ndjson_line({"event": "status", "message": "Searching knowledge base..."})

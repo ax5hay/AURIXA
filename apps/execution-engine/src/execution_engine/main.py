@@ -1,83 +1,90 @@
-"""AURIXA Execution Engine - real DB-backed actions for EHR/appointment workflows."""
+"""AURIXA Execution Engine - real DB-backed real estate actions."""
 
 import datetime
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Depends
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurixa_db import get_db_session
 from aurixa_db.models import (
-    Patient, Appointment, PatientInsurance, Prescription, AvailabilitySlot, AuditLog,
+    AuditLog,
+    AvailabilitySlot,
+    Client,
+    ClientFinancing,
+    Deal,
+    Lead,
+    Listing,
+    Property,
+    ServiceRequest,
+    Showing,
 )
 from .models import ExecutionRequest, ExecutionResponse
 
-# --- Sync actions (no DB) ---
+
+def _resolve_client_id(params: dict) -> int | None:
+    raw = params.get("client_id", params.get("patient_id"))
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except (ValueError, TypeError):
+        return None
+
+
 def _send_email(params: dict) -> str:
     recipient = params.get("recipient", "unknown")
     subject = params.get("subject", "")
     return f"Email queued to {recipient} with subject '{subject}'."
 
+
 def _schedule_reminder(params: dict) -> str:
-    patient_id = params.get("patient_id", "unknown")
-    return f"Reminder scheduled for patient {patient_id}."
+    cid = params.get("client_id", params.get("patient_id", "unknown"))
+    return f"Reminder scheduled for client {cid}."
 
 
-
-# --- DB-backed actions ---
-async def _get_appointments(db: AsyncSession, params: dict) -> str:
-    """List upcoming appointments for a patient."""
-    pid = params.get("patient_id")
-    if pid is None:
-        return "Patient ID required."
-    try:
-        pid = int(pid)
-    except (ValueError, TypeError):
-        return f"Invalid patient ID: {pid}"
-
+async def _get_showings(db: AsyncSession, params: dict) -> str:
+    cid = _resolve_client_id(params)
+    if cid is None:
+        return "Client ID required."
     result = await db.execute(
-        select(Appointment)
-        .where(Appointment.patient_id == pid, Appointment.status != "cancelled")
-        .order_by(Appointment.start_time.asc())
+        select(Showing)
+        .where(Showing.client_id == cid, Showing.status != "cancelled")
+        .order_by(Showing.start_time.asc())
         .limit(10)
     )
-    appointments = result.scalars().all()
-    if not appointments:
-        return "No upcoming appointments found."
+    showings = result.scalars().all()
+    if not showings:
+        return "No upcoming showings found."
     lines = []
-    for a in appointments:
-        dt = a.start_time.strftime("%a %b %d, %Y at %I:%M %p") if a.start_time else "TBD"
-        lines.append(f"- {dt}: {a.provider_name} ({a.reason or 'Visit'}) [{a.status}]")
-    return "Upcoming appointments:\n" + "\n".join(lines)
+    for s in showings:
+        dt = s.start_time.strftime("%a %b %d, %Y at %I:%M %p") if s.start_time else "TBD"
+        lines.append(f"- {dt}: {s.agent_name} ({s.notes or 'Showing'}) [{s.status}]")
+    return "Upcoming showings:\n" + "\n".join(lines)
 
 
-async def _create_appointment(db: AsyncSession, params: dict) -> str:
-    """Create a new appointment from an availability slot or default slot."""
-    pid = params.get("patient_id")
-    reason = params.get("reason", "General visit")
+async def _create_showing(db: AsyncSession, params: dict) -> str:
+    cid = _resolve_client_id(params)
+    notes = params.get("notes") or params.get("reason", "Property showing")
     slot_date = params.get("date") or params.get("slot_date")
     start_time = params.get("start_time", "09:00")
-    provider_name = params.get("provider_name", "Dr. Adams")
+    agent_name = params.get("agent_name") or params.get("provider_name", "Alex Rivera")
     tenant_id = params.get("tenant_id")
+    listing_id = params.get("listing_id")
 
-    if not pid:
-        return "Patient ID required."
-    try:
-        pid = int(pid)
-    except (ValueError, TypeError):
-        return "Invalid patient ID."
+    if cid is None:
+        return "Client ID required."
 
-    # Derive tenant_id from patient if not provided
     if tenant_id is None:
-        pt = await db.get(Patient, pid)
-        tenant_id = pt.tenant_id if pt else 1
+        client = await db.get(Client, cid)
+        tenant_id = client.tenant_id if client else 1
     try:
         tenant_id = int(tenant_id)
     except (ValueError, TypeError):
         tenant_id = 1
 
-    # Resolve date
     if slot_date:
         if isinstance(slot_date, str) and slot_date.lower() == "tomorrow":
             dt = datetime.date.today() + datetime.timedelta(days=1)
@@ -89,7 +96,6 @@ async def _create_appointment(db: AsyncSession, params: dict) -> str:
     else:
         dt = datetime.date.today() + datetime.timedelta(days=1)
 
-    # Build start/end datetime
     try:
         hour, minute = map(int, str(start_time).replace(":", " ").split()[:2])
     except Exception:
@@ -97,100 +103,107 @@ async def _create_appointment(db: AsyncSession, params: dict) -> str:
     start_dt = datetime.datetime(dt.year, dt.month, dt.day, hour, minute, 0)
     end_dt = start_dt + datetime.timedelta(minutes=30)
 
-    appointment = Appointment(
+    showing = Showing(
         start_time=start_dt,
         end_time=end_dt,
-        provider_name=provider_name,
-        reason=reason,
+        agent_name=agent_name,
+        notes=notes,
         status="confirmed",
         tenant_id=tenant_id,
-        patient_id=pid,
+        client_id=cid,
+        listing_id=int(listing_id) if listing_id else None,
     )
-    db.add(appointment)
+    db.add(showing)
     await db.commit()
-    await db.refresh(appointment)
-    audit = AuditLog(
-        service="Execution Engine",
-        action="Appointment Created",
-        user="system",
-        details=f"Created appointment APT-{appointment.id} for patient {pid}: {reason} with {provider_name}",
-        severity="info",
-    )
-    db.add(audit)
-    await db.commit()
-    return f"Appointment created for {reason}. Confirmation: APT-{appointment.id}. {start_dt.strftime('%a %b %d at %I:%M %p')} with {provider_name}."
-
-
-async def _check_insurance(db: AsyncSession, params: dict) -> str:
-    """Verify insurance coverage for a patient."""
-    pid = params.get("patient_id")
-    if pid is None:
-        return "Patient ID required."
-    try:
-        pid = int(pid)
-    except (ValueError, TypeError):
-        return f"Invalid patient ID: {pid}"
-
-    result = await db.execute(
-        select(PatientInsurance).where(
-            PatientInsurance.patient_id == pid,
-            PatientInsurance.status == "active",
+    await db.refresh(showing)
+    db.add(
+        AuditLog(
+            service="Execution Engine",
+            action="showing.create",
+            user="system",
+            details=f"Created showing {showing.id} for client {cid}",
+            severity="info",
         )
     )
-    ins = result.scalar_one_or_none()
-    if not ins:
-        return f"No active insurance on file for patient {pid}. Please update insurance information."
-    return f"Insurance verified. Plan: {ins.plan_name}. Payer: {ins.payer or 'N/A'}. Copay: {ins.copay}."
+    await db.commit()
+    return (
+        f"Showing created for {notes}. Confirmation: SHW-{showing.id}. "
+        f"{start_dt.strftime('%a %b %d at %I:%M %p')} with {agent_name}."
+    )
 
 
-async def _request_prescription_refill(db: AsyncSession, params: dict) -> str:
-    """Request a prescription refill."""
-    pid = params.get("patient_id")
-    medication = params.get("medication_name") or params.get("medication_id") or "prescription"
-
-    if not pid:
-        return "Patient ID required."
-    try:
-        pid = int(pid)
-    except (ValueError, TypeError):
-        return f"Invalid patient ID: {pid}"
-
+async def _get_client_financing(db: AsyncSession, params: dict) -> str:
+    cid = _resolve_client_id(params)
+    if cid is None:
+        return "Client ID required."
     result = await db.execute(
-        select(Prescription).where(
-            Prescription.patient_id == pid,
-            Prescription.status == "active",
+        select(ClientFinancing).where(
+            ClientFinancing.client_id == cid,
+            or_(ClientFinancing.status == "active", ClientFinancing.status == "pre_approved"),
         )
     )
-    scripts = result.scalars().all()
-    if not scripts:
-        return f"No active prescriptions found for patient {pid}."
-    # Match by medication name if provided
+    fin = result.scalar_one_or_none()
+    if not fin:
+        return f"No active financing on file for client {cid}."
+    return (
+        f"Financing verified. Program: {fin.program_name}. "
+        f"Lender: {fin.lender or 'N/A'}. Deposit: {fin.deposit_amount or 'N/A'}."
+    )
+
+
+async def _create_service_request(db: AsyncSession, params: dict) -> str:
+    cid = _resolve_client_id(params)
+    title = params.get("title") or params.get("medication_name") or "Service request"
+    category = params.get("category", "maintenance")
+
+    if cid is None:
+        return "Client ID required."
+
+    result = await db.execute(
+        select(ServiceRequest).where(
+            ServiceRequest.client_id == cid,
+            or_(ServiceRequest.status == "active", ServiceRequest.status == "open"),
+        )
+    )
+    existing = result.scalars().all()
     target = None
-    for s in scripts:
-        if medication.lower() in (s.medication_name or "").lower():
-            target = s
+    for item in existing:
+        if title.lower() in (item.title or "").lower():
+            target = item
             break
-    if not target:
-        target = scripts[0]
-        medication = target.medication_name
+    if not target and existing:
+        target = existing[0]
+        title = target.title
 
-    target.status = "refill_requested"
-    target.refill_requested_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-    await db.commit()
-    audit = AuditLog(
-        service="Execution Engine",
-        action="Prescription Refill Requested",
-        user="system",
-        details=f"Patient {pid} requested refill for {medication}",
-        severity="info",
+    if target:
+        target.status = "in_progress"
+        target.requested_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        await db.commit()
+    else:
+        target = ServiceRequest(
+            client_id=cid,
+            category=category,
+            title=title,
+            status="open",
+            requested_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+        )
+        db.add(target)
+        await db.commit()
+
+    db.add(
+        AuditLog(
+            service="Execution Engine",
+            action="service_request.create",
+            user="system",
+            details=f"Client {cid} submitted request: {title}",
+            severity="info",
+        )
     )
-    db.add(audit)
     await db.commit()
-    return f"Refill request submitted for {medication}. Allow 24-48 hours for processing."
+    return f"Service request submitted for {title}. Our team will follow up shortly."
 
 
 async def _get_availability(db: AsyncSession, params: dict) -> str:
-    """Get available appointment slots."""
     date_str = params.get("date", "tomorrow")
     tenant_id = params.get("tenant_id", 1)
     try:
@@ -208,69 +221,181 @@ async def _get_availability(db: AsyncSession, params: dict) -> str:
 
     result = await db.execute(
         select(AvailabilitySlot)
-        .where(
-            AvailabilitySlot.slot_date == dt,
-            AvailabilitySlot.tenant_id == tenant_id,
-        )
+        .where(AvailabilitySlot.slot_date == dt, AvailabilitySlot.tenant_id == tenant_id)
         .order_by(AvailabilitySlot.start_time)
         .limit(15)
     )
     slots = result.scalars().all()
     if not slots:
-        # Fallback: generate mock slots
-        return f"Available slots for {dt}: 9:00 AM, 10:00 AM, 10:30 AM, 2:00 PM, 2:30 PM. (Contact front desk for exact availability.)"
+        return (
+            f"Available slots for {dt}: 9:00 AM, 10:00 AM, 2:00 PM. "
+            "(Contact the office for exact agent availability.)"
+        )
     lines = []
     seen = set()
-    for s in slots:
-        key = (s.start_time, s.provider_name)
+    for slot in slots:
+        key = (slot.start_time, slot.agent_name)
         if key not in seen:
             seen.add(key)
-            lines.append(f"- {s.start_time} with {s.provider_name}")
+            lines.append(f"- {slot.start_time} with {slot.agent_name}")
     return f"Available slots for {dt}:\n" + "\n".join(lines[:10])
 
 
+async def _get_listings(db: AsyncSession, params: dict) -> str:
+    tenant_id = params.get("tenant_id", 1)
+    status = params.get("status", "active")
+    try:
+        tenant_id = int(tenant_id)
+    except (ValueError, TypeError):
+        tenant_id = 1
+
+    query = (
+        select(Listing, Property)
+        .join(Property, Listing.property_id == Property.id)
+        .where(Listing.tenant_id == tenant_id)
+    )
+    if status:
+        query = query.where(Listing.status == status)
+    result = await db.execute(query.order_by(Listing.id).limit(8))
+    rows = result.all()
+    if not rows:
+        return "No listings found matching your criteria."
+    lines = []
+    for listing, prop in rows:
+        price = listing.list_price or listing.rent_amount or "N/A"
+        lines.append(
+            f"- {listing.marketing_title or prop.address_line1}: "
+            f"${price:,} — {prop.beds or '?'} bed / {prop.city}"
+        )
+    return "Available listings:\n" + "\n".join(lines)
+
+
+async def _get_listing_detail(db: AsyncSession, params: dict) -> str:
+    listing_id = params.get("listing_id")
+    if not listing_id:
+        return "Listing ID required."
+    try:
+        listing_id = int(listing_id)
+    except (ValueError, TypeError):
+        return f"Invalid listing ID: {listing_id}"
+
+    result = await db.execute(
+        select(Listing, Property)
+        .join(Property, Listing.property_id == Property.id)
+        .where(Listing.id == listing_id)
+    )
+    row = result.one_or_none()
+    if not row:
+        return f"Listing {listing_id} not found."
+    listing, prop = row
+    price = listing.list_price or listing.rent_amount
+    title = listing.marketing_title or "Listing"
+    addr = f"{prop.address_line1}, {prop.city}"
+    price_part = f"Price: ${price:,}. " if price else ""
+    desc = (listing.marketing_description or "")[:400]
+    return (
+        f"{title} at {addr}. {price_part}"
+        f"{prop.beds or '?'} bed, {prop.baths or '?'} bath, {prop.sqft or '?'} sqft. {desc}"
+    )
+
+
+async def _create_lead(db: AsyncSession, params: dict) -> str:
+    full_name = params.get("full_name") or params.get("name")
+    if not full_name:
+        return "Lead name required."
+    lead = Lead(
+        tenant_id=int(params.get("tenant_id", 1)),
+        full_name=full_name,
+        email=params.get("email"),
+        phone_number=params.get("phone_number"),
+        source=params.get("source", "assistant"),
+        stage="new",
+        listing_id=int(params["listing_id"]) if params.get("listing_id") else None,
+    )
+    db.add(lead)
+    await db.commit()
+    await db.refresh(lead)
+    return f"Lead created for {full_name} (id={lead.id})."
+
+
+async def _update_lead_stage(db: AsyncSession, params: dict) -> str:
+    lead_id = params.get("lead_id")
+    stage = params.get("stage")
+    if not lead_id or not stage:
+        return "Lead ID and stage required."
+    lead = await db.get(Lead, int(lead_id))
+    if not lead:
+        return f"Lead {lead_id} not found."
+    lead.stage = stage
+    await db.commit()
+    return f"Lead {lead_id} updated to stage '{stage}'."
+
+
+async def _get_deal_status(db: AsyncSession, params: dict) -> str:
+    cid = _resolve_client_id(params)
+    deal_id = params.get("deal_id")
+    query = select(Deal)
+    if deal_id:
+        query = query.where(Deal.id == int(deal_id))
+    elif cid:
+        query = query.where(Deal.client_id == cid).order_by(Deal.id.desc())
+    else:
+        return "Client ID or deal ID required."
+    result = await db.execute(query.limit(1))
+    deal = result.scalar_one_or_none()
+    if not deal:
+        return "No deal found."
+    return f"Deal {deal.id}: status {deal.status}, milestone {deal.milestone or 'none'}."
+
+
 async def _log_audit(db: AsyncSession, params: dict) -> str:
-    """Write an audit entry to the database."""
-    service = params.get("service", "Execution Engine")
-    action = params.get("action", "Custom Audit")
-    user = params.get("user", "system")
-    details = params.get("details", str(params))
-    severity = params.get("severity", "info")
     audit = AuditLog(
-        service=str(service),
-        action=str(action),
-        user=str(user),
-        details=str(details),
-        severity=str(severity),
+        service=str(params.get("service", "Execution Engine")),
+        action=str(params.get("action", "Custom Audit")),
+        user=str(params.get("user", "system")),
+        details=str(params.get("details", str(params))),
+        severity=str(params.get("severity", "info")),
     )
     db.add(audit)
     await db.commit()
     return "Audit entry recorded."
 
 
-# Registry: sync callable or async (db, params) -> str
 def _sync_wrap(fn):
     async def _async_wrapper(db, params):
         return fn(params)
+
     return _async_wrapper
 
+
 ASYNC_ACTIONS = {
-    "get_appointments": _get_appointments,
-    "create_appointment": _create_appointment,
-    "check_insurance": _check_insurance,
-    "request_prescription_refill": _request_prescription_refill,
+    # Real estate tools
+    "get_showings": _get_showings,
+    "create_showing": _create_showing,
     "get_availability": _get_availability,
+    "get_client_financing": _get_client_financing,
+    "create_service_request": _create_service_request,
+    "get_listings": _get_listings,
+    "get_listing_detail": _get_listing_detail,
+    "create_lead": _create_lead,
+    "update_lead_stage": _update_lead_stage,
+    "get_deal_status": _get_deal_status,
     "log_audit": _log_audit,
+    # Legacy healthcare aliases (Phase 4 removes)
+    "get_appointments": _get_showings,
+    "create_appointment": _create_showing,
+    "check_insurance": _get_client_financing,
+    "request_prescription_refill": _create_service_request,
 }
+
 SYNC_ACTIONS = {
-    "send_email": _send_email,
-    "schedule_reminder": _schedule_reminder,
+    "send_email": _sync_wrap(_send_email),
+    "schedule_reminder": _sync_wrap(_schedule_reminder),
 }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Log service startup and shutdown."""
     logger.info("Execution Engine service starting up")
     yield
     logger.info("Execution Engine service shutting down")
@@ -278,44 +403,38 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AURIXA Execution Engine",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
-    description="Service for executing external actions like API calls, database writes, and sending messages.",
+    description="Real estate workflow actions backed by PostgreSQL.",
 )
 
 
 @app.get("/health", summary="Health check endpoint")
 async def health():
-    """Return a 200 OK status if the service is healthy."""
     return {"service": "execution-engine", "status": "healthy"}
 
 
 @app.get("/api/v1/actions", summary="List available actions")
 async def list_actions():
-    """Return available action names for discovery."""
     all_actions = list(SYNC_ACTIONS.keys()) + list(ASYNC_ACTIONS.keys())
-    return {"actions": sorted(all_actions)}
+    return {"actions": sorted(set(all_actions))}
 
 
 @app.post("/api/v1/execute", response_model=ExecutionResponse, summary="Execute an action")
 async def execute(request: ExecutionRequest, db: AsyncSession = Depends(get_db_session)):
-    """Executes a registered action with validated parameters."""
     logger.info("Execute action: '{}' (idempotency: {})", request.action_name, request.idempotency_key[:8])
-
     params = request.params or {}
 
     if request.action_name in ASYNC_ACTIONS:
-        handler = ASYNC_ACTIONS[request.action_name]
         try:
-            result = await handler(db, params)
+            result = await ASYNC_ACTIONS[request.action_name](db, params)
             return ExecutionResponse(status="success", result={"message": result})
         except Exception as e:
             logger.error("Action '{}' failed: {}", request.action_name, e)
             return ExecutionResponse(status="error", error_message=str(e))
-    elif request.action_name in SYNC_ACTIONS:
-        handler = SYNC_ACTIONS[request.action_name]
+    if request.action_name in SYNC_ACTIONS:
         try:
-            result = handler(params)
+            result = await SYNC_ACTIONS[request.action_name](db, params)
             return ExecutionResponse(status="success", result={"message": result})
         except Exception as e:
             logger.error("Action '{}' failed: {}", request.action_name, e)

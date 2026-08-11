@@ -10,7 +10,7 @@ async function proxyToOrchestration(path: string, req: FastifyRequest, reply: Fa
     const res = await fetch(url, {
       method: req.method,
       headers: { "content-type": "application/json" },
-      body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
+      body: req.method !== "GET" && req.method !== "HEAD" ? JSON.stringify(req.body) : undefined,
       signal: AbortSignal.timeout(30000),
     });
     const body = await res.text();
@@ -53,38 +53,78 @@ export async function adminRoutes(app: FastifyInstance) {
     const { key } = req.params as { key: string };
     return proxyToOrchestration(`config/${encodeURIComponent(key)}`, req, reply);
   });
-  app.get("/patients", async (req, reply) => proxyToOrchestration("patients", req, reply));
-  app.post("/patients", async (req, reply) => proxyToOrchestration("patients", req, reply));
+
+  // Clients (real estate) + legacy /patients aliases
+  app.get("/clients", async (req, reply) => proxyToOrchestration("clients", req, reply));
+  app.post("/clients", async (req, reply) => proxyToOrchestration("clients", req, reply));
+  app.get("/clients/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`clients/${id}`, req, reply);
+  });
+  app.get("/clients/:id/showings", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`clients/${id}/showings`, req, reply);
+  });
+  app.get("/clients/:id/conversations", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`clients/${id}/conversations`, req, reply);
+  });
+  app.get("/patients", async (req, reply) => proxyToOrchestration("clients", req, reply));
+  app.post("/patients", async (req, reply) => proxyToOrchestration("clients", req, reply));
+  app.get("/patients/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`clients/${id}`, req, reply);
+  });
   app.get("/patients/:id/appointments", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return proxyToOrchestration(`patients/${id}/appointments`, req, reply);
+    return proxyToOrchestration(`clients/${id}/showings`, req, reply);
   });
   app.get("/patients/:id/conversations", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return proxyToOrchestration(`patients/${id}/conversations`, req, reply);
+    return proxyToOrchestration(`clients/${id}/conversations`, req, reply);
   });
-  app.get("/patients/:id", async (req, reply) => {
+
+  // Showings + legacy /appointments
+  app.get("/showings", async (req, reply) => proxyToOrchestration("showings", req, reply));
+  app.post("/showings", async (req, reply) => proxyToOrchestration("showings", req, reply));
+  app.patch("/showings/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    return proxyToOrchestration(`patients/${id}`, req, reply);
+    return proxyToOrchestration(`showings/${id}`, req, reply);
   });
+  app.get("/appointments", async (req, reply) => proxyToOrchestration("showings", req, reply));
+  app.post("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
+  app.patch("/appointments/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`showings/${id}`, req, reply);
+  });
+
+  app.get("/listings", async (req, reply) => proxyToOrchestration("listings", req, reply));
+  app.get("/listings/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`listings/${id}`, req, reply);
+  });
+  app.get("/properties", async (req, reply) => proxyToOrchestration("properties", req, reply));
+
+  app.get("/leads", async (req, reply) => proxyToOrchestration("leads", req, reply));
+  app.post("/leads", async (req, reply) => proxyToOrchestration("leads", req, reply));
+  app.patch("/leads/:id/stage", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    return proxyToOrchestration(`leads/${id}/stage`, req, reply);
+  });
+
+  app.get("/staff", async (req, reply) => proxyToOrchestration("staff", req, reply));
+
   app.get("/knowledge/articles", async (req, reply) =>
     proxyToOrchestration("knowledge/articles", req, reply),
   );
   app.post("/knowledge/articles", async (req, reply) =>
     proxyToOrchestration("knowledge/articles", req, reply),
   );
-  app.get("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
-  app.post("/appointments", async (req, reply) => proxyToOrchestration("appointments", req, reply));
-  app.patch("/appointments/:id", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    return proxyToOrchestration(`appointments/${id}`, req, reply);
-  });
-  app.get("/staff", async (req, reply) => proxyToOrchestration("staff", req, reply));
 
   app.get("/health", async () => ({
     service: "api-gateway-admin",
     status: "healthy",
     uptime: process.uptime(),
-    memoryMB: (process.memoryUsage.rss() / 1024 / 1024).toFixed(1),
+    memoryMB: (process.memoryUsage().rss / 1024 / 1024).toFixed(1),
   }));
 }

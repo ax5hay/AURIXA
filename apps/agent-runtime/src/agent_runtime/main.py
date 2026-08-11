@@ -13,7 +13,6 @@ EXECUTION_ENGINE_URL = os.getenv("EXECUTION_ENGINE_HOST", "http://localhost:8007
 
 
 async def _search_knowledge_base(q: str, client: httpx.AsyncClient) -> str:
-    """Call RAG service for real retrieval. Uses shared client for connection reuse."""
     try:
         r = await client.post(
             f"{RAG_SERVICE_URL}/api/v1/retrieve",
@@ -34,7 +33,6 @@ async def _search_knowledge_base(q: str, client: httpx.AsyncClient) -> str:
 
 
 async def _call_execution(action: str, params: dict, client: httpx.AsyncClient) -> str:
-    """Call execution engine. Returns result message or error. Uses shared client for connection reuse."""
     if not EXECUTION_ENGINE_URL:
         return f"[Execution engine not configured] Action {action} would run with params {params}."
     try:
@@ -53,37 +51,76 @@ async def _call_execution(action: str, params: dict, client: httpx.AsyncClient) 
         return f"Could not execute {action}: {e}"
 
 
-def _extract_patient_id(prompt: str, metadata: dict | None) -> str | int:
-    """Extract patient_id from metadata or prompt (e.g. 'patient 123')."""
-    if metadata and "patient_id" in metadata:
-        return metadata["patient_id"]
-    m = re.search(r"patient\s+(\d+)", prompt, re.I)
+def _extract_client_id(prompt: str, metadata: dict | None) -> str | int:
+    if metadata:
+        if "client_id" in metadata:
+            return metadata["client_id"]
+        if "patient_id" in metadata:
+            return metadata["patient_id"]
+    m = re.search(r"(?:client|patient)\s+(\d+)", prompt, re.I)
     return m.group(1) if m else "unknown"
 
 
-# Sync tools (non-async)
 def _get_weather(arg: str) -> str:
     return f"Weather in {arg or 'your area'}: sunny, 72°F"
+
 
 def _schedule_call(arg: str) -> str:
     return "Callback scheduled."
 
-# Tool registry - maps prompt keyword -> (action_name, params_builder)
+
 EXECUTION_ACTIONS: dict[str, tuple[str, callable]] = {
-    "get_appointment": ("get_appointments", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
-    "get_appointments": ("get_appointments", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
-    "create_appointment": ("create_appointment", lambda p, m: {"patient_id": _extract_patient_id(p, m), "reason": "General visit"}),
-    "check_insurance": ("check_insurance", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
+    # Real estate
+    "get_showing": ("get_showings", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "get_showings": ("get_showings", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "create_showing": (
+        "create_showing",
+        lambda p, m: {"client_id": _extract_client_id(p, m), "notes": "Property showing"},
+    ),
+    "book a tour": (
+        "create_showing",
+        lambda p, m: {"client_id": _extract_client_id(p, m), "notes": "Property tour"},
+    ),
+    "get_listings": ("get_listings", lambda p, m: {"tenant_id": (m or {}).get("tenant_id", 1)}),
+    "listing": ("get_listings", lambda p, m: {"tenant_id": (m or {}).get("tenant_id", 1)}),
+    "get_client_financing": ("get_client_financing", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "financing": ("get_client_financing", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "pre-approval": ("get_client_financing", lambda p, m: {"client_id": _extract_client_id(p, m)}),
     "get_availability": ("get_availability", lambda p, m: {"date": "tomorrow"}),
-    "request_prescription_refill": ("request_prescription_refill", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
-    "prescription_refill": ("request_prescription_refill", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
-    "refill": ("request_prescription_refill", lambda p, m: {"patient_id": _extract_patient_id(p, m)}),
+    "create_service_request": (
+        "create_service_request",
+        lambda p, m: {"client_id": _extract_client_id(p, m)},
+    ),
+    "maintenance": (
+        "create_service_request",
+        lambda p, m: {"client_id": _extract_client_id(p, m), "category": "maintenance"},
+    ),
+    "create_lead": ("create_lead", lambda p, m: {"full_name": "New lead", "tenant_id": (m or {}).get("tenant_id", 1)}),
+    # Legacy healthcare keywords
+    "get_appointment": ("get_showings", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "get_appointments": ("get_showings", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "create_appointment": (
+        "create_showing",
+        lambda p, m: {"client_id": _extract_client_id(p, m), "notes": "Property showing"},
+    ),
+    "check_insurance": ("get_client_financing", lambda p, m: {"client_id": _extract_client_id(p, m)}),
+    "request_prescription_refill": (
+        "create_service_request",
+        lambda p, m: {"client_id": _extract_client_id(p, m)},
+    ),
+    "prescription_refill": (
+        "create_service_request",
+        lambda p, m: {"client_id": _extract_client_id(p, m)},
+    ),
+    "refill": (
+        "create_service_request",
+        lambda p, m: {"client_id": _extract_client_id(p, m)},
+    ),
 }
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Log service startup and shutdown. Create shared HTTP client for RAG and execution engine."""
     logger.info("Agent Runtime service starting up")
     app.state.http_client = httpx.AsyncClient(
         timeout=15.0,
@@ -96,29 +133,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AURIXA Agent Runtime",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
-    description="Service for executing autonomous agent tasks with tool-calling capabilities.",
+    description="Autonomous agent tasks with real estate tool-calling.",
 )
 
 
 @app.get("/health", summary="Health check endpoint")
 async def health():
-    """Return a 200 OK status if the service is healthy."""
     return {"service": "agent-runtime", "status": "healthy"}
 
 
 @app.post("/api/v1/run", response_model=RunTaskResponse, summary="Run an agent task")
 async def run_task(request: RunTaskRequest, req: Request):
-    """
-    Executes an agentic task.
-
-    This is a simplified mock implementation. A real implementation would:
-    1.  Use an LLM with function-calling capabilities to decide which tool to use.
-    2.  Maintain a state machine for multi-step tasks.
-    3.  Execute tools and feed the results back into the LLM.
-    4.  Handle errors and retries.
-    """
     task = request.task
     prompt = task.prompt.lower()
     meta = task.metadata or {}
@@ -128,7 +155,6 @@ async def run_task(request: RunTaskRequest, req: Request):
     final_output = "I'm not sure how to help with that."
     tool_calls = []
 
-    # 1. Check execution-engine actions (appointments, insurance, etc.)
     for kw, (action_name, params_fn) in EXECUTION_ACTIONS.items():
         if kw in prompt:
             params = params_fn(task.prompt, meta)
@@ -137,13 +163,11 @@ async def run_task(request: RunTaskRequest, req: Request):
             final_output = result
             break
 
-    # 2. RAG search
     if not tool_calls and ("search" in prompt or "knowledge" in prompt or "find" in prompt):
         result = await _search_knowledge_base(task.prompt, client)
         tool_calls.append({"tool_name": "search_knowledge_base", "arguments": task.prompt[:100], "result": result})
         final_output = result
 
-    # 3. Other sync tools
     if not tool_calls:
         if "weather" in prompt:
             result = _get_weather(task.prompt.split("weather")[-1].strip())
@@ -157,7 +181,7 @@ async def run_task(request: RunTaskRequest, req: Request):
     agent_result = AgentResult(
         output=final_output,
         tool_calls=tool_calls,
-        steps=[{"step": "reasoning", "details": "Decided to call a tool based on prompt keywords."}]
+        steps=[{"step": "reasoning", "details": "Matched prompt keywords to real estate tools."}],
     )
 
     return RunTaskResponse(result=agent_result)

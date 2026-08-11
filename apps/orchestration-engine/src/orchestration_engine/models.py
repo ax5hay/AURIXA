@@ -13,7 +13,8 @@ class PipelineRequest(BaseModel):
     prompt: str
     tenant_id: str | None = None
     user_id: str | None = None
-    patient_id: int | None = None  # Links voice/chat to patient profile
+    client_id: int | None = None
+    patient_id: int | None = None  # Legacy alias for client_id (voice/portal BFF)
 
 
 class PipelineStep(BaseModel):
