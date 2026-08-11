@@ -4,6 +4,7 @@ import clsx from "clsx";
 export type IconName =
   | "alert"
   | "bell"
+  | "building"
   | "calendar"
   | "check"
   | "chevron-down"
@@ -13,8 +14,16 @@ export type IconName =
   | "close"
   | "home"
   | "info"
+  | "key"
+  | "listing"
+  | "map-pin"
   | "menu"
   | "message"
+  | "office"
+  | "map"
+  | "compass"
+  | "sign"
+  | "door"
   | "refresh"
   | "search"
   | "settings"
@@ -40,6 +49,71 @@ function IconPaths({ name }: { name: IconName }) {
         <>
           <path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2L12 3Z" />
           <path d="M12 9v4.5M12 17h.01" />
+        </>
+      );
+    case "building":
+      return (
+        <>
+          <path d="M4 21V8l8-5 8 5v13" />
+          <path d="M9 21v-6h6v6M9 10h.01M15 10h.01M9 14h.01M15 14h.01" />
+        </>
+      );
+    case "key":
+      return (
+        <>
+          <circle cx="8" cy="8" r="4" />
+          <path d="M11 11 21 21M16 16h5M18 14v4" />
+        </>
+      );
+    case "listing":
+      return (
+        <>
+          <path d="M3 21V9l9-6 9 6v12" />
+          <path d="M9 21v-8h6v8M12 7v.01" />
+        </>
+      );
+    case "map-pin":
+      return (
+        <>
+          <path d="M12 21s7-4.5 7-11a7 7 0 1 0-14 0c0 6.5 7 11 7 11Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </>
+      );
+    case "door":
+      return (
+        <>
+          <path d="M5 4h14v16H5z" />
+          <path d="M15 12h.01M9 4V2h6v2" />
+        </>
+      );
+    case "office":
+      return (
+        <>
+          <path d="M3 21h18" />
+          <path d="M6 21V8l6-4 6 4v13" />
+          <path d="M10 12h.01M14 12h.01M10 16h.01M14 16h.01M10 21v-5h4v5" />
+        </>
+      );
+    case "map":
+      return (
+        <>
+          <path d="M3 6 9 4l6 2 6-2v14l-6 2-6-2-6 2V6Z" />
+          <path d="M9 4v14M15 6v14" />
+        </>
+      );
+    case "compass":
+      return (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m16 8-2 6-6 2 2-6 6-2Z" />
+        </>
+      );
+    case "sign":
+      return (
+        <>
+          <path d="M12 3v18" />
+          <path d="M8 7h8l-1.5 4H9.5L8 7Z" />
+          <path d="M6 21h12" />
         </>
       );
     case "bell":

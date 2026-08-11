@@ -26,8 +26,8 @@ const headerPaddingClasses = {
 };
 
 const variantClasses: Record<CardVariant, string> = {
-  feature: "border-ui-border-strong bg-ui-tint shadow-none",
-  standard: "border-ui-border bg-ui-surface shadow-ui-soft",
+  feature: "ui-re-card-lift border-ui-border-strong shadow-ui-soft",
+  standard: "ui-re-card-lift shadow-ui-soft",
   compact: "border-ui-border bg-ui-surface shadow-none",
   inset: "border-transparent bg-ui-surface-inset shadow-none",
   interactive:

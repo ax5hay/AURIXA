@@ -1,5 +1,7 @@
 import React from "react";
 import clsx from "clsx";
+import { Icon } from "./Icon";
+import { MotifFrame } from "./RealEstateMotif";
 
 export type FeedbackTone = "neutral" | "info" | "success" | "warning" | "danger";
 
@@ -25,7 +27,7 @@ export function Alert({
   return (
     <div
       role={tone === "danger" ? "alert" : "status"}
-      className={clsx("rounded-ui-md border p-4", toneClasses[tone], className)}
+      className={clsx("ui-re-alert rounded-ui-md border p-4", toneClasses[tone], className)}
     >
       <p className="text-sm font-semibold">{title}</p>
       {children && <div className="mt-1 text-sm leading-6 text-ui-muted">{children}</div>}
@@ -47,7 +49,7 @@ export function Banner({
   return (
     <aside
       className={clsx(
-        "flex flex-col gap-4 rounded-ui-lg border p-5 sm:flex-row sm:items-center sm:justify-between",
+        "ui-re-banner flex flex-col gap-4 rounded-ui-lg border p-5 sm:flex-row sm:items-center sm:justify-between",
         toneClasses[tone],
       )}
     >
@@ -75,18 +77,18 @@ export function EmptyState({
   icon?: React.ReactNode;
   compact?: boolean;
 }) {
+  const resolvedIcon = icon ?? <Icon name="listing" size="lg" />;
+
   return (
     <div
       className={clsx(
-        "flex flex-col items-center justify-center rounded-ui-lg border border-dashed border-ui-border-strong bg-ui-surface-inset/50 px-6 text-center",
+        "ui-re-empty flex flex-col items-center justify-center rounded-ui-lg border border-dashed border-ui-border-strong px-6 text-center",
         compact ? "py-8" : "py-14",
       )}
     >
-      {icon && (
-        <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-ui-tint text-ui-accent">
-          {icon}
-        </span>
-      )}
+      <MotifFrame size="lg" className="mb-4">
+        {resolvedIcon}
+      </MotifFrame>
       {eyebrow && (
         <p className="mb-2 text-xs font-semibold tracking-wide text-ui-muted">{eyebrow}</p>
       )}
@@ -105,6 +107,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
       aria-hidden="true"
       className={clsx(
         "animate-[ui-skeleton_1.6s_ease-in-out_infinite] rounded-ui-md bg-ui-surface-inset",
+        "bg-[repeating-linear-gradient(90deg,rgb(var(--ui-surface-inset-rgb))_0,rgb(var(--ui-surface-inset-rgb))_calc(25%-1px),color-mix(in_srgb,rgb(var(--ui-ink-rgb))_6%,transparent)_calc(25%-1px),color-mix(in_srgb,rgb(var(--ui-ink-rgb))_6%,transparent)_25%)]",
         className,
       )}
       {...props}

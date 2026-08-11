@@ -65,6 +65,11 @@ export type {
 export { RealEstateDisclaimer } from "./components/RealEstate";
 export type { RealEstateDisclaimerVariant } from "./components/RealEstate";
 
+export { RealEstateBrandMark, RealEstateSkyline } from "./components/RealEstateBrand";
+export type { RealEstateBrandMarkProps, RealEstateSkylineProps } from "./components/RealEstateBrand";
+
+export { MotifFrame, ToastMotifIcon } from "./components/RealEstateMotif";
+
 /** @deprecated Use RealEstateDisclaimer */
 export { HealthcareDisclaimer } from "./components/Healthcare";
 /** @deprecated Use RealEstateDisclaimerVariant */

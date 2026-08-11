@@ -11,6 +11,7 @@ import {
   EmptyState,
   Metric,
   PageLoader,
+  RealEstateSkyline,
   SectionHeader,
 } from "@aurixa/ui-kit";
 import { RealEstateDisclaimer } from "@aurixa/ui-kit";
@@ -111,14 +112,17 @@ function DashboardContent() {
           Updated {lastUpdated.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
         </p>
       )}
-      <header className="max-w-3xl">
-        <p className="eyebrow">{firstName ? `Welcome back, ${firstName}` : "Your client portal"}</p>
-        <h1 className="font-display text-[clamp(2.7rem,7vw,5.5rem)] font-medium leading-[0.92] tracking-[-0.05em] text-ui-ink">
-          What do you need today?
-        </h1>
-        <p className="page-description">
-          Check your next showing, browse listings, or ask a practical question.
-        </p>
+      <header className="relative max-w-3xl overflow-hidden rounded-ui-xl pb-2">
+        <RealEstateSkyline variant="hero" className="absolute inset-x-0 bottom-0 opacity-60" />
+        <div className="relative">
+          <p className="eyebrow">{firstName ? `Welcome back, ${firstName}` : "Your client portal"}</p>
+          <h1 className="font-display text-[clamp(2.7rem,7vw,5.5rem)] font-medium leading-[0.92] tracking-[-0.05em] text-ui-ink">
+            What do you need today?
+          </h1>
+          <p className="page-description">
+            Check your next showing, browse listings, or ask a practical question.
+          </p>
+        </div>
       </header>
 
       <section aria-label="Your next step">

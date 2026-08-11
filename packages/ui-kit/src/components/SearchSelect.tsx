@@ -133,7 +133,7 @@ export function SearchSelect({
         aria-expanded={open}
         aria-labelledby={label ? `${id}-label ${id}-value` : `${id}-value`}
         onClick={() => (open ? setOpen(false) : openList())}
-        className="flex min-h-11 w-full items-center gap-2 rounded-ui-md border border-ui-border-strong bg-ui-surface px-3.5 text-left text-sm shadow-sm outline-none transition hover:border-ui-faint focus:border-ui-accent focus:ring-4 focus:ring-ui-accent/10 disabled:cursor-not-allowed disabled:opacity-55"
+        className="ui-re-field flex min-h-11 w-full items-center gap-2 rounded-ui-md border border-ui-border-strong px-3.5 text-left text-sm outline-none transition hover:border-ui-faint focus:border-ui-accent disabled:cursor-not-allowed disabled:opacity-55"
       >
         <span
           id={`${id}-value`}
@@ -146,7 +146,7 @@ export function SearchSelect({
 
       {open && (
         <div
-          className="absolute z-50 mt-2 w-full rounded-ui-md border border-ui-border-strong bg-ui-surface p-1.5 shadow-ui"
+          className="ui-re-panel absolute z-50 mt-2 w-full rounded-ui-md border p-1.5"
           onBlur={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
           }}
@@ -184,7 +184,7 @@ export function SearchSelect({
                 }
               }}
               placeholder={searchPlaceholder}
-              className="min-h-10 w-full rounded-ui-sm border border-ui-border bg-ui-surface-inset pl-9 pr-3 text-sm text-ui-ink outline-none placeholder:text-ui-faint focus:border-ui-accent"
+              className="ui-re-field min-h-10 w-full rounded-ui-sm border pl-9 pr-3 text-sm text-ui-ink outline-none placeholder:text-ui-faint focus:border-ui-accent"
             />
           </div>
           <ul id={listboxId} role="listbox" className="max-h-64 overflow-y-auto py-1">

@@ -37,10 +37,10 @@ export function ProgressBar({ progress, label, steps, currentStep, className }: 
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(clampedProgress)}
-        className="relative h-2.5 w-full overflow-hidden rounded-full bg-ui-surface-inset"
+        className="ui-re-progress-track relative h-3 w-full overflow-hidden rounded-ui-sm"
       >
         <motion.div
-          className="absolute inset-y-0 left-0 rounded-full bg-ui-accent"
+          className="ui-re-progress-fill absolute inset-y-0 left-0 rounded-ui-sm"
           initial={reduceMotion ? false : { width: 0 }}
           animate={{ width: `${clampedProgress}%` }}
           transition={{
@@ -52,7 +52,7 @@ export function ProgressBar({ progress, label, steps, currentStep, className }: 
         {/* Shimmer effect when active */}
         {!reduceMotion && clampedProgress > 0 && clampedProgress < 100 && (
           <motion.div
-            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            className="absolute inset-y-0 left-0 rounded-ui-sm bg-gradient-to-r from-transparent via-white/20 to-transparent"
             style={{ width: `${clampedProgress}%` }}
             animate={{
               x: ["-100%", "100%"],
@@ -86,7 +86,7 @@ export function ProgressBar({ progress, label, steps, currentStep, className }: 
                 <div className="flex flex-col items-center gap-1">
                   <motion.div
                     className={clsx(
-                      "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors duration-300",
+                      "ui-re-progress-step flex h-5 w-5 items-center justify-center text-[10px] font-bold transition-colors duration-300",
                       isComplete && "bg-ui-success text-ui-surface",
                       isActive && "bg-ui-accent text-ui-accent-ink ring-2 ring-ui-accent/30",
                       !isActive && !isComplete && "bg-ui-surface-inset text-ui-faint",

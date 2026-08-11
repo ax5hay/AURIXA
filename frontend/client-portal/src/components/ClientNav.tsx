@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, Icon, PortalShell, type IconName } from "@aurixa/ui-kit";
+import { Alert, Icon, PortalShell, RealEstateBrandMark, type IconName } from "@aurixa/ui-kit";
 import { isSectionActive } from "@/lib/client-sections";
 
 type NavigationTab = {
@@ -17,19 +17,19 @@ type NavigationTab = {
 const DESKTOP_TABS = [
   { id: "home", href: "/", label: "Home", icon: "home" },
   { id: "showings", href: "/showings", label: "Showings", icon: "calendar" },
-  { id: "listings", href: "/listings", label: "Listings", icon: "check" },
+  { id: "listings", href: "/listings", label: "Listings", icon: "building" },
   {
     id: "documents",
     href: "/documents",
     label: "Documents",
-    icon: "info",
+    icon: "listing",
     related: ["/applications"],
   },
   {
     id: "financing",
     href: "/financing",
     label: "Financing",
-    icon: "info",
+    icon: "key",
     related: ["/maintenance"],
   },
   { id: "chat", href: "/chat", label: "Messages", icon: "message" },
@@ -38,7 +38,7 @@ const DESKTOP_TABS = [
 const MOBILE_TABS = [
   { id: "home", href: "/", label: "Home", icon: "home" },
   { id: "showings", href: "/showings", label: "Showings", icon: "calendar" },
-  { id: "listings", href: "/listings", label: "Listings", icon: "check" },
+  { id: "listings", href: "/listings", label: "Listings", icon: "building" },
   { id: "chat", href: "/chat", label: "Messages", icon: "message" },
   {
     id: "account",
@@ -117,11 +117,9 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     <PortalShell
       brand={
         <Link href="/" className="flex min-h-11 items-center gap-3 rounded-ui-md">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-ui-border-strong bg-ui-tint font-display text-lg font-semibold text-ui-accent">
-            A
-          </span>
+          <RealEstateBrandMark monogram="A" size="md" />
           <span>
-            <span className="block text-sm font-semibold tracking-[0.08em]">AURIXA</span>
+            <span className="block font-display text-sm font-semibold tracking-[0.08em]">AURIXA</span>
             <span className="block text-xs text-ui-muted">My properties</span>
           </span>
         </Link>

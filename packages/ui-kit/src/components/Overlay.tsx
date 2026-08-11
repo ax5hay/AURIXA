@@ -7,6 +7,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import clsx from "clsx";
+import { Icon } from "./Icon";
 
 export interface DialogProps {
   trigger?: React.ReactNode;
@@ -39,7 +40,7 @@ export function Dialog({
         <DialogPrimitive.Content
           aria-describedby={description ? descriptionId : undefined}
           className={clsx(
-            "fixed left-1/2 top-1/2 z-[111] max-h-[88vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-ui-xl border border-ui-border-strong bg-ui-surface p-5 text-ui-ink shadow-ui outline-none sm:p-6",
+            "ui-re-modal fixed left-1/2 top-1/2 z-[111] max-h-[88vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-ui-xl border border-ui-border-strong p-5 text-ui-ink outline-none sm:p-6",
             size === "sm" && "max-w-md",
             size === "md" && "max-w-xl",
             size === "lg" && "max-w-3xl",
@@ -60,9 +61,9 @@ export function Dialog({
           </div>
           <DialogPrimitive.Close
             aria-label="Close dialog"
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-ui-md text-xl text-ui-muted transition hover:bg-ui-surface-inset hover:text-ui-ink"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-ui-md text-ui-muted transition hover:bg-ui-surface-inset hover:text-ui-ink"
           >
-            ×
+            <Icon name="close" size="md" />
           </DialogPrimitive.Close>
           <div className="mt-6">{children}</div>
           {footer && <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div>}

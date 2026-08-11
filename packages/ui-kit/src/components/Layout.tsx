@@ -49,7 +49,7 @@ export function PortalShell({
   return (
     <div
       className={clsx(
-        "min-h-dvh bg-ui-canvas text-ui-ink",
+        "ui-re-backdrop min-h-dvh bg-ui-canvas text-ui-ink",
         bottomNavigation && "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0",
         className,
       )}
@@ -64,7 +64,7 @@ export function PortalShell({
 
       {hasHeader &&
         (header ?? (
-          <header className="sticky top-0 z-40 border-b border-ui-border bg-ui-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-ui-canvas/85">
+          <header className="ui-re-header-accent sticky top-0 z-40 border-b border-ui-border bg-ui-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-ui-canvas/85">
             <div
               className={clsx(
                 "mx-auto flex w-full items-center gap-4 px-ui-gutter",
@@ -121,7 +121,7 @@ export function PortalShell({
       {bottomNavigation && (
         <nav
           aria-label="Primary"
-          className="fixed inset-x-0 bottom-0 z-50 border-t border-ui-border bg-ui-surface/95 pb-[env(safe-area-inset-bottom)] shadow-ui-soft backdrop-blur lg:hidden"
+          className="ui-re-mobile-nav fixed inset-x-0 bottom-0 z-50 border-t border-ui-border pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
         >
           <div className="mx-auto min-h-16 max-w-lg">{bottomNavigation}</div>
         </nav>
@@ -148,13 +148,18 @@ export function PageHeader({
   return (
     <header
       className={clsx(
-        "grid gap-6 border-b border-ui-border pb-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end",
+        "ui-re-page-header grid gap-6 border-b border-ui-border pb-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-end",
         className,
       )}
     >
       <div className="min-w-0">
         {eyebrow && (
-          <p className="mb-3 text-xs font-semibold tracking-[0.08em] text-ui-muted">{eyebrow}</p>
+          <>
+            <p className="ui-re-eyebrow mb-3 text-xs font-semibold tracking-[0.08em] text-ui-muted">
+              {eyebrow}
+            </p>
+            <div className="ui-re-section-rule" aria-hidden="true" />
+          </>
         )}
         <h1 className="font-display text-[clamp(2.25rem,5vw,4.5rem)] font-medium leading-[0.94] tracking-[-0.045em] text-ui-ink">
           {title}
@@ -234,7 +239,7 @@ export function Avatar({
   return (
     <span
       className={clsx(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-ui-border-strong bg-ui-tint font-semibold text-ui-accent",
+        "ui-re-avatar relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-ui-border-strong font-semibold text-ui-accent",
         size === "sm" && "h-8 w-8 text-[10px]",
         size === "md" && "h-10 w-10 text-xs",
         size === "lg" && "h-14 w-14 text-sm",

@@ -18,12 +18,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-transparent bg-ui-accent text-ui-accent-ink shadow-ui-soft hover:bg-ui-accent-strong",
-  secondary: "border border-ui-border-strong bg-ui-surface text-ui-ink hover:bg-ui-surface-raised",
-  danger: "border border-transparent bg-ui-danger text-white shadow-ui-soft hover:brightness-90",
+    "ui-re-btn ui-re-btn-primary border text-ui-accent-ink shadow-ui-soft hover:brightness-[1.03]",
+  secondary:
+    "ui-re-btn ui-re-btn-secondary border border-ui-border-strong text-ui-ink hover:border-ui-accent/35 hover:bg-ui-surface-raised",
+  danger:
+    "ui-re-btn ui-re-btn-danger border border-transparent bg-ui-danger text-white shadow-ui-soft hover:brightness-90",
   quiet:
-    "border border-transparent bg-transparent text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink",
-  icon: "border border-ui-border bg-ui-surface text-ui-muted hover:border-ui-border-strong hover:text-ui-ink",
+    "ui-re-btn border border-transparent bg-transparent text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink",
+  icon:
+    "ui-re-btn ui-re-btn-icon border border-ui-border text-ui-muted hover:border-ui-border-strong hover:text-ui-ink",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

@@ -7,8 +7,9 @@ import {
   Badge,
   Button,
   Icon,
-  type IconName,
   PortalShell,
+  RealEstateBrandMark,
+  type IconName,
 } from "@aurixa/ui-kit";
 import { useStaffContext, type AgentRoleCategory } from "@/context/StaffContext";
 import { CommandPalette } from "./CommandPalette";
@@ -23,7 +24,7 @@ const TABS: {
   { id: "today", href: "/", label: "Today", icon: "home", roles: ["agent", "coordination", "operations"] },
   { id: "clients", href: "/clients", label: "Clients", icon: "user", roles: ["agent", "coordination", "operations"] },
   { id: "showings", href: "/showings", label: "Showings", icon: "calendar", roles: ["agent", "coordination", "operations"] },
-  { id: "leads", href: "/leads", label: "Leads", icon: "check", roles: ["agent", "coordination"] },
+  { id: "leads", href: "/leads", label: "Leads", icon: "map-pin", roles: ["agent", "coordination"] },
   { id: "schedule", href: "/schedule", label: "Schedule", icon: "clock", roles: ["agent", "coordination"] },
   { id: "chat", href: "/chat", label: "Assistant", icon: "message", roles: ["agent", "coordination"] },
   { id: "knowledge", href: "/knowledge", label: "Knowledge", icon: "search", roles: ["agent", "coordination", "operations"] },
@@ -63,9 +64,7 @@ export function AgentNav({ children }: { children: React.ReactNode }) {
       density="compact"
       brand={
         <Link href="/" className="flex min-h-11 items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-ui-md bg-ui-accent font-bold text-ui-accent-ink">
-            A
-          </span>
+          <RealEstateBrandMark monogram="A" size="sm" />
           <span>
             <span className="block text-sm font-bold tracking-[0.12em]">AURIXA</span>
             <span className="block text-[10px] font-semibold uppercase tracking-wide text-ui-muted">

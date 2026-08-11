@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "@aurixa/ui-kit";
+import { Menu, RealEstateBrandMark } from "@aurixa/ui-kit";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { navigationForRole, navigationGroups } from "@/config/navigation";
@@ -55,18 +55,16 @@ export default function Sidebar() {
     <>
       <aside
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 border-r border-white/10 bg-[#081321] lg:flex lg:flex-col",
+          "sticky top-0 hidden h-screen shrink-0 border-r border-ui-border bg-ui-surface-inset lg:flex lg:flex-col",
           collapsed ? "w-20" : "w-64",
         )}
       >
-        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-4">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-teal-300/30 text-sm font-bold text-teal-200">
-            A
-          </span>
+        <div className="ui-re-header-accent flex h-16 items-center gap-3 border-b border-ui-border px-4">
+          <RealEstateBrandMark monogram="A" size="sm" />
           {!collapsed && (
             <div>
-              <p className="text-sm font-semibold tracking-[0.13em]">AURIXA</p>
-              <p className="text-[10px] text-white/40">Operator console</p>
+              <p className="text-sm font-semibold tracking-[0.13em] text-ui-ink">AURIXA</p>
+              <p className="text-[10px] text-ui-faint">Operator console</p>
             </div>
           )}
         </div>
@@ -77,7 +75,7 @@ export default function Sidebar() {
             return (
               <div key={group} className="mb-5">
                 {!collapsed && (
-                  <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+                  <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ui-faint">
                     {group}
                   </p>
                 )}
@@ -90,8 +88,8 @@ export default function Sidebar() {
                     className={cn(
                       "my-0.5 flex min-h-11 items-center gap-3 rounded-md border-l-2 px-3 text-sm transition-colors",
                       active(item.route)
-                        ? "border-teal-400 bg-white/[0.06] text-white"
-                        : "border-transparent text-white/55 hover:bg-white/[0.04] hover:text-white",
+                        ? "border-ui-accent bg-ui-tint text-ui-ink"
+                        : "border-transparent text-ui-muted hover:bg-ui-surface hover:text-ui-ink",
                     )}
                   >
                     <NavIcon iconKey={item.iconKey} />
@@ -102,13 +100,13 @@ export default function Sidebar() {
             );
           })}
         </nav>
-        <div className="border-t border-white/10 p-3">
+        <div className="border-t border-ui-border p-3">
           {!collapsed && (
-            <p className="mb-2 px-3 text-xs text-white/40">Platform health: unknown</p>
+            <p className="mb-2 px-3 text-xs text-ui-faint">Platform health: unknown</p>
           )}
           <button
             onClick={() => setCollapsed((value) => !value)}
-            className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-white/50 hover:bg-white/[0.04]"
+            className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-ui-muted hover:bg-ui-surface"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <span aria-hidden="true">{collapsed ? "›" : "‹"}</span>
@@ -119,7 +117,7 @@ export default function Sidebar() {
 
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-white/15 bg-[#081321] px-1 pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 grid grid-cols-5 border-t border-ui-border bg-ui-surface-inset px-1 pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         {mobile.map((item) => (
           <Link
@@ -128,7 +126,7 @@ export default function Sidebar() {
             aria-current={active(item.route) ? "page" : undefined}
             className={cn(
               "flex min-h-16 flex-col items-center justify-center gap-1 text-[10px]",
-              active(item.route) ? "text-teal-300" : "text-white/55",
+              active(item.route) ? "text-ui-accent" : "text-ui-muted",
             )}
           >
             <NavIcon iconKey={item.iconKey} />
@@ -140,7 +138,7 @@ export default function Sidebar() {
           trigger={
             <button
               type="button"
-              className="flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] text-white/55"
+              className="flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] text-ui-muted"
             >
               <span className="text-xl" aria-hidden="true">
                 •••

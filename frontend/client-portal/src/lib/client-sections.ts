@@ -13,14 +13,14 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     href: "/listings",
     label: "Listings",
     description: "Browse active properties and open houses from your brokerage.",
-    icon: "home",
+    icon: "building",
     capability: "available",
   },
   {
     href: "/documents",
     label: "Documents",
     description: "Find lease packets, disclosures, and closing checklists.",
-    icon: "info",
+    icon: "listing",
     capability: "limited",
   },
   {
@@ -34,7 +34,7 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     href: "/financing",
     label: "Financing",
     description: "Review pre-approval steps and what to prepare for lenders.",
-    icon: "info",
+    icon: "key",
     capability: "limited",
   },
   {

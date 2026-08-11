@@ -10,12 +10,23 @@ import {
   type IconName,
   PageHeader,
   RealEstateDisclaimer,
+  RealEstateBrandMark,
+  RealEstateSkyline,
   SearchSelect,
   StatusBadge,
 } from "@aurixa/ui-kit";
 
 const icons: IconName[] = [
   "home",
+  "building",
+  "listing",
+  "office",
+  "door",
+  "key",
+  "map-pin",
+  "map",
+  "compass",
+  "sign",
   "calendar",
   "message",
   "search",
@@ -28,9 +39,9 @@ const icons: IconName[] = [
 ];
 
 const themes = [
-  { value: "operator", label: "Operator", description: "Technical, precise, status-led" },
-  { value: "workspace", label: "Agent workspace", description: "Dense, clear, task-oriented" },
-  { value: "client", label: "Client portal", description: "Warm, calm, editorial" },
+  { value: "operator", label: "Operator", description: "Midnight navy, brass accents — brokerage HQ" },
+  { value: "workspace", label: "Agent workspace", description: "Cool slate, teal-navy — field tools" },
+  { value: "client", label: "Client portal", description: "Warm sand, navy ink — buyer & renter home" },
   { value: "clinical", label: "Clinical (legacy)", description: "Alias for agent workspace theme" },
   { value: "patient", label: "Patient (legacy)", description: "Alias for client portal theme" },
 ];
@@ -96,6 +107,16 @@ export default function FoundationsPage() {
             </p>
           </Card>
         </section>
+
+        <Card>
+          <h2 className="font-display text-xl font-medium">Real estate brand</h2>
+          <div className="mt-4 flex flex-wrap items-end gap-6">
+            <RealEstateBrandMark size="sm" />
+            <RealEstateBrandMark size="md" />
+            <RealEstateBrandMark size="lg" />
+          </div>
+          <RealEstateSkyline variant="hero" className="mt-6 rounded-ui-md" />
+        </Card>
 
         <Card>
           <h2 className="font-display text-xl font-medium">Shared icons</h2>

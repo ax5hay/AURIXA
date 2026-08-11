@@ -71,7 +71,7 @@ export function FieldShell({
 }
 
 const controlClasses =
-  "min-h-11 w-full rounded-ui-md border border-ui-border-strong bg-ui-surface px-3.5 text-sm text-ui-ink shadow-sm outline-none transition-[border-color,box-shadow,background-color] placeholder:text-ui-faint hover:border-ui-faint focus:border-ui-accent focus:ring-4 focus:ring-ui-accent/10 disabled:cursor-not-allowed disabled:opacity-55";
+  "ui-re-field min-h-11 w-full rounded-ui-md border border-ui-border-strong px-3.5 text-sm text-ui-ink outline-none transition-[border-color,box-shadow,background-color] placeholder:text-ui-faint hover:border-ui-faint focus:border-ui-accent disabled:cursor-not-allowed disabled:opacity-55";
 
 export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
@@ -140,7 +140,7 @@ export function ErrorSummary({
 }) {
   if (!errors.length) return null;
   return (
-    <div role="alert" className="rounded-ui-md border border-ui-danger/25 bg-ui-danger/10 p-4">
+    <div role="alert" className="ui-re-alert rounded-ui-md border border-ui-danger/25 bg-ui-danger/10 p-4 text-ui-danger">
       <p className="text-sm font-semibold text-ui-danger">{title}</p>
       <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ui-ink">
         {errors.map((error) => (

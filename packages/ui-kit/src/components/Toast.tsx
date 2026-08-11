@@ -2,6 +2,8 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { Icon } from "./Icon";
+import { ToastMotifIcon } from "./RealEstateMotif";
 
 export type ToastTone = "success" | "error" | "info" | "warning";
 
@@ -24,17 +26,10 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const toneStyles: Record<ToastTone, string> = {
-  success: "border-ui-success/25 text-ui-success",
-  error: "border-ui-danger/25 text-ui-danger",
-  warning: "border-ui-warning/25 text-ui-warning",
-  info: "border-ui-info/25 text-ui-info",
-};
-
-const toneGlyphs: Record<ToastTone, string> = {
-  success: "✓",
-  error: "!",
-  warning: "△",
-  info: "i",
+  success: "border-ui-success/30 text-ui-success",
+  error: "border-ui-danger/30 text-ui-danger",
+  warning: "border-ui-warning/30 text-ui-warning",
+  info: "border-ui-info/30 text-ui-info",
 };
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -107,17 +102,12 @@ function ToastCard({ item, dismiss }: { item: ToastItem; dismiss: (id: number) =
   return (
     <div
       className={clsx(
-        "pointer-events-auto w-full animate-ui-toast-in rounded-ui-lg border bg-ui-surface p-4 shadow-ui",
+        "ui-re-toast pointer-events-auto w-full animate-ui-toast-in rounded-ui-lg border p-4 shadow-ui",
         toneStyles[tone],
       )}
     >
       <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current/25 text-xs font-bold"
-        >
-          {toneGlyphs[tone]}
-        </span>
+        <ToastMotifIcon tone={tone} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-ui-ink">{item.title}</p>
           {item.description && (
@@ -130,7 +120,7 @@ function ToastCard({ item, dismiss }: { item: ToastItem; dismiss: (id: number) =
           aria-label="Dismiss notification"
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-ui-sm text-ui-faint transition hover:bg-ui-surface-inset hover:text-ui-ink"
         >
-          <span aria-hidden="true">×</span>
+          <Icon name="close" size="sm" />
         </button>
       </div>
     </div>

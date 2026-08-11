@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" data-theme="operator" className="dark" style={{ colorScheme: "dark" }}>
-      <body className="bg-ui-canvas font-sans text-ui-ink antialiased">
+      <body className="ui-re-backdrop bg-ui-canvas font-sans text-ui-ink antialiased">
         <OperatorProvider initialRole={initialRole}>
           <ToastProvider>
             <a
@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             >
               Skip to content
             </a>
-            <div className="flex min-h-screen">
+            <div className="relative flex min-h-screen">
               <Sidebar />
               <div className="min-w-0 flex-1">
                 <ContextBar />

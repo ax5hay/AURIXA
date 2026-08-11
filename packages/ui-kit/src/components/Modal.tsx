@@ -3,6 +3,7 @@
 import React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import clsx from "clsx";
+import { Icon } from "./Icon";
 
 export interface ModalProps {
   open: boolean;
@@ -57,13 +58,13 @@ export function Modal({
             if (!closeOnBackdrop) event.preventDefault();
           }}
           className={clsx(
-            "fixed left-1/2 top-1/2 z-[51] max-h-[88vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-ui-xl border border-ui-border-strong bg-ui-surface text-ui-ink shadow-ui outline-none",
+            "ui-re-modal fixed left-1/2 top-1/2 z-[51] max-h-[88vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-ui-xl border border-ui-border-strong text-ui-ink outline-none",
             sizeClasses[size],
             className,
           )}
         >
           {(title || description) && (
-            <div className="border-b border-ui-border px-6 py-5 pr-16">
+            <div className="ui-re-modal-header border-b border-ui-border px-6 py-5 pr-16">
               {title && (
                 <DialogPrimitive.Title className="font-display text-xl font-medium tracking-[-0.025em] text-ui-ink">
                   {title}
@@ -85,9 +86,7 @@ export function Modal({
               "absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-ui-md text-ui-muted transition-colors hover:bg-ui-surface-inset hover:text-ui-ink",
             )}
           >
-            <span aria-hidden="true" className="text-xl">
-              ×
-            </span>
+            <Icon name="close" size="md" />
           </DialogPrimitive.Close>
           <div className={clsx("px-6 py-5", !title && !description && "pt-16")}>{children}</div>
         </DialogPrimitive.Content>
