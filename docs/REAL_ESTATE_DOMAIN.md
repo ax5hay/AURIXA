@@ -532,6 +532,7 @@ flowchart TD
 | --- | --- |
 | This file | Master domain specification |
 | [`README.md`](../README.md) | Product overview and quick start (real estate) |
+| [`DEMO_PRESENTATION.md`](./DEMO_PRESENTATION.md) | Demo script, user-flow diagrams, and presentation talking points |
 | [`REAL_ESTATE_API_CONVENTIONS.md`](./REAL_ESTATE_API_CONVENTIONS.md) | REST paths, payloads, tool contracts |
 | [`REAL_ESTATE_INTEGRATIONS.md`](./REAL_ESTATE_INTEGRATIONS.md) | External system adapters and events |
 | [`REAL_ESTATE_RENAME_INVENTORY.md`](./REAL_ESTATE_RENAME_INVENTORY.md) | File-by-file healthcare term mapping |
