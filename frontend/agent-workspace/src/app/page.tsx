@@ -18,11 +18,11 @@ import {
   useToast,
 } from "@aurixa/ui-kit";
 import {
-  getAppointments,
-  getPatients,
-  updateAppointmentStatus,
-  type Appointment,
-  type Patient,
+  getShowings,
+  getClients,
+  updateShowingStatus,
+  type Showing,
+  type Client,
 } from "./api";
 import { useStaffContext } from "@/context/StaffContext";
 
@@ -35,11 +35,11 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-const QUEUE_ORDER = ["confirmed", "checked_in", "in_room", "completed", "cancelled"] as const;
+const QUEUE_ORDER = ["confirmed", "completed", "cancelled", "no_show"] as const;
 
 export default function TodayPage() {
   return (
-    <AsyncBoundary loadingLabel="Loading today’s clinical work" resetKeys={["today"]}>
+    <AsyncBoundary loadingLabel="Loading today’s pipeline" resetKeys={["today"]}>
       <TodayContent />
     </AsyncBoundary>
   );
@@ -49,9 +49,9 @@ function TodayContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const { tenantFilter, tenantId, staff, roleCategory } = useStaffContext();
-  const canCoordinate = roleCategory === "clinical" || roleCategory === "coordination";
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const canCoordinate = roleCategory === "agent" || roleCategory === "coordination";
+  const [clients, setClients] = useState<Client[]>([]);
+  const [showings, setShowings] = useState<Showing[]>([]);
   const [loading, setLoading] = useState(true);
   const [freshAt, setFreshAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -65,17 +65,17 @@ function TodayContent() {
     const today = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
     Promise.all([
-      getPatients(tid),
-      getAppointments({ tenantId: tid, dateFrom: today, dateTo: tomorrow, limit: 200 }),
+      getClients(tid),
+      getShowings({ tenantId: tid, dateFrom: today, dateTo: tomorrow, limit: 200 }),
     ])
-      .then(([patientRecords, visitRecords]) => {
-        setPatients(patientRecords);
-        setAppointments(visitRecords);
+      .then(([clientRecords, showingRecords]) => {
+        setClients(clientRecords);
+        setShowings(showingRecords);
         setFreshAt(new Date());
       })
       .catch(() => {
-        setPatients([]);
-        setAppointments([]);
+        setClients([]);
+        setShowings([]);
         setLoadError(true);
       })
       .finally(() => setLoading(false));
@@ -85,12 +85,12 @@ function TodayContent() {
     load();
   }, [load]);
 
-  const patientNames = useMemo(
-    () => Object.fromEntries(patients.map((patient) => [patient.id, patient.fullName])),
-    [patients],
+  const clientNames = useMemo(
+    () => Object.fromEntries(clients.map((client) => [client.id, client.fullName])),
+    [clients],
   );
 
-  const ranked = [...appointments].sort((a, b) => {
+  const ranked = [...showings].sort((a, b) => {
     const statusRank = (status: string) => {
       const index = QUEUE_ORDER.indexOf(status as (typeof QUEUE_ORDER)[number]);
       return index === -1 ? QUEUE_ORDER.length : index;
@@ -100,21 +100,20 @@ function TodayContent() {
     );
   });
 
-  const waiting = appointments.filter((appointment) => appointment.status === "confirmed");
-  const checkedIn = appointments.filter((appointment) => appointment.status === "checked_in");
-  const inRoom = appointments.filter((appointment) => appointment.status === "in_room");
-  const completed = appointments.filter((appointment) => appointment.status === "completed");
+  const upcoming = showings.filter((s) => s.status === "confirmed");
+  const completed = showings.filter((s) => s.status === "completed");
+  const cancelled = showings.filter((s) => s.status === "cancelled");
 
-  async function transition(appointment: Appointment, status: string) {
-    setUpdatingId(appointment.id);
+  async function transition(showing: Showing, status: string) {
+    setUpdatingId(showing.id);
     try {
-      await updateAppointmentStatus(appointment.id, status);
-      setAppointments((current) =>
-        current.map((item) => (item.id === appointment.id ? { ...item, status } : item)),
+      await updateShowingStatus(showing.id, status);
+      setShowings((current) =>
+        current.map((item) => (item.id === showing.id ? { ...item, status } : item)),
       );
       toast({
-        title: "Visit status updated",
-        description: `${humanizeStatus(status)} recorded for this visit.`,
+        title: "Showing status updated",
+        description: `${humanizeStatus(status)} recorded.`,
         tone: "success",
       });
     } catch (reason) {
@@ -128,14 +127,14 @@ function TodayContent() {
     }
   }
 
-  if (loading) return <PageLoader label="Loading today’s clinical work" />;
+  if (loading) return <PageLoader label="Loading today’s pipeline" />;
 
   return (
     <div className="space-y-7 pb-8">
       <PageHeader
-        eyebrow="Today’s work"
-        title={staff ? `Good day, ${staff.fullName.split(" ")[0]}` : "Clinical work overview"}
-        description="Operational queue with inline check-in, rooming, and completion. Status always includes a text label."
+        eyebrow="Today’s pipeline"
+        title={staff ? `Good day, ${staff.fullName.split(" ")[0]}` : "Agent overview"}
+        description="Showings and client activity for your organization today."
         actions={
           <>
             <Button variant="secondary" onClick={load}>
@@ -143,17 +142,17 @@ function TodayContent() {
             </Button>
             {canCoordinate && (
               <Button asChild>
-                <Link href="/schedule">Schedule care</Link>
+                <Link href="/schedule">Schedule showing</Link>
               </Button>
             )}
             <Button asChild variant="secondary">
-              <Link href="/patients">Find patient</Link>
+              <Link href="/clients">Find client</Link>
             </Button>
           </>
         }
         aside={
           <div className="text-right text-xs text-ui-muted">
-            <p className="font-semibold text-ui-ink">{appointments.length} visits in view</p>
+            <p className="font-semibold text-ui-ink">{showings.length} showings in view</p>
             <p>
               {freshAt
                 ? `Updated at ${freshAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
@@ -165,7 +164,7 @@ function TodayContent() {
 
       {loadError && (
         <Alert title="Today’s queue is unavailable" tone="danger">
-          <p>No visits are shown because current appointment or patient data could not be verified.</p>
+          <p>Showings or client data could not be verified for this organization.</p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={load}>
             Try again
           </Button>
@@ -173,92 +172,76 @@ function TodayContent() {
       )}
       {searchParams.get("access") === "denied" && (
         <Alert title="Page not available for this role" tone="warning">
-          Your verified staff role does not include access to the requested workspace.
+          Your verified role does not include access to the requested workspace area.
         </Alert>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Card variant="compact" padding="md">
-          <p className="text-xs font-semibold text-ui-muted">Awaiting check-in</p>
-          <p className="mt-2 text-3xl font-semibold text-ui-ink">{waiting.length}</p>
-          <p className="mt-1 text-xs text-ui-faint">Confirmed visits</p>
-        </Card>
-        <Card variant="compact" padding="md">
-          <p className="text-xs font-semibold text-ui-muted">Checked in</p>
-          <p className="mt-2 text-3xl font-semibold text-ui-ink">{checkedIn.length}</p>
-          <p className="mt-1 text-xs text-ui-faint">Waiting for room</p>
-        </Card>
-        <Card variant="compact" padding="md">
-          <p className="text-xs font-semibold text-ui-muted">In room</p>
-          <p className="mt-2 text-3xl font-semibold text-ui-ink">{inRoom.length}</p>
-          <p className="mt-1 text-xs text-ui-faint">Active encounters</p>
+          <p className="text-xs font-semibold text-ui-muted">Upcoming</p>
+          <p className="mt-2 text-3xl font-semibold text-ui-ink">{upcoming.length}</p>
+          <p className="mt-1 text-xs text-ui-faint">Confirmed showings</p>
         </Card>
         <Card variant="compact" padding="md">
           <p className="text-xs font-semibold text-ui-muted">Completed</p>
           <p className="mt-2 text-3xl font-semibold text-ui-ink">{completed.length}</p>
-          <p className="mt-1 text-xs text-ui-faint">Finished today</p>
+          <p className="mt-1 text-xs text-ui-faint">Tours finished</p>
+        </Card>
+        <Card variant="compact" padding="md">
+          <p className="text-xs font-semibold text-ui-muted">Cancelled</p>
+          <p className="mt-2 text-3xl font-semibold text-ui-ink">{cancelled.length}</p>
+          <p className="mt-1 text-xs text-ui-faint">Did not occur</p>
         </Card>
       </div>
 
       <section>
         <SectionHeader
-          title="Prioritized visit queue"
-          description="Move patients through check-in → in room → complete without leaving the queue."
+          title="Showing queue"
+          description="Manage today’s property tours."
           count={ranked.length}
           action={
             <Button asChild variant="quiet">
-              <Link href="/appointments">Full schedule</Link>
+              <Link href="/showings">Full schedule</Link>
             </Button>
           }
         />
         <WorkQueue
-          items={ranked.map((appointment) => {
-            const overdue =
-              appointment.status === "confirmed" && new Date(appointment.startTime) < new Date();
+          items={ranked.map((showing) => {
+            const cid = showing.clientId ?? showing.patientId;
+            const overdue = showing.status === "confirmed" && new Date(showing.startTime) < new Date();
+            const agent = showing.agentName || showing.providerName || "Agent";
             return {
-              id: appointment.id,
-              title:
-                patientNames[appointment.patientId ?? 0] ??
-                `Patient record ${appointment.patientId ?? "unlinked"}`,
-              description: `${appointment.providerName} · ${formatTime(appointment.startTime)}${
-                overdue ? " · Overdue for check-in" : ""
+              id: showing.id,
+              title: clientNames[cid ?? 0] ?? `Client #${cid ?? "unlinked"}`,
+              description: `${agent} · ${formatTime(showing.startTime)}${
+                overdue ? " · Overdue" : ""
               }`,
-              meta: <StatusBadge status={appointment.status} />,
+              meta: <StatusBadge status={showing.status} />,
               urgent: overdue,
               action: (
                 <div className="flex flex-wrap gap-2">
-                  {canCoordinate && appointment.status === "confirmed" && (
+                  {canCoordinate && showing.status === "confirmed" && (
                     <Button
                       size="sm"
-                      loading={updatingId === appointment.id}
-                      onClick={() => void transition(appointment, "checked_in")}
+                      loading={updatingId === showing.id}
+                      onClick={() => void transition(showing, "completed")}
                     >
-                      Check in
+                      Mark complete
                     </Button>
                   )}
-                  {canCoordinate && appointment.status === "checked_in" && (
+                  {canCoordinate && showing.status === "confirmed" && (
                     <Button
                       size="sm"
-                      loading={updatingId === appointment.id}
-                      onClick={() => void transition(appointment, "in_room")}
+                      variant="secondary"
+                      loading={updatingId === showing.id}
+                      onClick={() => void transition(showing, "cancelled")}
                     >
-                      Move to room
+                      Cancel
                     </Button>
                   )}
-                  {canCoordinate &&
-                    (appointment.status === "in_room" || appointment.status === "checked_in") && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        loading={updatingId === appointment.id}
-                        onClick={() => void transition(appointment, "completed")}
-                      >
-                        Complete
-                      </Button>
-                    )}
-                  {appointment.patientId && (
+                  {cid && (
                     <Button asChild variant="quiet" size="sm">
-                      <Link href={`/patients/${appointment.patientId}`}>Open chart</Link>
+                      <Link href={`/clients/${cid}`}>Open client</Link>
                     </Button>
                   )}
                 </div>
@@ -269,12 +252,12 @@ function TodayContent() {
             loadError ? undefined : (
               <EmptyState
                 compact
-                title="No visits in today’s queue"
-                description="No appointment records were returned for this organization and date."
+                title="No showings today"
+                description="No property tours were returned for this organization and date."
                 action={
                   canCoordinate ? (
                     <Button asChild>
-                      <Link href="/schedule">Schedule a visit</Link>
+                      <Link href="/schedule">Schedule a showing</Link>
                     </Button>
                   ) : undefined
                 }

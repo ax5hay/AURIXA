@@ -9,18 +9,20 @@ import {
   Button,
   Card,
   EmptyState,
-  HealthcareDisclaimer,
   Metric,
   PageLoader,
   SectionHeader,
 } from "@aurixa/ui-kit";
+import { RealEstateDisclaimer } from "@aurixa/ui-kit";
 import {
-  getPatient,
-  getAppointments,
+  getClient,
+  getShowings,
+  getListings,
   getKnowledgeArticles,
   getConversations,
-  type Patient,
-  type Appointment,
+  type ClientProfile,
+  type Showing,
+  type Listing,
   type KnowledgeArticle,
   type ConversationSummary,
 } from "./api";
@@ -36,15 +38,16 @@ const formatDate = (iso: string) =>
 
 export default function DashboardPage() {
   return (
-    <AsyncBoundary loadingLabel="Preparing your care overview" resetKeys={["patient-home"]}>
+    <AsyncBoundary loadingLabel="Preparing your property overview" resetKeys={["client-home"]}>
       <DashboardContent />
     </AsyncBoundary>
   );
 }
 
 function DashboardContent() {
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [client, setClient] = useState<ClientProfile | null>(null);
+  const [showings, setShowings] = useState<Showing[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [articles, setArticles] = useState<KnowledgeArticle[]>([]);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,39 +59,41 @@ function DashboardContent() {
     setLoading(true);
     setError(null);
     Promise.allSettled([
-      getPatient().then(setPatient),
-      getAppointments().then(setAppointments),
+      getClient().then(setClient),
+      getShowings().then(setShowings),
+      getListings().then(setListings),
       getKnowledgeArticles().then(setArticles),
       getConversations().then(setConversations),
     ]).then((results) => {
       const failures = results.filter((result) => result.status === "rejected").length;
       if (failures === results.length) {
-        setError("Your care overview could not be loaded. Check your connection and try again.");
+        setError("Your overview could not be loaded. Check your connection and try again.");
       } else if (failures > 0) {
-        setError("Some of your care information is temporarily unavailable.");
+        setError("Some property information is temporarily unavailable.");
       }
       setLastUpdated(new Date());
       setLoading(false);
     });
   }, [reloadKey]);
 
-  const upcomingAppointments = appointments
-    .filter((a) => a.status === "confirmed" && new Date(a.startTime) > new Date())
+  const upcomingShowings = showings
+    .filter((s) => s.status === "confirmed" && new Date(s.startTime) > new Date())
     .slice(0, 5);
 
   if (loading) {
-    return <PageLoader label="Preparing your care overview" />;
+    return <PageLoader label="Preparing your property overview" />;
   }
 
-  const firstName = patient?.fullName?.split(" ")[0] || "";
-  const nextAppointment = upcomingAppointments[0];
+  const firstName = client?.fullName?.split(" ")[0] || "";
+  const nextShowing = upcomingShowings[0];
+  const agentName = nextShowing?.agentName || nextShowing?.providerName || "your agent";
 
   return (
     <div className="space-y-10 py-8 sm:py-10">
       {error && (
         <Alert
-          title={patient ? "Some information is unavailable" : "We couldn’t load your overview"}
-          tone={patient ? "warning" : "danger"}
+          title={client ? "Some information is unavailable" : "We couldn’t load your overview"}
+          tone={client ? "warning" : "danger"}
         >
           <p>{error}</p>
           <Button
@@ -107,38 +112,38 @@ function DashboardContent() {
         </p>
       )}
       <header className="max-w-3xl">
-        <p className="eyebrow">{firstName ? `Welcome back, ${firstName}` : "Your care portal"}</p>
+        <p className="eyebrow">{firstName ? `Welcome back, ${firstName}` : "Your client portal"}</p>
         <h1 className="font-display text-[clamp(2.7rem,7vw,5.5rem)] font-medium leading-[0.92] tracking-[-0.05em] text-ui-ink">
           What do you need today?
         </h1>
         <p className="page-description">
-          Check your next visit, ask a practical question, or find the right kind of support.
+          Check your next showing, browse listings, or ask a practical question.
         </p>
       </header>
 
       <section aria-label="Your next step">
         <SectionHeader
           title="Your next step"
-          description="The most useful detail from your care schedule, up front."
+          description="The most useful detail from your schedule, up front."
         />
-        {nextAppointment ? (
+        {nextShowing ? (
           <Card variant="feature" padding="lg">
-            <p className="text-xs font-semibold tracking-wide text-ui-accent">Next appointment</p>
+            <p className="text-xs font-semibold tracking-wide text-ui-accent">Next showing</p>
             <h2 className="mt-3 max-w-2xl font-display text-3xl font-medium tracking-[-0.035em] text-ui-ink sm:text-4xl">
-              You’re seeing {nextAppointment.providerName}
+              Tour with {agentName}
             </h2>
             <p className="mt-3 text-base leading-7 text-ui-muted">
-              {formatDate(nextAppointment.startTime)}. Take a moment beforehand to note any
-              questions, symptoms, or medication changes you want to discuss.
+              {formatDate(nextShowing.startTime)}. Note any questions about the property, HOA rules,
+              or financing before you arrive.
             </p>
             <Button asChild className="mt-6">
-              <Link href={`/appointments/${nextAppointment.id}`}>See visit details</Link>
+              <Link href={`/showings/${nextShowing.id}`}>See showing details</Link>
             </Button>
           </Card>
         ) : (
           <EmptyState
             title="Nothing scheduled right now"
-            description="If you expected to see a visit here, contact your care team to confirm."
+            description="Browse active listings or contact your agent to schedule a tour."
             compact
           />
         )}
@@ -151,32 +156,32 @@ function DashboardContent() {
             {
               href: "/chat",
               title: "Ask a question",
-              text: "Get help with appointments, billing, refills, or understanding next steps.",
+              text: "Get help with showings, listings, applications, or next steps.",
             },
             {
-              href: "/appointments",
-              title: "Check my visits",
-              text: "Review upcoming appointments and your recent care history.",
+              href: "/showings",
+              title: "My showings",
+              text: "Review upcoming tours and past property visits.",
+            },
+            {
+              href: "/listings",
+              title: "Browse listings",
+              text: "See active properties from your organization.",
+            },
+            {
+              href: "/applications",
+              title: "Applications",
+              text: "Check rental or buyer application requirements.",
+            },
+            {
+              href: "/financing",
+              title: "Financing",
+              text: "Prepare for pre-approval and closing costs.",
             },
             {
               href: "/help",
               title: "Find support",
-              text: "Read care guidance and see where to turn when you need a person.",
-            },
-            {
-              href: "/records",
-              title: "Review my records",
-              text: "See connected visit history and guidance for results and documents.",
-            },
-            {
-              href: "/medications",
-              title: "Medicines and refills",
-              text: "Find medication safety and refill guidance without an incomplete list.",
-            },
-            {
-              href: "/billing",
-              title: "Billing and insurance",
-              text: "Prepare for balance, statement, coverage, or authorization questions.",
+              text: "Read guides and see when to reach your agent.",
             },
           ].map((action) => (
             <Link key={action.href} href={action.href} className="group block rounded-ui-lg">
@@ -192,46 +197,46 @@ function DashboardContent() {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.35fr_1fr]" aria-label="Care summary">
+      <section className="grid gap-6 lg:grid-cols-[1.35fr_1fr]" aria-label="Property summary">
         <Card>
-          <SectionHeader title="Care summary" description="A quick, privacy-minded overview." />
+          <SectionHeader title="Property summary" description="A quick overview." />
           <div className="grid grid-cols-2 gap-5">
             <Metric
-              label="Upcoming visits"
-              value={upcomingAppointments.length}
-              detail="Confirmed appointments"
+              label="Upcoming showings"
+              value={upcomingShowings.length}
+              detail="Confirmed tours"
             />
-            <Metric label="Care guides" value={articles.length} detail="Available to read" />
+            <Metric label="Active listings" value={listings.length} detail="From your org" />
           </div>
           {conversations.length > 0 && (
             <p className="mt-6 border-t border-ui-border pt-4 text-sm text-ui-muted">
               {conversations.length} saved{" "}
-              {conversations.length === 1 ? "conversation" : "conversations"}. Details stay hidden
-              here for privacy. Open Messages to continue.
+              {conversations.length === 1 ? "conversation" : "conversations"}. Open Messages to
+              continue.
             </p>
           )}
         </Card>
 
         <Card>
           <div className="flex items-center gap-3">
-            <Avatar name={patient?.fullName || "Patient"} size="lg" />
+            <Avatar name={client?.fullName || "Client"} size="lg" />
             <div>
               <h2 className="font-display text-2xl font-medium text-ui-ink">Your account</h2>
-              <p className="text-sm text-ui-muted">{patient?.fullName || "Profile unavailable"}</p>
+              <p className="text-sm text-ui-muted">{client?.fullName || "Profile unavailable"}</p>
             </div>
           </div>
-          {patient ? (
+          {client ? (
             <dl className="mt-5 space-y-3 text-sm">
-              {patient.email && (
+              {client.email && (
                 <div>
                   <dt className="font-semibold text-ui-ink">Email</dt>
-                  <dd className="mt-0.5 break-all text-ui-muted">{patient.email}</dd>
+                  <dd className="mt-0.5 break-all text-ui-muted">{client.email}</dd>
                 </div>
               )}
-              {patient.phoneNumber && (
+              {client.phoneNumber && (
                 <div>
                   <dt className="font-semibold text-ui-ink">Phone</dt>
-                  <dd className="mt-0.5 text-ui-muted">{patient.phoneNumber}</dd>
+                  <dd className="mt-0.5 text-ui-muted">{client.phoneNumber}</dd>
                 </div>
               )}
             </dl>
@@ -246,7 +251,13 @@ function DashboardContent() {
         </Card>
       </section>
 
-      <HealthcareDisclaimer variant="emergency" />
+      {articles.length > 0 && (
+        <section aria-label="Guides">
+          <SectionHeader title="Guides" description={`${articles.length} articles available`} />
+        </section>
+      )}
+
+      <RealEstateDisclaimer variant="fair-housing" />
     </div>
   );
 }

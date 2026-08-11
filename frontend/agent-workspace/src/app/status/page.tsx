@@ -143,9 +143,9 @@ export default function StatusPage() {
 
       <DiagnosticBundle
         title="Privacy-safe support bundle"
-        description="Copies service health and aggregate audit counts only. Patient, user, and audit detail fields are excluded."
+        description="Copies service health and aggregate audit counts only. Client, user, and audit detail fields are excluded."
         data={{ health, auditSummary: severityCounts, auditEntryCount: audit.length }}
-        context={{ checkedAt: freshAt?.toISOString(), application: "AURIXA Hospital Portal" }}
+        context={{ checkedAt: freshAt?.toISOString(), application: "AURIXA Agent Workspace" }}
       />
     </div>
   );

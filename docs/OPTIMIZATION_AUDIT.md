@@ -301,7 +301,7 @@ The following high-impact changes have been applied in the codebase:
 ## Remaining Recommendations (Short List)
 
 - **Gateway:** Stream proxy for **REST** pipeline/LLM responses (e.g. `POST /api/v1/orchestration/pipelines`) so browser can consume NDJSON or SSE without buffering full body (optional; voice WS already streams).
-- **Frontend:** Add SWR or React Query for list/read endpoints (tenants, patients, config) for snappier UX.
+- **Frontend:** Add SWR or React Query for list/read endpoints (tenants, clients, config) for snappier UX.
 - **Optional:** Redis-backed response cache in orchestration when `REDIS_URL` is set for multi-replica cache sharing.
 - **Optional:** Resource limits in docker-compose or K8s for production.
 
@@ -313,8 +313,9 @@ The following high-impact changes have been applied in the codebase:
 
 1. **Kill:** `./scripts/kill-stack.sh` — frees ports 3000, 3100, 3300, 3400, 8001–8008.
 2. **Run:** `./scripts/run-stack.sh` — needs Postgres (and optionally Redis). Start infra with `cd infra/docker && docker compose up -d postgres redis`, then `pnpm db:seed`, then run-stack.
-3. **E2E:** `./scripts/e2e-check.sh` — hits gateway health, admin routes (proxied to orchestration), observe, voice health, and pipeline. Requires DB seeded (e.g. `GET /api/v1/admin/patients/1` expects at least one patient).
-4. **Tests:** `pnpm test` (Turbo); api-gateway uses Vitest with `passWithNoTests: true`. Python apps: `pytest` in each app dir (some have no tests yet).
+3. **E2E:** `./scripts/e2e-check.sh` — hits gateway health, admin routes (proxied to orchestration), observe, voice health, and pipeline. Requires DB seeded (e.g. `GET /api/v1/admin/clients/1` expects at least one client).
+4. **Domain copy:** `pnpm run check:domain-copy` — fails if banned healthcare product copy appears in user-facing frontend paths.
+5. **Tests:** `pnpm test` (Turbo); api-gateway uses Vitest with `passWithNoTests: true`. Python apps: `pytest` in each app dir (some have no tests yet).
 
 ### Security & Vulnerabilities
 

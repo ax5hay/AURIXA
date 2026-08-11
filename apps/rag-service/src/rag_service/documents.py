@@ -13,30 +13,44 @@ except ImportError:
     DB_AVAILABLE = False
     AsyncSessionLocal = None
 
-# Fallback docs when DB unavailable or empty - healthcare-focused for sample prompts
+# Fallback docs when DB unavailable or empty - real estate focused
 FALLBACK_DOCUMENTS = {
-    "aurixa-overview.txt": "AURIXA is a real-time conversational AI orchestration and automation SaaS platform for healthcare.",
-    "operating-hours.txt": (
-        "Our office operating hours are Monday through Friday 8:00 AM to 6:00 PM, and Saturday 9:00 AM to 1:00 PM. "
-        "We are closed on Sundays and major holidays. For urgent matters outside these hours, please call our 24/7 nurse line."
+    "aurixa-overview.txt": (
+        "AURIXA is a real-time conversational AI orchestration platform for real estate "
+        "brokerages, property managers, and developers."
     ),
-    "prescription-refill.txt": (
-        "To request a prescription refill, you can: 1) Use the patient portal and submit a refill request under Medications, "
-        "2) Call our pharmacy line at (555) 123-4567, or 3) Ask your provider during an appointment. "
-        "Allow 24-48 hours for processing. Controlled substances may require an office visit."
+    "office-hours.txt": (
+        "Our office hours are Monday through Friday 9:00 AM to 6:00 PM, and Saturday 10:00 AM to 2:00 PM. "
+        "We are closed on Sundays and major holidays. For urgent property emergencies after hours, "
+        "call the on-call maintenance line listed in your lease or portal."
     ),
-    "billing-insurance.txt": (
-        "We accept most major insurance plans including Aetna, UnitedHealthcare, Blue Cross Blue Shield, and Medicare. "
-        "Co-pays are due at the time of service. For billing questions, call (555) 987-6543 or log into the patient portal. "
-        "Payment plans are available for balances over $100."
+    "scheduling-showings.txt": (
+        "To schedule a property showing: use the client portal, ask the assistant for available times, "
+        "or contact your agent directly. Same-day tours may be available for active listings. "
+        "Please cancel or reschedule at least 24 hours in advance."
     ),
-    "appointments.txt": (
-        "To schedule an appointment: use the patient portal, call (555) 111-2222, or request via the mobile app. "
-        "Same-day appointments may be available for urgent issues. Please arrive 15 minutes early for new patient visits. "
-        "Cancel or reschedule at least 24 hours in advance to avoid a no-show fee."
+    "buyer-process.txt": (
+        "The buyer journey typically includes pre-approval, showings, offer submission, inspection, "
+        "appraisal, and closing. Your agent will guide each step and coordinate with the title company."
     ),
-    "services.txt": "The platform includes an API Gateway, Orchestration Engine, LLM Router, RAG Service, and Safety Guardrails.",
-    "tech-stack.txt": "Built with Python (FastAPI), TypeScript (Fastify), Next.js, PostgreSQL, and Redis.",
+    "fair-housing.txt": (
+        "We comply with fair housing laws and do not discriminate based on race, color, religion, sex, "
+        "disability, familial status, or national origin. We cannot honor requests to filter listings "
+        "or tenants by protected characteristics."
+    ),
+    "rental-application.txt": (
+        "Rental applications require photo ID, proof of income, and references. Application and "
+        "background-check fees may apply. Processing typically takes 2–3 business days after documents "
+        "are received."
+    ),
+    "financing-overview.txt": (
+        "Mortgage pre-approval helps you understand budget and strengthens offers. We can connect you "
+        "with preferred lenders. AURIXA does not provide legal or tax advice—consult licensed professionals."
+    ),
+    "services.txt": (
+        "The platform includes an API Gateway, Orchestration Engine, LLM Router, RAG Service, "
+        "Agent Runtime, Execution Engine, and Safety Guardrails."
+    ),
 }
 
 
@@ -53,7 +67,7 @@ async def load_documents_from_db(tenant_id: int | None = None) -> dict[str, str]
             result = await session.execute(q)
             articles = result.scalars().all()
             docs = {}
-            for i, a in enumerate(articles):
+            for a in articles:
                 key = f"kb-{a.id}-{a.title.replace(' ', '-')[:30]}.txt"
                 docs[key] = f"{a.title}\n\n{a.content}"
             return docs if docs else FALLBACK_DOCUMENTS

@@ -119,7 +119,7 @@ network module's multi-AZ layout.
 The umbrella chart is `infra/helm/aurixa`. Environment overlays contain no
 credentials. Before enabling their consumers, install an ingress controller,
 metrics support, External Secrets Operator and `ClusterSecretStore`, DNS, and
-TLS. Set four public hosts (API, dashboard, patient, and hospital) and build
+TLS. Set four public hosts (API, dashboard, client portal, and agent workspace) and build
 frontend images with `NEXT_PUBLIC_API_GATEWAY_URL` matching
 `global.frontend.apiGatewayUrl`.
 

@@ -1,13 +1,19 @@
-export const PATIENT_SESSION_COOKIE = "aurixa_patient_session";
-export const PATIENT_SESSION_MAX_AGE_SECONDS = 60 * 60;
+export const CLIENT_SESSION_COOKIE = "aurixa_client_session";
+/** @deprecated Phase 4 migration — read legacy patient cookie when present */
+export const LEGACY_PATIENT_SESSION_COOKIE = "aurixa_patient_session";
+export const CLIENT_SESSION_MAX_AGE_SECONDS = 60 * 60;
 
-export interface PatientSession {
-  patientId: number;
+export interface ClientSession {
+  clientId: number;
   tenantId: number;
   subject: string;
   issuedAt: number;
   expiresAt: number;
   demo: boolean;
+}
+
+function env(name: string, legacy?: string): string | undefined {
+  return process.env[name] ?? (legacy ? process.env[legacy] : undefined);
 }
 
 function encodeBase64Url(value: Uint8Array | string): string {
@@ -45,38 +51,50 @@ async function hmac(
   return crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
 }
 
-function isPatientSession(value: unknown): value is PatientSession {
-  if (!value || typeof value !== "object") return false;
-  const session = value as Record<string, unknown>;
-  return (
-    Number.isSafeInteger(session.patientId) &&
-    Number(session.patientId) > 0 &&
-    Number.isSafeInteger(session.tenantId) &&
-    Number(session.tenantId) > 0 &&
-    typeof session.subject === "string" &&
-    typeof session.issuedAt === "number" &&
-    typeof session.expiresAt === "number" &&
-    typeof session.demo === "boolean"
-  );
+function normalizeSessionPayload(value: unknown): ClientSession | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const clientId = Number(raw.clientId ?? raw.patientId);
+  const tenantId = Number(raw.tenantId);
+  if (
+    !Number.isSafeInteger(clientId) ||
+    clientId < 1 ||
+    !Number.isSafeInteger(tenantId) ||
+    tenantId < 1 ||
+    typeof raw.subject !== "string" ||
+    typeof raw.issuedAt !== "number" ||
+    typeof raw.expiresAt !== "number" ||
+    typeof raw.demo !== "boolean"
+  ) {
+    return null;
+  }
+  return {
+    clientId,
+    tenantId,
+    subject: raw.subject,
+    issuedAt: raw.issuedAt,
+    expiresAt: raw.expiresAt,
+    demo: raw.demo,
+  };
 }
 
-const LOCAL_DEMO_SESSION_SECRET = "aurixa-local-patient-demo-session-secret";
+const LOCAL_DEMO_SESSION_SECRET = "aurixa-local-client-demo-session-secret";
 
-export function getPatientSessionSecret(): string | null {
-  const secret = process.env.PATIENT_SESSION_SECRET;
+export function getClientSessionSecret(): string | null {
+  const secret = env("CLIENT_SESSION_SECRET", "PATIENT_SESSION_SECRET");
   if (secret && secret.length >= 32) return secret;
-  if (isPatientLivePathOpen()) return LOCAL_DEMO_SESSION_SECRET;
+  if (isClientLivePathOpen()) return LOCAL_DEMO_SESSION_SECRET;
   return null;
 }
 
-export function buildLocalPatientDemoSession(): PatientSession | null {
-  if (!isPatientLivePathOpen()) return null;
+export function buildLocalClientDemoSession(): ClientSession | null {
+  if (!isClientLivePathOpen()) return null;
 
-  const patientId = Number(runtimeEnv("PATIENT_DEMO_PATIENT_ID") ?? "1");
-  const tenantId = Number(runtimeEnv("PATIENT_DEMO_TENANT_ID") ?? "1");
+  const clientId = Number(env("CLIENT_DEMO_CLIENT_ID", "PATIENT_DEMO_PATIENT_ID") ?? "1");
+  const tenantId = Number(env("CLIENT_DEMO_TENANT_ID", "PATIENT_DEMO_TENANT_ID") ?? "1");
   if (
-    !Number.isSafeInteger(patientId) ||
-    patientId < 1 ||
+    !Number.isSafeInteger(clientId) ||
+    clientId < 1 ||
     !Number.isSafeInteger(tenantId) ||
     tenantId < 1
   ) {
@@ -85,42 +103,42 @@ export function buildLocalPatientDemoSession(): PatientSession | null {
 
   const issuedAt = Math.floor(Date.now() / 1000);
   return {
-    patientId,
+    clientId,
     tenantId,
-    subject: `local-demo-patient-${patientId}`,
+    subject: `local-demo-client-${clientId}`,
     demo: true,
     issuedAt,
-    expiresAt: issuedAt + PATIENT_SESSION_MAX_AGE_SECONDS,
+    expiresAt: issuedAt + CLIENT_SESSION_MAX_AGE_SECONDS,
   };
 }
 
-export async function resolvePatientSession(
+export async function resolveClientSession(
   token: string | undefined,
-): Promise<PatientSession | null> {
-  const verified = await verifyPatientSessionToken(token);
+): Promise<ClientSession | null> {
+  const verified = await verifyClientSessionToken(token);
   if (verified) return verified;
-  return buildLocalPatientDemoSession();
+  return buildLocalClientDemoSession();
 }
 
-export async function createPatientSessionToken(
-  session: Omit<PatientSession, "issuedAt" | "expiresAt">,
+export async function createClientSessionToken(
+  session: Omit<ClientSession, "issuedAt" | "expiresAt">,
   secret: string,
 ): Promise<string> {
   const issuedAt = Math.floor(Date.now() / 1000);
-  const payload: PatientSession = {
+  const payload: ClientSession = {
     ...session,
     issuedAt,
-    expiresAt: issuedAt + PATIENT_SESSION_MAX_AGE_SECONDS,
+    expiresAt: issuedAt + CLIENT_SESSION_MAX_AGE_SECONDS,
   };
   const encoded = encodeBase64Url(JSON.stringify(payload));
   const signature = await hmac(secret, encoded, "sign");
   return `${encoded}.${encodeBase64Url(new Uint8Array(signature as ArrayBuffer))}`;
 }
 
-export async function verifyPatientSessionToken(
+export async function verifyClientSessionToken(
   token: string | undefined,
-  secret: string | null = getPatientSessionSecret(),
-): Promise<PatientSession | null> {
+  secret: string | null = getClientSessionSecret(),
+): Promise<ClientSession | null> {
   if (!token || !secret) return null;
   const [encoded, encodedSignature, extra] = token.split(".");
   if (!encoded || !encodedSignature || extra) return null;
@@ -130,25 +148,21 @@ export async function verifyPatientSessionToken(
     const valid = await hmac(secret, encoded, "verify", signature.buffer as ArrayBuffer);
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(encoded))) as unknown;
-    if (!isPatientSession(payload) || payload.expiresAt <= Math.floor(Date.now() / 1000))
-      return null;
-    return payload;
+    const session = normalizeSessionPayload(payload);
+    if (!session || session.expiresAt <= Math.floor(Date.now() / 1000)) return null;
+    return session;
   } catch {
     return null;
   }
 }
 
-function runtimeEnv(name: string): string | undefined {
-  return process.env[name];
-}
-
-export function isLocalPatientDemoEnabled(): boolean {
+export function isLocalClientDemoEnabled(): boolean {
   return (
-    runtimeEnv("NODE_ENV") !== "production" &&
-    runtimeEnv("PATIENT_DEMO_AUTH_ENABLED") === "true"
+    env("NODE_ENV") !== "production" &&
+    env("CLIENT_DEMO_AUTH_ENABLED", "PATIENT_DEMO_AUTH_ENABLED") === "true"
   );
 }
 
-export function isPatientLivePathOpen(): boolean {
-  return runtimeEnv("PATIENT_DEMO_AUTH_ENABLED") === "true";
+export function isClientLivePathOpen(): boolean {
+  return env("CLIENT_DEMO_AUTH_ENABLED", "PATIENT_DEMO_AUTH_ENABLED") === "true";
 }

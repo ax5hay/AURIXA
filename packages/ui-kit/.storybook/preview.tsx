@@ -15,8 +15,10 @@ const preview: Preview = {
         title: "Theme",
         items: [
           { value: "operator", title: "Operator" },
-          { value: "patient", title: "Patient" },
-          { value: "clinical", title: "Clinical" },
+          { value: "client", title: "Client portal" },
+          { value: "workspace", title: "Agent workspace" },
+          { value: "patient", title: "Patient (legacy)" },
+          { value: "clinical", title: "Clinical (legacy)" },
         ],
       },
     },

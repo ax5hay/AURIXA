@@ -3,15 +3,15 @@ import {
   Alert,
   Button,
   Card,
-  HealthcareDisclaimer,
   Icon,
   PageHeader,
   SectionHeader,
   StatusBadge,
   type IconName,
 } from "@aurixa/ui-kit";
+import { RealEstateDisclaimer } from "@aurixa/ui-kit";
 
-interface UnavailableCareSectionProps {
+interface UnavailableSectionProps {
   eyebrow: string;
   title: string;
   description: string;
@@ -22,7 +22,7 @@ interface UnavailableCareSectionProps {
   checklist?: string[];
 }
 
-export function UnavailableCareSection({
+export function UnavailableSection({
   eyebrow,
   title,
   description,
@@ -31,7 +31,7 @@ export function UnavailableCareSection({
   steps,
   related = [],
   checklist = [],
-}: UnavailableCareSectionProps) {
+}: UnavailableSectionProps) {
   return (
     <div className="space-y-8 py-8 sm:py-10">
       <PageHeader
@@ -49,7 +49,7 @@ export function UnavailableCareSection({
         <Card variant="feature" padding="lg">
           <SectionHeader
             title="Bring this to your next contact"
-            description="A short preparation list while the clinical feed remains disconnected."
+            description="A short preparation list while this feed remains disconnected."
           />
           <ol className="mt-4 space-y-3">
             {checklist.map((item, index) => (
@@ -67,7 +67,7 @@ export function UnavailableCareSection({
       <section aria-labelledby="next-steps-heading">
         <SectionHeader
           title="What you can do now"
-          description="Use a channel you already trust for information tied to your care."
+          description="Use a channel you already trust for property-related information."
         />
         <div className="grid gap-4 md:grid-cols-2">
           {steps.map((step) => (
@@ -101,7 +101,10 @@ export function UnavailableCareSection({
         </nav>
       )}
 
-      <HealthcareDisclaimer variant="emergency" />
+      <RealEstateDisclaimer variant="not-legal" />
     </div>
   );
 }
+
+/** @deprecated Use UnavailableSection */
+export const UnavailableCareSection = UnavailableSection;

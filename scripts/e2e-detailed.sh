@@ -47,16 +47,20 @@ echo ""
 # --- 4. Admin (orchestration via gateway) ---
 echo "--- 4. Admin routes ---"
 curl -sf "$GATEWAY/api/v1/admin/tenants" >/dev/null && pass "GET admin/tenants" || fail "admin/tenants"
-curl -sf "$GATEWAY/api/v1/admin/patients" >/dev/null && pass "GET admin/patients" || fail "admin/patients"
-E2E_PATIENT_CODE=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/patients/1")
-if [ "$E2E_PATIENT_CODE" = "200" ]; then
-  pass "GET admin/patients/1"
-elif [ "$E2E_PATIENT_CODE" = "404" ]; then
-  warn "GET admin/patients/1 (404)"
+curl -sf "$GATEWAY/api/v1/admin/clients" >/dev/null && pass "GET admin/clients" || fail "admin/clients"
+E2E_CLIENT_CODE=$(curl -so /dev/null -w "%{http_code}" "$GATEWAY/api/v1/admin/clients/1")
+if [ "$E2E_CLIENT_CODE" = "200" ]; then
+  pass "GET admin/clients/1"
+elif [ "$E2E_CLIENT_CODE" = "404" ]; then
+  warn "GET admin/clients/1 (404)"
 else
-  fail "GET admin/patients/1 ($E2E_PATIENT_CODE)"
+  fail "GET admin/clients/1 ($E2E_CLIENT_CODE)"
 fi
-curl -sf "$GATEWAY/api/v1/admin/appointments" >/dev/null && pass "GET admin/appointments" || fail "admin/appointments"
+curl -sf "$GATEWAY/api/v1/admin/showings" >/dev/null && pass "GET admin/showings" || fail "admin/showings"
+curl -sf "$GATEWAY/api/v1/admin/listings" >/dev/null && pass "GET admin/listings" || fail "admin/listings"
+curl -sf "$GATEWAY/api/v1/admin/leads" >/dev/null && pass "GET admin/leads" || fail "admin/leads"
+curl -sf "$GATEWAY/api/v1/admin/patients" >/dev/null && pass "GET admin/patients (legacy alias)" || warn "GET admin/patients (legacy alias unavailable)"
+curl -sf "$GATEWAY/api/v1/admin/appointments" >/dev/null && pass "GET admin/appointments (legacy alias)" || warn "GET admin/appointments (legacy alias unavailable)"
 curl -sf "$GATEWAY/api/v1/admin/knowledge/articles" >/dev/null && pass "GET admin/knowledge/articles" || fail "admin/knowledge/articles"
 curl -sf "$GATEWAY/api/v1/admin/analytics/summary" >/dev/null && pass "GET admin/analytics/summary" || fail "admin/analytics/summary"
 echo ""

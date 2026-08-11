@@ -18,9 +18,18 @@ export async function POST() {
 
   const staffId = Number(process.env.STAFF_DEMO_STAFF_ID ?? "1");
   const tenantId = Number(process.env.STAFF_DEMO_TENANT_ID ?? "1");
-  const fullName = process.env.STAFF_DEMO_FULL_NAME?.trim() || "Demo Clinician";
-  const email = process.env.STAFF_DEMO_EMAIL?.trim() || "demo-clinician@localhost";
-  const role = process.env.STAFF_DEMO_ROLE?.trim() || "clinician";
+  const fullName =
+    process.env.AGENT_DEMO_FULL_NAME?.trim() ||
+    process.env.STAFF_DEMO_FULL_NAME?.trim() ||
+    "Demo Agent";
+  const email =
+    process.env.AGENT_DEMO_EMAIL?.trim() ||
+    process.env.STAFF_DEMO_EMAIL?.trim() ||
+    "demo-agent@localhost";
+  const role =
+    process.env.AGENT_DEMO_ROLE?.trim() ||
+    process.env.STAFF_DEMO_ROLE?.trim() ||
+    "agent";
   if (
     !Number.isSafeInteger(staffId) ||
     staffId < 1 ||

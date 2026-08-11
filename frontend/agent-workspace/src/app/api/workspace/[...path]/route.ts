@@ -5,6 +5,8 @@ import { STAFF_SESSION_COOKIE, resolveStaffSession } from "@/lib/staff-session";
 const GATEWAY_URL = process.env.API_GATEWAY_URL || "http://localhost:3000";
 const ALLOWED_ROOTS = new Set(["admin", "orchestration", "execute", "health"]);
 
+const CLIENT_RESOURCES = new Set(["clients", "patients", "showings", "appointments", "leads", "listings"]);
+
 function targetUrl(path: string[], requestUrl: string) {
   const root = path[0];
   if (!root || !ALLOWED_ROOTS.has(root)) return null;
@@ -26,23 +28,53 @@ async function authorizedSession() {
   return resolveStaffSession(cookieStore.get(STAFF_SESSION_COOKIE)?.value);
 }
 
-async function patientBelongsToTenant(patientId: string, tenantId: number) {
-  const response = await fetch(`${GATEWAY_URL}/api/v1/admin/patients/${encodeURIComponent(patientId)}`, {
+async function clientBelongsToTenant(clientId: string, tenantId: number) {
+  const response = await fetch(`${GATEWAY_URL}/api/v1/admin/clients/${encodeURIComponent(clientId)}`, {
     cache: "no-store",
   });
-  if (!response.ok) return false;
-  const patient = (await response.json()) as { tenantId?: number };
-  return patient.tenantId === tenantId;
+  if (!response.ok) {
+    const legacy = await fetch(
+      `${GATEWAY_URL}/api/v1/admin/patients/${encodeURIComponent(clientId)}`,
+      { cache: "no-store" },
+    );
+    if (!legacy.ok) return false;
+    const patient = (await legacy.json()) as { tenantId?: number };
+    return patient.tenantId === tenantId;
+  }
+  const client = (await response.json()) as { tenantId?: number };
+  return client.tenantId === tenantId;
 }
 
-async function appointmentBelongsToTenant(appointmentId: string, tenantId: number) {
-  const response = await fetch(
-    `${GATEWAY_URL}/api/v1/admin/appointments?tenant_id=${tenantId}&limit=1000`,
-    { cache: "no-store" },
+async function showingBelongsToTenant(showingId: string, tenantId: number) {
+  for (const path of ["showings", "appointments"]) {
+    const response = await fetch(
+      `${GATEWAY_URL}/api/v1/admin/${path}?tenant_id=${tenantId}&limit=1000`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) continue;
+    const items = (await response.json()) as { id: number }[];
+    if (items.some((item) => String(item.id) === showingId)) return true;
+  }
+  return false;
+}
+
+function isAgentRole(role: string) {
+  const normalized = role.toLowerCase();
+  return ["agent", "realtor", "broker", "doctor", "physician", "nurse", "clinician"].some((term) =>
+    normalized.includes(term),
   );
-  if (!response.ok) return false;
-  const appointments = (await response.json()) as { id: number }[];
-  return appointments.some((appointment) => String(appointment.id) === appointmentId);
+}
+
+function isCoordinationRole(role: string) {
+  const normalized = role.toLowerCase();
+  return ["reception", "scheduler", "coordinator", "front desk"].some((term) =>
+    normalized.includes(term),
+  );
+}
+
+function isOperationsRole(role: string) {
+  const normalized = role.toLowerCase();
+  return ["admin", "operator", "support"].some((term) => normalized.includes(term));
 }
 
 async function proxy(
@@ -54,51 +86,49 @@ async function proxy(
 
   const { path } = await context.params;
   const target = targetUrl(path, request.url);
-  if (!target) return NextResponse.json({ error: "Unsupported portal operation." }, { status: 404 });
+  if (!target) return NextResponse.json({ error: "Unsupported workspace operation." }, { status: 404 });
 
   const resource = path.slice(1);
-  const role = session.role.toLowerCase();
-  const clinical = ["doctor", "physician", "nurse", "clinician"].some((term) => role.includes(term));
-  const coordination = ["reception", "scheduler", "coordinator", "front desk"].some((term) =>
-    role.includes(term),
-  );
-  const operations = ["admin", "operator", "support"].some((term) => role.includes(term));
-  const canCoordinate = clinical || coordination;
+  const resourceRoot = resource[0] ?? "";
+  const agent = isAgentRole(session.role);
+  const coordination = isCoordinationRole(session.role);
+  const operations = isOperationsRole(session.role);
+  const canCoordinate = agent || coordination;
   const allowed =
     (path[0] === "orchestration" && canCoordinate) ||
     (path[0] === "execute" && canCoordinate) ||
     (path[0] === "health" && operations) ||
     (path[0] === "admin" &&
-      ((resource[0] === "audit" && operations) ||
-        (["patients", "appointments", "knowledge"].includes(resource[0] ?? "") &&
-          (clinical || coordination || operations)) ||
-        (resource[0] === "staff" && canCoordinate)));
-  const isCareWrite =
+      ((resourceRoot === "audit" && operations) ||
+        (CLIENT_RESOURCES.has(resourceRoot) && (agent || coordination || operations)) ||
+        (resourceRoot === "staff" && canCoordinate) ||
+        (resourceRoot === "knowledge" && (agent || coordination || operations))));
+  const isWrite =
     path[0] === "admin" &&
     request.method !== "GET" &&
-    ["patients", "appointments"].includes(resource[0] ?? "");
-  if (!allowed || (isCareWrite && !canCoordinate)) {
+    CLIENT_RESOURCES.has(resourceRoot);
+  if (!allowed || (isWrite && !canCoordinate)) {
     return NextResponse.json({ error: "Operation is not permitted for this staff role." }, { status: 403 });
   }
 
   if (path[0] === "admin") {
-    if (["patients", "appointments", "staff", "knowledge"].includes(resource[0] ?? "")) {
+    if (["clients", "patients", "showings", "appointments", "leads", "listings", "staff", "knowledge"].includes(resourceRoot)) {
       target.searchParams.set("tenant_id", String(session.tenantId));
     }
     if (
-      resource[0] === "patients" &&
+      (resourceRoot === "clients" || resourceRoot === "patients") &&
       resource[1] &&
-      !(await patientBelongsToTenant(resource[1], session.tenantId))
+      !(await clientBelongsToTenant(resource[1], session.tenantId))
     ) {
-      return NextResponse.json({ error: "Patient is outside staff scope." }, { status: 404 });
+      return NextResponse.json({ error: "Client is outside staff scope." }, { status: 404 });
     }
     if (
       request.method === "PATCH" &&
-      resource[0] === "appointments" &&
+      (resourceRoot === "showings" || resourceRoot === "appointments") &&
       resource[1] &&
-      !(await appointmentBelongsToTenant(resource[1], session.tenantId))
+      !(await showingBelongsToTenant(resource[1], session.tenantId))
     ) {
-      return NextResponse.json({ error: "Appointment is outside staff scope." }, { status: 404 });
+      return NextResponse.json({ error: "Showing is outside staff scope." }, { status: 404 });
     }
   }
 

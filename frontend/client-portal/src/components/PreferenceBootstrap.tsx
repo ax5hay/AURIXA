@@ -2,22 +2,21 @@
 
 import { useEffect } from "react";
 import {
-  applyPatientPreference,
-  PATIENT_PREFERENCE_KEYS,
+  applyClientPreference,
+  CLIENT_PREFERENCE_KEYS,
   preferenceEnabled,
-  type PatientPreference,
-} from "@/lib/patient-preferences";
+  type ClientPreference,
+} from "@/lib/client-preferences";
 
 export function PreferenceBootstrap() {
   useEffect(() => {
-    (Object.keys(PATIENT_PREFERENCE_KEYS) as PatientPreference[]).forEach((preference) => {
-      applyPatientPreference(
+    (Object.keys(CLIENT_PREFERENCE_KEYS) as ClientPreference[]).forEach((preference) => {
+      applyClientPreference(
         document.documentElement,
         preference,
-        preferenceEnabled(window.localStorage.getItem(PATIENT_PREFERENCE_KEYS[preference])),
+        preferenceEnabled(window.localStorage.getItem(CLIENT_PREFERENCE_KEYS[preference])),
       );
     });
   }, []);
-
   return null;
 }

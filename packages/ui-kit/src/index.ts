@@ -62,7 +62,12 @@ export type {
   StatusDefinition,
 } from "./components/Production";
 
+export { RealEstateDisclaimer } from "./components/RealEstate";
+export type { RealEstateDisclaimerVariant } from "./components/RealEstate";
+
+/** @deprecated Use RealEstateDisclaimer */
 export { HealthcareDisclaimer } from "./components/Healthcare";
+/** @deprecated Use RealEstateDisclaimerVariant */
 export type { HealthcareDisclaimerVariant } from "./components/Healthcare";
 
 export { ChatPanel, AppointmentCard } from "./components/Domain";

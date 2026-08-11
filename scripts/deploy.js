@@ -24,8 +24,8 @@ const expectedServices = [
   "observability-core",
   "deployment-controller",
   "dashboard",
-  "patient-portal",
-  "hospital-portal",
+  "client-portal",
+  "agent-workspace",
 ];
 const command = process.argv[2] || "help";
 const selectedNames = process.argv.slice(3);

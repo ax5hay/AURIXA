@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { Alert, Card, SectionHeader } from "@aurixa/ui-kit";
 import {
-  applyPatientPreference,
-  PATIENT_PREFERENCE_KEYS,
+  applyClientPreference,
+  CLIENT_PREFERENCE_KEYS,
   preferenceEnabled,
-  type PatientPreference,
-} from "@/lib/patient-preferences";
+  type ClientPreference,
+} from "@/lib/client-preferences";
 
 const OPTIONS: Array<{
-  id: PatientPreference;
+  id: ClientPreference;
   label: string;
   description: string;
 }> = [
@@ -22,17 +22,17 @@ const OPTIONS: Array<{
   {
     id: "highContrast",
     label: "Increase contrast",
-    description: "Strengthen borders and text contrast throughout the portal.",
+    description: "Sharpen borders and text contrast for readability.",
   },
   {
     id: "reduceMotion",
     label: "Reduce motion",
-    description: "Minimize transitions even when your device setting allows motion.",
+    description: "Minimize non-essential animation on this device.",
   },
 ];
 
 export function AccessibilityPreferences() {
-  const [preferences, setPreferences] = useState<Record<PatientPreference, boolean>>({
+  const [preferences, setPreferences] = useState<Record<ClientPreference, boolean>>({
     largerText: false,
     highContrast: false,
     reduceMotion: false,
@@ -43,49 +43,48 @@ export function AccessibilityPreferences() {
       Object.fromEntries(
         OPTIONS.map(({ id }) => [
           id,
-          preferenceEnabled(window.localStorage.getItem(PATIENT_PREFERENCE_KEYS[id])),
+          preferenceEnabled(window.localStorage.getItem(CLIENT_PREFERENCE_KEYS[id])),
         ]),
-      ) as Record<PatientPreference, boolean>,
+      ) as Record<ClientPreference, boolean>,
     );
   }, []);
 
-  const update = (id: PatientPreference, enabled: boolean) => {
+  const update = (id: ClientPreference, enabled: boolean) => {
     setPreferences((current) => ({ ...current, [id]: enabled }));
-    window.localStorage.setItem(PATIENT_PREFERENCE_KEYS[id], String(enabled));
-    applyPatientPreference(document.documentElement, id, enabled);
+    window.localStorage.setItem(CLIENT_PREFERENCE_KEYS[id], String(enabled));
+    applyClientPreference(document.documentElement, id, enabled);
   };
 
   return (
-    <Card>
+    <div className="space-y-6">
       <SectionHeader
-        title="Display and motion"
-        description="These preferences stay in this browser. They do not update your medical record."
+        title="Display preferences"
+        description="These settings apply only on this device and browser."
       />
-      <div className="divide-y divide-ui-border rounded-ui-md border border-ui-border">
+      <div className="space-y-3">
         {OPTIONS.map((option) => (
-          <label
-            key={option.id}
-            className="flex min-h-16 cursor-pointer items-center justify-between gap-4 p-4"
-          >
-            <span>
-              <span className="block font-semibold text-ui-ink">{option.label}</span>
-              <span className="mt-1 block text-sm leading-5 text-ui-muted">
-                {option.description}
+          <Card key={option.id} padding="md">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-ui-border-strong"
+                checked={preferences[option.id]}
+                onChange={(event) => update(option.id, event.target.checked)}
+              />
+              <span>
+                <span className="block font-semibold text-ui-ink">{option.label}</span>
+                <span className="mt-1 block text-sm leading-6 text-ui-muted">
+                  {option.description}
+                </span>
               </span>
-            </span>
-            <input
-              type="checkbox"
-              checked={preferences[option.id]}
-              onChange={(event) => update(option.id, event.target.checked)}
-              className="h-6 w-6 shrink-0 rounded border-ui-border-strong text-ui-accent"
-            />
-          </label>
+            </label>
+          </Card>
         ))}
       </div>
-      <Alert title="Need another accommodation?" tone="info" className="mt-5">
-        Contact your care team before a visit for interpreter services, communication support,
-        mobility access, or other care accommodations.
+      <Alert title="Need accommodation support?" tone="info">
+        Contact your agent or property manager before a showing for interpreter services or
+        accessibility assistance at a property.
       </Alert>
-    </Card>
+    </div>
   );
 }

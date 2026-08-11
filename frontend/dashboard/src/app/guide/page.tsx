@@ -12,7 +12,7 @@ const sections = [
       {
         title: "Dashboard",
         href: "/",
-        desc: "View system health, tenant counts, conversations, and LLM costs at a glance. The Knowledge Base card shows articles per tenant.",
+        desc: "View system health, organization counts, conversations, domain records, and LLM costs at a glance.",
       },
       {
         title: "Playground",
@@ -24,7 +24,7 @@ const sections = [
   {
     id: "tenant-management",
     title: "Tenant Management",
-    description: "Manage organizations (hospitals, clinics) that use AURIXA.",
+    description: "Manage organizations (brokerages, property managers, developers) that use AURIXA.",
     items: [
       {
         title: "Tenants",
@@ -46,12 +46,12 @@ const sections = [
       {
         title: "Analytics",
         href: "/analytics",
-        desc: "Database metrics (conversations, patients, appointments, articles, audits) plus telemetry: event volume, latency, and LLM cost. Includes charts and visualizations.",
+        desc: "Database metrics (conversations, clients, showings, listings, leads, articles, audits) plus telemetry: event volume, latency, and LLM cost.",
       },
       {
         title: "Audit Log",
         href: "/audit",
-        desc: "View all audit-worthy actions: tenant/patient creation, config changes, appointments, prescription refills, and more.",
+        desc: "View audit-worthy actions: tenant/client creation, config changes, showings, service requests, leads, and more.",
       },
     ],
   },
@@ -63,7 +63,7 @@ const sections = [
       {
         title: "Knowledge Base",
         href: "/knowledge",
-        desc: "Browse RAG-indexed articles. Each article belongs to a specific tenant. Filter by tenant or search to find relevant content used in pipelines.",
+        desc: "Browse RAG-indexed articles. Each article belongs to a specific tenant. Filter by tenant or search to find content used in pipelines.",
       },
     ],
   },
@@ -80,7 +80,7 @@ const sections = [
       {
         title: "Settings",
         href: "/settings",
-        desc: "Edit platform config keys: rate limits, feature flags (RAG, voice, safety), API timeout, default LLM provider, and maintenance mode. Changes are persisted to the database.",
+        desc: "Edit platform config keys: rate limits, feature flags (RAG, voice, safety), API timeout, default LLM provider, and maintenance mode.",
       },
     ],
   },
@@ -141,16 +141,16 @@ export default function GuidePage() {
         <h3 className="text-lg font-semibold text-white mb-3">Quick Tips</h3>
         <ul className="space-y-2 text-sm text-white/70">
           <li>
-            • <strong>Tenants</strong> are organizations (hospitals, clinics). Each has a plan and
-            can have patients and knowledge articles.
+            • <strong>Organizations</strong> are brokerages or property managers. Each has a plan and
+            can have clients, listings, and knowledge articles.
           </li>
           <li>
             • <strong>Knowledge Base</strong> articles are tenant-scoped and used by the RAG service
             for context in conversational pipelines.
           </li>
           <li>
-            • <strong>Audit Log</strong> records create/update operations for tenants, patients,
-            appointments, prescription refills, and config changes.
+            • <strong>Audit Log</strong> records create/update operations for tenants, clients,
+            showings, service requests, leads, and config changes.
           </li>
           <li>
             • <strong>Settings</strong> lets you toggle feature flags (RAG, voice, safety) and

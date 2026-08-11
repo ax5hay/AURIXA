@@ -83,7 +83,7 @@ jobs:
           allowed=(
             api-gateway orchestration-engine llm-router agent-runtime
             rag-service safety-guardrails streaming-voice execution-engine
-            observability-core dashboard patient-portal hospital-portal
+            observability-core dashboard client-portal agent-workspace
             deployment-controller
           )
           if [[ "$service_scope" != "all" ]]; then
@@ -317,7 +317,7 @@ jobs:
           services=(
             api-gateway orchestration-engine llm-router agent-runtime
             rag-service safety-guardrails streaming-voice execution-engine
-            observability-core dashboard patient-portal hospital-portal
+            observability-core dashboard client-portal agent-workspace
             deployment-controller
           )
           image_args=()
@@ -488,7 +488,7 @@ jobs:
               services=(
                 api-gateway orchestration-engine llm-router agent-runtime
                 rag-service safety-guardrails streaming-voice execution-engine
-                observability-core dashboard patient-portal hospital-portal
+                observability-core dashboard client-portal agent-workspace
                 deployment-controller
               )
             else

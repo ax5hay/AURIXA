@@ -359,10 +359,10 @@ services:
     networks:
       - aurixa
 
-  patient-portal:
+  client-portal:
     build:
       context: ../..
-      dockerfile: frontend/patient-portal/Dockerfile
+      dockerfile: frontend/client-portal/Dockerfile
     ports:
       - "3300:3300"
     env_file: ../../.env
@@ -370,19 +370,19 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_API_GATEWAY_URL: http://localhost:3000
       API_GATEWAY_URL: http://api-gateway:3000
-      PATIENT_DEMO_AUTH_ENABLED: "true"
-      PATIENT_DEMO_PATIENT_ID: "1"
-      PATIENT_DEMO_TENANT_ID: "1"
+      CLIENT_DEMO_AUTH_ENABLED: "true"
+      CLIENT_DEMO_CLIENT_ID: "1"
+      CLIENT_DEMO_TENANT_ID: "1"
     depends_on:
       api-gateway:
         condition: service_healthy
     networks:
       - aurixa
 
-  hospital-portal:
+  agent-workspace:
     build:
       context: ../..
-      dockerfile: frontend/hospital-portal/Dockerfile
+      dockerfile: frontend/agent-workspace/Dockerfile
     ports:
       - "3400:3400"
     env_file: ../../.env
@@ -393,9 +393,11 @@ services:
       STAFF_DEMO_AUTH_ENABLED: "true"
       STAFF_DEMO_STAFF_ID: "1"
       STAFF_DEMO_TENANT_ID: "1"
-      STAFF_DEMO_FULL_NAME: Demo Clinician
-      STAFF_DEMO_EMAIL: demo-clinician@localhost
-      STAFF_DEMO_ROLE: clinician
+      STAFF_DEMO_FULL_NAME: Demo Agent
+      STAFF_DEMO_EMAIL: demo-agent@localhost
+      STAFF_DEMO_ROLE: agent
+      AGENT_DEMO_FULL_NAME: Demo Agent
+      AGENT_DEMO_ROLE: agent
     depends_on:
       api-gateway:
         condition: service_healthy

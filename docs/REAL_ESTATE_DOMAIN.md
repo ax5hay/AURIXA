@@ -399,7 +399,7 @@ Full file-level mapping: [`REAL_ESTATE_RENAME_INVENTORY.md`](./REAL_ESTATE_RENAM
 1. **Phase 1:** Alembic migration chain renames tables/columns; new tables added; seed replaced  
 2. **No dual-read period** — healthcare demo data discarded on migrate  
 3. **Feature flags:** `DOMAIN_REAL_ESTATE=true` optional during transition (Phase 2–3) if parallel paths needed; removed before GA  
-4. **CI gate (Phase 12):** block merge if healthcare terms appear in user-facing paths  
+4. **CI gate (Phase 10):** `pnpm run check:domain-copy` blocks merge if healthcare terms appear in user-facing frontend paths  
 
 ---
 
@@ -450,8 +450,6 @@ flowchart TD
 - [x] `seed.py` replaced with brokerage, PM, and developer demo data  
 - [x] Backward-compat aliases (`Patient`, `Appointment`, etc.) for Phase 2 transition  
 
-**Next phase:** Phase 3 — LLM intents, RAG content, safety guardrails for real estate.
-
 ### Phase 2 status
 
 - [x] Gateway admin routes: `/clients`, `/showings`, `/listings`, `/properties`, `/leads` + legacy aliases
@@ -461,6 +459,71 @@ flowchart TD
 - [x] Pipeline `client_id` metadata (+ legacy `patient_id`)
 - [x] Real estate system prompt in orchestration LLM client
 
+### Phase 3 status
+
+- [x] LLM router semantic intents: `showing`, `listing_search`, `financing`, `maintenance`, `policy`, etc.
+- [x] RAG fallback documents rewritten for real estate (showings, fair housing, rental apps)
+- [x] Safety guardrails: `fair_housing_violation`, `legal_escalation`, `fraud_escalation`, `property_emergency`
+- [x] Client + agent channel system prompts; pipeline input/output validation with RE escalation notices
+- [x] `.env.example` documents `SAFETY_*` real estate policy keywords
+
+### Phase 4 status
+
+- [x] `frontend/patient-portal` → `frontend/client-portal` (`@aurixa/client-portal`)
+- [x] Client session/auth: `CLIENT_*` env vars with `PATIENT_*` legacy fallback
+- [x] BFF `/api/client/*` → admin `/clients`, `/showings`, `/listings`; legacy `/api/patient/*` re-export
+- [x] Nav and pages: showings, listings, applications, financing, maintenance
+- [x] Redirects from `/appointments`, `/billing`, `/medications`, etc.
+- [x] Docker, CI, Helm, deployment registry updated
+
+### Phase 5 status
+
+- [x] `frontend/hospital-portal` → `frontend/agent-workspace` (`@aurixa/agent-workspace`)
+- [x] BFF `/api/workspace/*` with RE resources (clients, showings, leads, listings); legacy `/api/hospital/*` re-export
+- [x] Routes: `/clients`, `/showings`, `/leads`; redirects from `/patients`, `/appointments`
+- [x] Agent role categories (`agent`, `coordination`, `operations`); demo agent identity
+- [x] Docker, CI, Helm, deployment registry updated
+
+### Phase 6 status
+
+- [x] Dashboard API client: `/admin/clients`, RE analytics fields (`clients_count`, `showings_count`, `listings_count`, `leads_count`)
+- [x] Analytics page: RE metric labels and entity distribution charts
+- [x] Playground: RE sample prompts, client context, execution actions (`get_showings`, `create_showing`, etc.)
+- [x] Operator guide rewritten for brokerages and real estate operations
+- [x] Overview domain strip (clients, showings, listings, leads)
+
+### Phase 7 status
+
+- [x] `RealEstateDisclaimer` in `@aurixa/ui-kit` (`RealEstate.tsx`)
+- [x] `HealthcareDisclaimer` deprecated with variant mapping to real estate copy
+- [x] Primary themes documented: `client`, `workspace`, `operator` (legacy `patient` / `clinical` aliases)
+- [x] `ChatPanel` variants: `client` / `workspace`; `AppointmentCard` default event label "Showing"
+- [x] Portal duplicate disclaimer components removed; imports from ui-kit
+- [x] Storybook theme toolbar updated for real estate product names
+
+**Next phase:** Phase 11 — Advanced workflows and telephony (per dependency chart).
+
+### Phase 10 status
+
+- [x] `scripts/check-real-estate-domain-copy.sh` — CI gate for banned healthcare product copy in frontends
+- [x] `pnpm run check:domain-copy` wired into `.github/workflows/tests.yml`
+- [x] Client portal legacy pages updated (documents, billing, records, help, notifications, etc.)
+- [x] Audit docs refreshed: `ARCHITECTURE_AUDIT.md`, `FEATURE_GAP_ANALYSIS.md`, `END_USER_FLOW_AND_TELEPHONY.md`, `OPTIMIZATION_AUDIT.md`
+
+### Phase 9 status
+
+- [x] `README.md` — product overview, assistant use cases, experiences, architecture, features, monorepo, quick start
+- [x] `docs/TECHNICAL_DOCUMENTATION.md` — client layer, frontends, tools, schema, API examples
+- [x] `docs/STREAMING_AND_END_USER_FLOWS.md` — client and agent end-user flows
+
+### Phase 8 status
+
+- [x] Helm ingress hosts: `client.*` / `workspace.*` (dev, staging, prod overlays)
+- [x] Docker Compose demo env uses `CLIENT_DEMO_*` only (no duplicate `PATIENT_DEMO_*`)
+- [x] `DEPLOYMENT_ALLOWED_SERVICES` and deployment registry use `client-portal`, `agent-workspace`
+- [x] `scripts/run-stack.sh`, `e2e-check.sh`, `e2e-detailed.sh` updated for RE services
+- [x] `docs/FRONTEND_AUTH.md` and `infra/DEPLOYMENT.md` host documentation updated
+
 ---
 
 ## 18. Document index
@@ -468,6 +531,7 @@ flowchart TD
 | Document | Purpose |
 | --- | --- |
 | This file | Master domain specification |
+| [`README.md`](../README.md) | Product overview and quick start (real estate) |
 | [`REAL_ESTATE_API_CONVENTIONS.md`](./REAL_ESTATE_API_CONVENTIONS.md) | REST paths, payloads, tool contracts |
 | [`REAL_ESTATE_INTEGRATIONS.md`](./REAL_ESTATE_INTEGRATIONS.md) | External system adapters and events |
 | [`REAL_ESTATE_RENAME_INVENTORY.md`](./REAL_ESTATE_RENAME_INVENTORY.md) | File-by-file healthcare term mapping |

@@ -11,10 +11,12 @@
     scroll-behavior: smooth;
   }
 
+  html[data-client-large-text="true"],
   html[data-patient-large-text="true"] {
     font-size: 18px;
   }
 
+  html[data-client-high-contrast="true"],
   html[data-patient-high-contrast="true"] {
     --ui-muted: #334155;
     --ui-faint: #475569;

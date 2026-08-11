@@ -82,41 +82,54 @@ export async function updateTenant(
   };
 }
 
-export async function createPatient(data: {
+export async function createClient(data: {
   full_name: string;
   email?: string;
   phone_number?: string;
   tenant_id?: number;
-}): Promise<PatientSummary> {
-  const res = await fetchApi("/api/v1/admin/patients", {
+}): Promise<ClientSummary> {
+  const res = await fetchApi("/api/v1/admin/clients", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create patient");
+  if (!res.ok) throw new Error("Failed to create client");
   return res.json();
 }
 
-export interface PatientSummary {
+export interface ClientSummary {
   id: number;
   fullName: string;
   email?: string;
   phoneNumber?: string;
 }
 
-export async function getPatients(): Promise<PatientSummary[]> {
-  const res = await fetchApi("/api/v1/admin/patients", FETCH_OPTS);
+export async function getClients(): Promise<ClientSummary[]> {
+  const res = await fetchApi("/api/v1/admin/clients", FETCH_OPTS);
   if (!res.ok) return [];
   return res.json();
 }
+
+/** @deprecated Use createClient */
+export const createPatient = createClient;
+/** @deprecated Use ClientSummary */
+export type PatientSummary = ClientSummary;
+/** @deprecated Use getClients */
+export const getPatients = getClients;
 
 export interface AnalyticsSummary {
   conversations_total: number;
   tenants_count: number;
   audit_entries_count: number;
   knowledge_articles_count: number;
-  patients_count: number;
-  appointments_count: number;
+  clients_count: number;
+  showings_count: number;
+  listings_count: number;
+  leads_count: number;
+  /** Legacy alias for clients_count */
+  patients_count?: number;
+  /** Legacy alias for showings_count */
+  appointments_count?: number;
 }
 
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
@@ -219,6 +232,7 @@ export interface PipelineResponse {
 
 export interface PipelineRequest {
   prompt: string;
+  client_id?: number;
   patient_id?: number;
   session_id?: string;
   tenant_id?: string;
@@ -227,10 +241,14 @@ export interface PipelineRequest {
 
 export async function runPipeline(
   prompt: string,
-  opts?: { patient_id?: number; session_id?: string; tenant_id?: string },
+  opts?: { client_id?: number; patient_id?: number; session_id?: string; tenant_id?: string },
 ): Promise<PipelineResponse> {
   const body: PipelineRequest = { prompt };
-  if (opts?.patient_id != null) body.patient_id = opts.patient_id;
+  const clientId = opts?.client_id ?? opts?.patient_id;
+  if (clientId != null) {
+    body.client_id = clientId;
+    body.patient_id = clientId;
+  }
   if (opts?.session_id) body.session_id = opts.session_id;
   if (opts?.tenant_id) body.tenant_id = opts.tenant_id;
 
@@ -282,9 +300,11 @@ export async function validateSafety(text: string) {
   return res.json();
 }
 
-export async function runAgentTask(prompt: string, patientId?: number) {
-  const task: { prompt: string; metadata?: { patient_id?: number } } = { prompt };
-  if (patientId != null) task.metadata = { patient_id: patientId };
+export async function runAgentTask(prompt: string, clientId?: number) {
+  const task: { prompt: string; metadata?: { client_id?: number; patient_id?: number } } = {
+    prompt,
+  };
+  if (clientId != null) task.metadata = { client_id: clientId, patient_id: clientId };
   const res = await fetchApi("/api/v1/agents/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

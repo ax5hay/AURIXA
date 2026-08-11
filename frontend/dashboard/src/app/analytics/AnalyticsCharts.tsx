@@ -111,6 +111,10 @@ export interface AnalyticsChartsProps {
   dbSummary: {
     conversations_total?: number;
     tenants_count?: number;
+    clients_count?: number;
+    showings_count?: number;
+    listings_count?: number;
+    leads_count?: number;
     patients_count?: number;
     appointments_count?: number;
     knowledge_articles_count?: number;
@@ -153,9 +157,17 @@ export default function AnalyticsCharts({ overall, dbSummary, data }: AnalyticsC
 
   const dbPieData = [
     { name: "Conversations", value: dbSummary?.conversations_total ?? 0 },
-    { name: "Tenants", value: dbSummary?.tenants_count ?? 0 },
-    { name: "Patients", value: dbSummary?.patients_count ?? 0 },
-    { name: "Appointments", value: dbSummary?.appointments_count ?? 0 },
+    { name: "Organizations", value: dbSummary?.tenants_count ?? 0 },
+    {
+      name: "Clients",
+      value: dbSummary?.clients_count ?? dbSummary?.patients_count ?? 0,
+    },
+    {
+      name: "Showings",
+      value: dbSummary?.showings_count ?? dbSummary?.appointments_count ?? 0,
+    },
+    { name: "Listings", value: dbSummary?.listings_count ?? 0 },
+    { name: "Leads", value: dbSummary?.leads_count ?? 0 },
     { name: "Articles", value: dbSummary?.knowledge_articles_count ?? 0 },
     { name: "Audits", value: dbSummary?.audit_entries_count ?? 0 },
   ].filter((d) => d.value > 0);

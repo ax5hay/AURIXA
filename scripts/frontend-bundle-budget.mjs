@@ -13,13 +13,13 @@ const budgets = [
     maxBytes: 4_500_000,
   },
   {
-    name: "patient-portal",
-    path: "frontend/patient-portal/.next/static/chunks",
+    name: "client-portal",
+    path: "frontend/client-portal/.next/static/chunks",
     maxBytes: 3_500_000,
   },
   {
-    name: "hospital-portal",
-    path: "frontend/hospital-portal/.next/static/chunks",
+    name: "agent-workspace",
+    path: "frontend/agent-workspace/.next/static/chunks",
     maxBytes: 3_500_000,
   },
 ];

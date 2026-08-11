@@ -16,6 +16,49 @@ from .config import (
 
 _async_client = httpx.AsyncClient(timeout=60.0)  # RAG model load can take ~30s on first call
 
+CLIENT_CHANNEL_SYSTEM_PROMPT = (
+    "You are a helpful real estate assistant for AURIXA. "
+    "Use the provided knowledge base context to answer accurately. "
+    "Do not give legal or tax advice. Use fair-housing neutral language. "
+    "If the context does not contain relevant information, say so politely."
+)
+
+AGENT_CHANNEL_SYSTEM_PROMPT = (
+    "You are an operational real estate assistant for agents and staff on AURIXA. "
+    "Cite listing and knowledge-base sources when available. Suggest concrete next actions "
+    "(schedule showing, update lead stage, create maintenance ticket). "
+    "Do not give legal or tax advice. Use fair-housing neutral language."
+)
+
+ESCALATION_NOTICES = {
+    "fair_housing": (
+        "⚠️ We cannot assist with requests that may violate fair housing laws. "
+        "Our team can help with lawful search criteria. "
+    ),
+    "legal": (
+        "⚠️ I can't provide legal advice—please consult a licensed attorney. "
+        "A staff member can share general process information. "
+    ),
+    "fraud": (
+        "⚠️ Be cautious of wire fraud and payment scams. Never send money based on "
+        "unsolicited instructions. Please speak with staff immediately. "
+    ),
+    "property_emergency": (
+        "⚠️ If this is a life-safety emergency, call 911. "
+        "For urgent property issues, contact your property manager or on-call maintenance. "
+    ),
+}
+
+
+def escalation_notice(validation_result: dict) -> str:
+    """Return a user-facing escalation prefix based on safety validation metadata."""
+    escalation_type = validation_result.get("escalation_type")
+    if escalation_type and escalation_type in ESCALATION_NOTICES:
+        return ESCALATION_NOTICES[escalation_type]
+    if validation_result.get("requires_escalation"):
+        return "⚠️ This may require staff review. Please connect with a team member. "
+    return ""
+
 
 async def _request_with_retry(method: str, url: str, **kwargs) -> httpx.Response:
     """Retry on transient failures (up to 2 retries)."""
@@ -148,12 +191,7 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
 
     try:
         formatted_context = _format_rag_context(context)
-        system_content = (
-            "You are a helpful real estate assistant for AURIXA. "
-            "Use the provided knowledge base context to answer accurately. "
-            "Do not give legal or tax advice. Use fair-housing neutral language. "
-            "If the context does not contain relevant information, say so politely."
-        )
+        system_content = CLIENT_CHANNEL_SYSTEM_PROMPT
         user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
         messages = [
             {"role": "system", "content": system_content},
@@ -185,11 +223,7 @@ async def call_llm_generate_stream(
         logger.warning("LLM_ROUTER_URL not set, skipping stream.")
         return
     formatted_context = _format_rag_context(context)
-    system_content = (
-        "You are a helpful healthcare assistant for AURIXA. "
-        "Use the provided knowledge base context to answer the user's question accurately. "
-        "If the context does not contain relevant information, say so politely."
-    )
+    system_content = CLIENT_CHANNEL_SYSTEM_PROMPT
     user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
     messages = [
         {"role": "system", "content": system_content},

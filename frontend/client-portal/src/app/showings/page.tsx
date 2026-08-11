@@ -12,7 +12,7 @@ import {
   PageLoader,
   SectionHeader,
 } from "@aurixa/ui-kit";
-import { getAppointments, type Appointment } from "../api";
+import { getShowings, type Showing } from "../api";
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-US", {
@@ -23,8 +23,8 @@ const formatDate = (iso: string) =>
     minute: "2-digit",
   });
 
-export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+export default function ShowingsPage() {
+  const [showings, setShowings] = useState<Showing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -32,33 +32,33 @@ export default function AppointmentsPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getAppointments()
-      .then(setAppointments)
-      .catch(() => setError("Your appointments could not be loaded."))
+    getShowings()
+      .then(setShowings)
+      .catch(() => setError("Your showings could not be loaded."))
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
-  const upcoming = appointments.filter(
-    (a) => a.status === "confirmed" && new Date(a.startTime) > new Date(),
+  const upcoming = showings.filter(
+    (s) => s.status === "confirmed" && new Date(s.startTime) > new Date(),
   );
-  const past = appointments.filter(
-    (a) => a.status === "completed" || new Date(a.startTime) < new Date(),
+  const past = showings.filter(
+    (s) => s.status === "completed" || new Date(s.startTime) < new Date(),
   );
 
   if (loading) {
-    return <PageLoader label="Loading your appointments" />;
+    return <PageLoader label="Loading your showings" />;
   }
 
   return (
     <div className="space-y-10 py-8 sm:py-10">
       <PageHeader
-        eyebrow="Your care schedule"
-        title="Appointments"
-        description="See what’s coming next and review the visits already in your record."
+        eyebrow="Your property schedule"
+        title="Showings"
+        description="See upcoming tours and review past property visits."
       />
 
       {error && (
-        <Alert title="Appointments are unavailable" tone="danger">
+        <Alert title="Showings are unavailable" tone="danger">
           <p>{error} Check your connection and try again.</p>
           <Button
             variant="secondary"
@@ -71,36 +71,40 @@ export default function AppointmentsPage() {
         </Alert>
       )}
 
-      <Alert title="A little preparation can help">
-        Before a visit, write down your questions, current medicines, and any symptoms that have
-        changed. Contact your care team if you need directions, accessibility support, or visit
-        instructions.
+      <Alert title="Before your tour">
+        Confirm the property address, parking instructions, and ID requirements with your agent.
+        Arrive a few minutes early and note any questions about condition, HOA fees, or timing.
       </Alert>
 
-      <section aria-label="Upcoming visits">
+      <section aria-label="Upcoming showings">
         <SectionHeader
           title="Coming up"
           count={upcoming.length}
-          description="Confirmed visits on your current schedule."
+          description="Confirmed property tours on your schedule."
         />
         {error ? null : upcoming.length === 0 ? (
           <EmptyState
-            title="No upcoming visits"
-            description="If you need to arrange care, contact your care team through their usual channel."
+            title="No upcoming showings"
+            description="Browse listings or message your agent to schedule a tour."
+            action={
+              <Button asChild>
+                <Link href="/listings">Browse listings</Link>
+              </Button>
+            }
           />
         ) : (
           <div className="space-y-3">
-            {upcoming.map((a) => (
+            {upcoming.map((s) => (
               <AppointmentCard
-                key={a.id}
-                provider={a.providerName}
-                date={formatDate(a.startTime)}
-                detail="Confirm any visit-specific instructions with your care team."
-                status={a.status}
+                key={s.id}
+                provider={s.agentName || s.providerName || "Agent"}
+                date={formatDate(s.startTime)}
+                detail={s.notes || "Confirm tour details with your agent."}
+                status={s.status}
                 tone="success"
                 action={
                   <Button asChild variant="secondary" size="sm">
-                    <Link href={`/appointments/${a.id}`}>Details</Link>
+                    <Link href={`/showings/${s.id}`}>Details</Link>
                   </Button>
                 }
               />
@@ -109,31 +113,31 @@ export default function AppointmentsPage() {
         )}
       </section>
 
-      <section aria-label="Care history">
+      <section aria-label="Past showings">
         <SectionHeader
-          title="Care history"
+          title="Past tours"
           count={past.length}
-          description="Appointments that are complete or in the past."
+          description="Showings that are complete or in the past."
         />
         {error ? null : past.length === 0 ? (
           <EmptyState
-            title="No past visits on record"
-            description="Completed visits will appear here when they are available."
+            title="No past showings on record"
+            description="Completed tours will appear here when available."
             compact
           />
         ) : (
           <Card padding="none">
             <div className="divide-y divide-ui-border">
-              {past.map((a) => (
-                <div key={a.id} className="p-3">
+              {past.map((s) => (
+                <div key={s.id} className="p-3">
                   <AppointmentCard
-                    provider={a.providerName}
-                    date={formatDate(a.startTime)}
-                    status={a.status}
+                    provider={s.agentName || s.providerName || "Agent"}
+                    date={formatDate(s.startTime)}
+                    status={s.status}
                     compact
                     action={
                       <Button asChild variant="quiet" size="sm">
-                        <Link href={`/appointments/${a.id}`}>Details</Link>
+                        <Link href={`/showings/${s.id}`}>Details</Link>
                       </Button>
                     }
                   />

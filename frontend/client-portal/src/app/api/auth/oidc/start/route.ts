@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { patientOidcAuthorizeUrl, patientOidcConfigured } from "@/lib/patient-oidc";
+import { clientOidcAuthorizeUrl, clientOidcConfigured } from "@/lib/client-oidc";
 
-export const dynamic = "force-dynamic";
-
-export function GET() {
-  if (!patientOidcConfigured()) {
+export async function GET() {
+  if (!clientOidcConfigured()) {
     return NextResponse.json(
-      { error: "Patient OIDC is not configured. See docs/FRONTEND_AUTH.md." },
+      { error: "Client OIDC is not configured. See docs/FRONTEND_AUTH.md." },
       { status: 503 },
     );
   }
   const state = crypto.randomUUID();
-  const url = patientOidcAuthorizeUrl(state);
+  const url = clientOidcAuthorizeUrl(state);
   if (!url) {
-    return NextResponse.json({ error: "Patient OIDC authorize URL could not be built." }, { status: 503 });
+    return NextResponse.json({ error: "Client OIDC authorize URL could not be built." }, { status: 503 });
   }
   const response = NextResponse.redirect(url);
-  response.cookies.set("aurixa_patient_oidc_state", state, {
+  response.cookies.set("aurixa_client_oidc_state", state, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

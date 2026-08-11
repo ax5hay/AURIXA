@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { PATIENT_SESSION_COOKIE } from "@/lib/patient-session";
+import { CLIENT_SESSION_COOKIE } from "@/lib/client-session";
 
-export async function POST(request: Request) {
-  const response = NextResponse.redirect(new URL("/auth/signin", request.url), 303);
-  response.cookies.set(PATIENT_SESSION_COOKIE, "", {
+export async function POST() {
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set(CLIENT_SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

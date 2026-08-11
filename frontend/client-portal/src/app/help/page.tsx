@@ -26,7 +26,7 @@ export default function HelpPage() {
     setError(null);
     getKnowledgeArticles()
       .then(setArticles)
-      .catch(() => setError("Provider guidance could not be loaded."))
+      .catch(() => setError("Brokerage guidance could not be loaded."))
       .finally(() => setLoading(false));
   }, [reloadKey]);
 
@@ -39,17 +39,17 @@ export default function HelpPage() {
       <PageHeader
         eyebrow="Support hub"
         title="How can we help?"
-        description="Start with the path that fits your need. For questions about your own care, your care team remains the best source."
+        description="Start with the path that fits your need. For questions about your transaction, your licensed agent remains the best source."
         actions={
           <Button asChild>
-            <Link href="/chat">Open care messages</Link>
+            <Link href="/chat">Open messages</Link>
           </Button>
         }
       />
 
-      <Alert title="If this may be an emergency" tone="danger">
-        Do not wait for a portal response. Contact your local emergency services now. This portal
-        cannot monitor urgent symptoms.
+      <Alert title="Fair housing and legal limits" tone="danger">
+        This portal provides general transaction guidance only. It does not provide legal, tax, or
+        fair housing advice. Contact your agent or qualified professionals for binding decisions.
       </Alert>
 
       {error && (
@@ -70,24 +70,23 @@ export default function HelpPage() {
         <SectionHeader title="Choose a support path" />
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
-            <h3 className="font-display text-2xl font-medium text-ui-ink">Care question</h3>
+            <h3 className="font-display text-2xl font-medium text-ui-ink">Transaction question</h3>
             <p className="mt-2 text-sm leading-6 text-ui-muted">
-              Contact your care team through the channel they normally use for personal medical
-              advice, results, or medication decisions.
+              Contact your agent through the channel they normally use for offer, financing, or
+              showing decisions.
             </p>
           </Card>
           <Card>
             <h3 className="font-display text-2xl font-medium text-ui-ink">Portal guidance</h3>
             <p className="mt-2 text-sm leading-6 text-ui-muted">
-              Use the articles below or care messages for general navigation and practical
-              questions.
+              Use the articles below or messages for general navigation and practical questions.
             </p>
           </Card>
           <Card>
-            <h3 className="font-display text-2xl font-medium text-ui-ink">Urgent concern</h3>
+            <h3 className="font-display text-2xl font-medium text-ui-ink">Property emergency</h3>
             <p className="mt-2 text-sm leading-6 text-ui-muted">
-              Use local urgent or emergency services based on how serious and immediate the concern
-              is.
+              For life-safety issues at a property, call 911. For urgent maintenance, use your
+              on-call property manager number.
             </p>
           </Card>
         </div>
@@ -97,40 +96,38 @@ export default function HelpPage() {
         title="Need a person?"
         action={
           <Button asChild variant="secondary">
-            <Link href="/appointments">Review visit details</Link>
+            <Link href="/showings">Review showings</Link>
           </Button>
         }
       >
-        Contact your care team using the phone number or messaging method they have already
-        provided. We do not show an unverified contact number here.
+        Contact your agent using the phone number or messaging method they have already provided. We
+        do not show an unverified contact number here.
       </Banner>
 
       <section aria-label="Help articles">
         <SectionHeader
           title="Helpful information"
           count={articles.length}
-          description="Plain-language guidance available from your provider."
+          description="Plain-language guidance available from your brokerage."
         />
         {error ? null : articles.length === 0 ? (
           <EmptyState
             title="No articles are available right now"
-            description="You can still use care messages for a general question or contact your care team directly."
+            description="You can still use messages for a general question or contact your agent directly."
             action={
               <Button asChild>
-                <Link href="/chat">Open care messages</Link>
+                <Link href="/chat">Open messages</Link>
               </Button>
             }
           />
         ) : (
-          <Card>
-            <Accordion
-              items={articles.map((article) => ({
-                id: String(article.id),
-                title: article.title,
-                content: <p>{article.content}</p>,
-              }))}
-            />
-          </Card>
+          <Accordion
+            items={articles.map((article) => ({
+              id: String(article.id),
+              title: article.title,
+              content: article.content,
+            }))}
+          />
         )}
       </section>
     </div>

@@ -19,7 +19,7 @@ export function ChatPanel({
   loading,
   composer,
   notice,
-  variant = "patient",
+  variant = "client",
 }: {
   title: string;
   subtitle?: string;
@@ -27,9 +27,11 @@ export function ChatPanel({
   loading?: boolean;
   composer: React.ReactNode;
   notice?: React.ReactNode;
-  variant?: "patient" | "clinical";
+  /** Client-facing portal vs agent workspace. Legacy `patient` / `clinical` aliases are supported. */
+  variant?: "client" | "workspace" | "patient" | "clinical";
 }) {
   const endRef = useRef<HTMLDivElement>(null);
+  const clientFacing = variant === "client" || variant === "patient";
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     endRef.current?.scrollIntoView({
@@ -47,10 +49,10 @@ export function ChatPanel({
           {subtitle && <p className="mt-0.5 text-xs text-ui-muted">{subtitle}</p>}
         </div>
         <Badge
-          tone={variant === "patient" ? "accent" : "info"}
+          tone={clientFacing ? "accent" : "info"}
           className="ml-auto hidden sm:inline-flex"
         >
-          {variant === "patient" ? "Here to help" : "Patient-aware"}
+          {clientFacing ? "Here to help" : "Client-aware"}
         </Badge>
       </header>
       {notice && (
@@ -109,6 +111,7 @@ export function AppointmentCard({
   tone = "accent",
   action,
   compact = false,
+  eventLabel = "Showing",
 }: {
   provider: string;
   date: string;
@@ -117,6 +120,8 @@ export function AppointmentCard({
   tone?: BadgeTone;
   action?: React.ReactNode;
   compact?: boolean;
+  /** Short label for the event icon (e.g. Showing, Tour). */
+  eventLabel?: string;
 }) {
   return (
     <article
@@ -127,7 +132,7 @@ export function AppointmentCard({
     >
       <div className="flex min-w-0 items-start gap-3.5">
         <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-ui-md bg-ui-tint text-ui-accent">
-          <span className="text-[10px] font-semibold tracking-wide">Visit</span>
+          <span className="text-[10px] font-semibold tracking-wide">{eventLabel}</span>
           <span className="text-sm font-bold">•</span>
         </div>
         <div className="min-w-0">

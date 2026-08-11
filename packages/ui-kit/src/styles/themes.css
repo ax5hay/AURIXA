@@ -81,6 +81,10 @@
   --ui-chart-5: #78c99c;
 }
 
+/* Product themes: operator (dashboard), client (client portal), workspace (agent workspace).
+   Legacy aliases patient → client and clinical → workspace remain for backward compatibility. */
+
+[data-theme="client"],
 [data-theme="patient"] {
   --ui-canvas: #f7f1e8;
   --ui-canvas-rgb: 247 241 232;
@@ -128,6 +132,7 @@
   --ui-chart-5: #7b5b8d;
 }
 
+[data-theme="workspace"],
 [data-theme="clinical"] {
   --ui-canvas: #e7ece9;
   --ui-canvas-rgb: 231 236 233;

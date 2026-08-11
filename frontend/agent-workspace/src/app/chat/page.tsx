@@ -8,33 +8,33 @@ import {
   Banner,
   Button,
   ChatPanel,
-  HealthcareDisclaimer,
   Input,
+  RealEstateDisclaimer,
   type ChatPanelMessage,
   useToast,
 } from "@aurixa/ui-kit";
-import { getPatient, sendMessage, type Patient } from "../api";
+import { getClient, sendMessage, type Client } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
 
 const PROMPTS = {
-  clinical: [
-    "Summarize today’s appointment schedule",
-    "Search guidance for patient follow-up",
-    "Check upcoming visits",
+  agent: [
+    "Summarize today’s showing schedule",
+    "Search guidance for client follow-up",
+    "Check upcoming tours",
   ],
   coordination: [
-    "Find available appointment information",
+    "Find available showing times",
     "Search scheduling guidance",
-    "Review upcoming visits",
+    "Review upcoming showings",
   ],
   operations: [
     "Search operational guidance",
     "Check service workflow information",
-    "Summarize appointment activity",
+    "Summarize showing activity",
   ],
   unassigned: [
     "Search the knowledge base",
-    "Review upcoming appointments",
+    "Review upcoming showings",
     "Find scheduling information",
   ],
 };
@@ -43,14 +43,14 @@ export default function ChatPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const { roleCategory, tenantFilter, tenantId } = useStaffContext();
-  const parsedPatientId = parseInt(searchParams.get("patientId") ?? "", 10);
-  const patientId = isNaN(parsedPatientId) ? undefined : parsedPatientId;
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [patientUnavailable, setPatientUnavailable] = useState(false);
+  const parsedClientId = parseInt(searchParams.get("clientId") ?? "", 10);
+  const clientId = isNaN(parsedClientId) ? undefined : parsedClientId;
+  const [client, setClient] = useState<Client | null>(null);
+  const [clientUnavailable, setClientUnavailable] = useState(false);
   const [messages, setMessages] = useState<ChatPanelMessage[]>([
     {
       id: 1,
-      text: "I can help retrieve operational information and organizational guidance. Verify clinical decisions in the patient record and follow your organization’s care protocols.",
+      text: "I can help retrieve operational information and organizational guidance. Verify decisions in the client record and follow your brokerage protocols.",
       sender: "assistant",
     },
   ]);
@@ -59,21 +59,21 @@ export default function ChatPage() {
   const [lastSessionId, setLastSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!patientId) {
-      setPatient(null);
-      setPatientUnavailable(false);
+    if (!clientId) {
+      setClient(null);
+      setClientUnavailable(false);
       return;
     }
-    getPatient(patientId, tenantId)
+    getClient(clientId, tenantId)
       .then((record) => {
-        setPatient(record);
-        setPatientUnavailable(false);
+        setClient(record);
+        setClientUnavailable(false);
       })
       .catch(() => {
-        setPatient(null);
-        setPatientUnavailable(true);
+        setClient(null);
+        setClientUnavailable(true);
       });
-  }, [patientId, tenantId]);
+  }, [clientId, tenantId]);
 
   const prompts = useMemo(() => PROMPTS[roleCategory], [roleCategory]);
 
@@ -86,7 +86,7 @@ export default function ChatPage() {
     setLoading(true);
     try {
       const response = await sendMessage(prompt, {
-        patientId,
+        clientId,
         tenantId: tenantFilter || undefined,
       });
       setLastSessionId(response.session_id);
@@ -103,7 +103,7 @@ export default function ChatPage() {
         ...current,
         {
           id: Date.now() + 1,
-          text: "I couldn’t complete that request. No action was taken. Check the service connection or try again in a moment.",
+          text: "I couldn’t complete that request. Check the service connection or try again.",
           sender: "assistant",
         },
       ]);
@@ -119,37 +119,35 @@ export default function ChatPage() {
 
   return (
     <div className="space-y-4 pb-8">
-      {patient && (
+      {client && (
         <Banner
-          title={`Active patient: ${patient.fullName}`}
+          title={`Active client: ${client.fullName}`}
           tone="info"
           action={
             <Button asChild variant="secondary">
-              <Link href={`/patients/${patient.id}`}>Open record</Link>
+              <Link href={`/clients/${client.id}`}>Open record</Link>
             </Button>
           }
         >
-          Patient record #{patient.id}. Confirm this identity before using patient-specific
-          information.
+          Client record #{client.id}. Confirm identity before using client-specific information.
         </Banner>
       )}
-      {patientUnavailable && (
-        <Alert title="Patient context unavailable" tone="danger">
-          The requested patient identity could not be verified. This conversation will not include
-          patient context.
+      {clientUnavailable && (
+        <Alert title="Client context unavailable" tone="danger">
+          The requested client could not be verified. This conversation will not include client
+          context.
         </Alert>
       )}
 
       <ChatPanel
-        variant="clinical"
-        title="Clinical assistant"
-        subtitle="Operational support with patient-aware context when verified"
+        variant="workspace"
+        title="Agent assistant"
+        subtitle="Operational support with client context when verified"
         messages={messages}
         loading={loading}
         notice={
           <p className="text-xs leading-5 text-ui-muted">
-            This assistant does not replace clinical judgment, emergency pathways, or the source
-            patient record.
+            This assistant does not replace agent judgment or the source client record.
           </p>
         }
         composer={
@@ -158,8 +156,8 @@ export default function ChatPage() {
               <Input
                 value={inputText}
                 onChange={(event) => setInputText(event.target.value)}
-                placeholder="Ask about appointments or organizational guidance"
-                aria-label="Message the clinical assistant"
+                placeholder="Ask about showings, listings, or process guidance"
+                aria-label="Message the agent assistant"
                 disabled={loading}
               />
               <Button type="submit" disabled={loading || !inputText.trim()}>
@@ -183,18 +181,12 @@ export default function ChatPage() {
           </form>
         }
       />
-      <HealthcareDisclaimer variant="assistant-limits" />
-      <Alert title="Evidence and provenance" tone="info">
-        {patient
-          ? `Verified context supplied: ${patient.fullName}, patient record #${patient.id}, organization #${tenantId}.`
-          : `No verified patient record was supplied. Organization scope: #${tenantId}.`}{" "}
-        The orchestration API does not yet return per-claim citations, confidence, author, or review
-        dates. Treat every answer as an unverified aid and confirm it against the source record and
-        approved clinical guidance before acting.
-        {lastSessionId && (
-          <span className="mt-2 block font-mono text-xs">Response trace: {lastSessionId}</span>
-        )}
-      </Alert>
+      <RealEstateDisclaimer variant="assistant-limits" />
+      {lastSessionId && (
+        <Alert title="Response trace" tone="info">
+          <span className="font-mono text-xs">{lastSessionId}</span>
+        </Alert>
+      )}
     </div>
   );
 }

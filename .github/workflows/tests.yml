@@ -134,18 +134,21 @@ jobs:
 
       - name: Build portals for budgets
         env:
-          PATIENT_DEMO_AUTH_ENABLED: "true"
+          CLIENT_DEMO_AUTH_ENABLED: "true"
           STAFF_DEMO_AUTH_ENABLED: "true"
           AUTH_SECRET: "ci-auth-secret-at-least-32-characters-long"
-          PATIENT_SESSION_SECRET: "ci-patient-session-secret-32chars!!"
+          CLIENT_SESSION_SECRET: "ci-client-session-secret-32chars!!"
           STAFF_SESSION_SECRET: "ci-staff-session-secret-32-chars!!"
         run: |
           pnpm --filter @aurixa/dashboard build
-          pnpm --filter @aurixa/patient-portal build
-          pnpm --filter @aurixa/hospital-portal build
+          pnpm --filter @aurixa/client-portal build
+          pnpm --filter @aurixa/agent-workspace build
 
       - name: Enforce frontend bundle budgets
         run: pnpm run budget:frontends
+
+      - name: Check real estate domain copy
+        run: pnpm run check:domain-copy
 
   all-tests:
     if: always()

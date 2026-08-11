@@ -14,100 +14,100 @@ import {
   SectionHeader,
   useToast,
 } from "@aurixa/ui-kit";
-import { cancelAppointment, getAppointments, type Appointment } from "../../api";
+import { cancelShowing, getShowings, type Showing } from "../../api";
 
-function downloadCalendarEntry(appointment: Appointment) {
+function downloadCalendarEntry(showing: Showing) {
   const stamp = (value: string) =>
     new Date(value)
       .toISOString()
       .replace(/[-:]/g, "")
       .replace(/\.\d{3}/, "");
   const escape = (value: string) => value.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+  const agent = showing.agentName || showing.providerName || "Agent";
   const calendar = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AURIXA//Patient Portal//EN",
+    "PRODID:-//AURIXA//Client Portal//EN",
     "BEGIN:VEVENT",
-    `UID:appointment-${appointment.id}@aurixa`,
-    `DTSTART:${stamp(appointment.startTime)}`,
-    `DTEND:${stamp(appointment.endTime)}`,
-    `SUMMARY:${escape(`Appointment with ${appointment.providerName}`)}`,
-    "DESCRIPTION:Confirm visit location and instructions with your care team.",
+    `UID:showing-${showing.id}@aurixa`,
+    `DTSTART:${stamp(showing.startTime)}`,
+    `DTEND:${stamp(showing.endTime)}`,
+    `SUMMARY:${escape(`Property showing with ${agent}`)}`,
+    "DESCRIPTION:Confirm property address and tour instructions with your agent.",
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");
   const url = URL.createObjectURL(new Blob([calendar], { type: "text/calendar;charset=utf-8" }));
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `aurixa-appointment-${appointment.id}.ics`;
+  anchor.download = `aurixa-showing-${showing.id}.ics`;
   anchor.click();
   URL.revokeObjectURL(url);
 }
 
-export default function AppointmentDetailPage() {
+export default function ShowingDetailPage() {
   const params = useParams<{ id: string }>();
   const { toast } = useToast();
-  const appointmentId = Number(params.id);
-  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const showingId = Number(params.id);
+  const [showing, setShowing] = useState<Showing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
-    if (!Number.isSafeInteger(appointmentId)) {
+    if (!Number.isSafeInteger(showingId)) {
       setLoading(false);
       return;
     }
-    getAppointments()
-      .then((appointments) =>
-        setAppointment(appointments.find((item) => item.id === appointmentId) ?? null),
-      )
-      .catch(() => setError("We couldn’t load this appointment."))
+    getShowings()
+      .then((items) => setShowing(items.find((item) => item.id === showingId) ?? null))
+      .catch(() => setError("We couldn’t load this showing."))
       .finally(() => setLoading(false));
-  }, [appointmentId]);
+  }, [showingId]);
 
-  if (loading) return <PageLoader label="Loading appointment details" />;
+  if (loading) return <PageLoader label="Loading showing details" />;
 
   if (error) {
     return (
-      <Alert title="Appointment unavailable" tone="danger">
+      <Alert title="Showing unavailable" tone="danger">
         <p>{error}</p>
         <Button asChild variant="secondary" className="mt-3">
-          <Link href="/appointments">Back to appointments</Link>
+          <Link href="/showings">Back to showings</Link>
         </Button>
       </Alert>
     );
   }
 
-  if (!appointment) {
+  if (!showing) {
     return (
       <EmptyState
-        title="Appointment not found"
-        description="This visit is not in your patient-scoped schedule."
+        title="Showing not found"
+        description="This tour is not in your client schedule."
         action={
           <Button asChild>
-            <Link href="/appointments">Back to appointments</Link>
+            <Link href="/showings">Back to showings</Link>
           </Button>
         }
       />
     );
   }
 
-  const start = new Date(appointment.startTime);
-  const end = new Date(appointment.endTime);
-  const canCancel = appointment.status === "confirmed" && start.getTime() > Date.now();
+  const start = new Date(showing.startTime);
+  const end = new Date(showing.endTime);
+  const agent = showing.agentName || showing.providerName || "your agent";
+  const canCancel = showing.status === "confirmed" && start.getTime() > Date.now();
 
   async function confirmCancellation() {
-    if (!window.confirm("Cancel this appointment? This action updates your care schedule.")) return;
+    if (!window.confirm("Cancel this showing? This updates your tour schedule.")) return;
     setCancelling(true);
     try {
-      await cancelAppointment(appointment!.id);
-      setAppointment((current) => (current ? { ...current, status: "cancelled" } : current));
-      toast({ title: "Appointment cancelled", tone: "success" });
+      await cancelShowing(showing!.id);
+      setShowing((current) => (current ? { ...current, status: "cancelled" } : current));
+      toast({ title: "Showing cancelled", tone: "success" });
     } catch {
       toast({
         title: "Cancellation was not completed",
-        description: "Your schedule has not been changed. Try again or contact your care team.",
+        description: "Your schedule has not been changed. Try again or contact your agent.",
         tone: "error",
       });
     } finally {
@@ -118,14 +118,14 @@ export default function AppointmentDetailPage() {
   return (
     <div className="space-y-9 py-4 sm:py-8">
       <Link
-        href="/appointments"
+        href="/showings"
         className="inline-flex min-h-11 items-center text-sm font-semibold text-ui-accent"
       >
-        ← All appointments
+        ← All showings
       </Link>
       <PageHeader
-        eyebrow="Appointment details"
-        title={`Visit with ${appointment.providerName}`}
+        eyebrow="Showing details"
+        title={`Tour with ${agent}`}
         description={start.toLocaleDateString("en-US", {
           weekday: "long",
           month: "long",
@@ -133,8 +133,8 @@ export default function AppointmentDetailPage() {
           year: "numeric",
         })}
         aside={
-          <Badge tone={appointment.status === "confirmed" ? "success" : "neutral"}>
-            {appointment.status}
+          <Badge tone={showing.status === "confirmed" ? "success" : "neutral"}>
+            {showing.status}
           </Badge>
         }
       />
@@ -146,17 +146,19 @@ export default function AppointmentDetailPage() {
             {start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}–
             {end.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
           </p>
+          {showing.notes && (
+            <p className="mt-4 text-sm leading-6 text-ui-muted">{showing.notes}</p>
+          )}
           <p className="mt-4 text-sm leading-6 text-ui-muted">
-            Location and telehealth details are not available from the scheduling service yet.
-            Confirm those instructions with your care team before the visit.
+            Property address and access instructions are confirmed by your agent before the tour.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={() => downloadCalendarEntry(appointment)}>
+            <Button variant="secondary" onClick={() => downloadCalendarEntry(showing)}>
               Add to calendar
             </Button>
             {canCancel && (
               <Button variant="danger" loading={cancelling} onClick={confirmCancellation}>
-                Cancel appointment
+                Cancel showing
               </Button>
             )}
           </div>
@@ -165,8 +167,8 @@ export default function AppointmentDetailPage() {
         <Card>
           <SectionHeader title="Need a change?" />
           <p className="text-sm leading-6 text-ui-muted">
-            Online rescheduling is not supported by the current scheduling API. Contact your care
-            team through their usual verified channel before cancelling if you need another time.
+            Online rescheduling is not supported yet. Contact your agent before cancelling if you
+            need another time.
           </p>
           <Button asChild variant="secondary" className="mt-5">
             <Link href="/chat">Ask for guidance</Link>
@@ -175,19 +177,19 @@ export default function AppointmentDetailPage() {
       </div>
 
       <Card>
-        <SectionHeader title="Prepare for your visit" />
+        <SectionHeader title="Prepare for your tour" />
         <ul className="grid gap-3 text-sm leading-6 text-ui-ink sm:grid-cols-2">
           <li className="rounded-ui-md bg-ui-surface-inset p-4">
-            Write down questions and recent symptoms.
+            Note questions about condition, HOA fees, and timing.
           </li>
           <li className="rounded-ui-md bg-ui-surface-inset p-4">
-            Review medicines and any recent changes.
+            Bring photo ID if required by the listing agent.
           </li>
           <li className="rounded-ui-md bg-ui-surface-inset p-4">
-            Confirm location, arrival time, or video link.
+            Confirm parking and meeting location beforehand.
           </li>
           <li className="rounded-ui-md bg-ui-surface-inset p-4">
-            Bring identification and insurance details if requested.
+            Review fair-housing guidelines when comparing neighborhoods.
           </li>
         </ul>
       </Card>

@@ -13,9 +13,11 @@ import {
 } from "@aurixa/ui-kit";
 import {
   getAnalytics,
+  getAnalyticsSummary,
   getAuditLog,
   getServiceHealth,
   getTenants,
+  type AnalyticsSummary,
   type AuditEntry,
   type ServiceHealth,
 } from "@/app/services/api";
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   const [tenants, setTenants] = useState<Awaited<ReturnType<typeof getTenants>>>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
   const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getAnalytics>> | null>(null);
+  const [domainSummary, setDomainSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
@@ -39,11 +42,13 @@ export default function DashboardPage() {
       getTenants(),
       getAuditLog(12),
       getAnalytics(),
+      getAnalyticsSummary(),
     ]);
     if (results[0].status === "fulfilled") setHealth(results[0].value);
     if (results[1].status === "fulfilled") setTenants(results[1].value);
     if (results[2].status === "fulfilled") setAudit(results[2].value);
     if (results[3].status === "fulfilled") setAnalytics(results[3].value);
+    if (results[4].status === "fulfilled") setDomainSummary(results[4].value);
     if (results.every((result) => result.status === "rejected"))
       setError("The console could not reach the platform APIs.");
     setRefreshedAt(new Date());
@@ -147,6 +152,43 @@ export default function DashboardPage() {
             detail: refreshedAt
               ? `Updated ${refreshedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
               : "Not refreshed",
+          },
+        ]}
+      />
+
+      <MetricStrip
+        items={[
+          {
+            label: "Clients",
+            value: loading
+              ? "—"
+              : (
+                  domainSummary?.clients_count ??
+                  domainSummary?.patients_count ??
+                  0
+                ).toLocaleString(),
+            detail: "Across all organizations",
+          },
+          {
+            label: "Showings",
+            value: loading
+              ? "—"
+              : (
+                  domainSummary?.showings_count ??
+                  domainSummary?.appointments_count ??
+                  0
+                ).toLocaleString(),
+            detail: "Scheduled or completed",
+          },
+          {
+            label: "Listings",
+            value: loading ? "—" : (domainSummary?.listings_count ?? 0).toLocaleString(),
+            detail: "Active inventory records",
+          },
+          {
+            label: "Leads",
+            value: loading ? "—" : (domainSummary?.leads_count ?? 0).toLocaleString(),
+            detail: "Pipeline prospects",
           },
         ]}
       />

@@ -45,9 +45,9 @@ fi
 curl -sf "$GATEWAY/api/v1/admin/showings" > /dev/null && pass "GET /api/v1/admin/showings" || fail "GET /api/v1/admin/showings"
 curl -sf "$GATEWAY/api/v1/admin/listings" > /dev/null && pass "GET /api/v1/admin/listings" || fail "GET /api/v1/admin/listings"
 curl -sf "$GATEWAY/api/v1/admin/leads" > /dev/null && pass "GET /api/v1/admin/leads" || fail "GET /api/v1/admin/leads"
-# Legacy aliases (until frontends migrate in Phase 4–5)
-curl -sf "$GATEWAY/api/v1/admin/patients" > /dev/null && pass "GET /api/v1/admin/patients (legacy alias)" || fail "GET /api/v1/admin/patients"
-curl -sf "$GATEWAY/api/v1/admin/appointments" > /dev/null && pass "GET /api/v1/admin/appointments (legacy alias)" || fail "GET /api/v1/admin/appointments"
+# Legacy API aliases (backend compatibility)
+curl -sf "$GATEWAY/api/v1/admin/patients" > /dev/null && pass "GET /api/v1/admin/patients (legacy alias)" || warn "GET /api/v1/admin/patients (legacy alias unavailable)"
+curl -sf "$GATEWAY/api/v1/admin/appointments" > /dev/null && pass "GET /api/v1/admin/appointments (legacy alias)" || warn "GET /api/v1/admin/appointments (legacy alias unavailable)"
 
 # Orchestration routes (via proxy)
 curl -sf "$GATEWAY/api/v1/orchestration/knowledge/articles" > /dev/null && pass "GET /api/v1/orchestration/knowledge/articles" || warn "GET /api/v1/orchestration/knowledge/articles (orchestration may be down)"
@@ -57,6 +57,17 @@ curl -sf "$GATEWAY/api/v1/observe/reports/performance" > /dev/null && pass "GET 
 
 # Voice service health (direct)
 curl -sf "http://localhost:8006/health" > /dev/null && pass "Voice service GET /health" || warn "Voice service GET /health (voice may be down)"
+
+# Safety guardrails (real estate policies)
+curl -sf "http://localhost:8005/health" > /dev/null && pass "Safety guardrails GET /health" || warn "Safety guardrails GET /health (safety may be down)"
+FH_RESP=$(curl -sf -X POST "http://localhost:8005/api/v1/validate" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"I only want white tenants in my building"}' 2>/dev/null || echo '{}')
+if echo "$FH_RESP" | grep -q '"is_safe":false'; then
+  pass "Safety fair housing policy blocks discriminatory input"
+else
+  warn "Safety fair housing check inconclusive (safety may be down or policy changed)"
+fi
 
 # Deployment controller and protected control-plane API
 curl -sf "http://localhost:8009/health" > /dev/null && pass "Deployment controller GET /health" || warn "Deployment controller GET /health (controller may be down)"

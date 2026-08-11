@@ -1,22 +1,22 @@
-export const PATIENT_PREFERENCE_KEYS = {
-  largerText: "aurixa-patient-larger-text",
-  highContrast: "aurixa-patient-high-contrast",
-  reduceMotion: "aurixa-patient-reduce-motion",
+export const CLIENT_PREFERENCE_KEYS = {
+  largerText: "aurixa-client-larger-text",
+  highContrast: "aurixa-client-high-contrast",
+  reduceMotion: "aurixa-client-reduce-motion",
 } as const;
 
-export type PatientPreference = keyof typeof PATIENT_PREFERENCE_KEYS;
+export type ClientPreference = keyof typeof CLIENT_PREFERENCE_KEYS;
 
 export const preferenceEnabled = (value: string | null) => value === "true";
 
-export function applyPatientPreference(
+export function applyClientPreference(
   root: HTMLElement,
-  preference: PatientPreference,
+  preference: ClientPreference,
   enabled: boolean,
 ) {
-  const attribute = {
-    largerText: "patientLargeText",
-    highContrast: "patientHighContrast",
-    reduceMotion: "patientReduceMotion",
-  }[preference];
-  root.dataset[attribute] = String(enabled);
+  const datasetKey = {
+    largerText: "clientLargeText",
+    highContrast: "clientHighContrast",
+    reduceMotion: "clientReduceMotion",
+  }[preference] as keyof DOMStringMap;
+  root.dataset[datasetKey] = String(enabled);
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, Icon, PortalShell, type IconName } from "@aurixa/ui-kit";
-import { isSectionActive } from "@/lib/patient-sections";
+import { isSectionActive } from "@/lib/client-sections";
 
 type NavigationTab = {
   id: string;
@@ -16,59 +16,40 @@ type NavigationTab = {
 
 const DESKTOP_TABS = [
   { id: "home", href: "/", label: "Home", icon: "home" },
-  { id: "appointments", href: "/appointments", label: "Visits", icon: "calendar" },
+  { id: "showings", href: "/showings", label: "Showings", icon: "calendar" },
+  { id: "listings", href: "/listings", label: "Listings", icon: "check" },
   {
-    id: "records",
-    href: "/records",
-    label: "Records",
-    icon: "check",
-    related: ["/results", "/documents"],
+    id: "documents",
+    href: "/documents",
+    label: "Documents",
+    icon: "info",
+    related: ["/applications"],
   },
   {
-    id: "medications",
-    href: "/medications",
-    label: "Medicines",
+    id: "financing",
+    href: "/financing",
+    label: "Financing",
     icon: "info",
-    related: ["/refills"],
-  },
-  {
-    id: "billing",
-    href: "/billing",
-    label: "Billing",
-    icon: "info",
-    related: ["/insurance"],
+    related: ["/maintenance"],
   },
   { id: "chat", href: "/chat", label: "Messages", icon: "message" },
 ] satisfies NavigationTab[];
 
 const MOBILE_TABS = [
   { id: "home", href: "/", label: "Home", icon: "home" },
-  { id: "appointments", href: "/appointments", label: "Visits", icon: "calendar" },
-  {
-    id: "records",
-    href: "/records",
-    label: "Records",
-    icon: "check",
-    related: ["/results", "/documents"],
-  },
+  { id: "showings", href: "/showings", label: "Showings", icon: "calendar" },
+  { id: "listings", href: "/listings", label: "Listings", icon: "check" },
   { id: "chat", href: "/chat", label: "Messages", icon: "message" },
   {
     id: "account",
     href: "/account",
     label: "More",
     icon: "menu",
-    related: [
-      "/medications",
-      "/refills",
-      "/billing",
-      "/insurance",
-      "/notifications",
-      "/help",
-    ],
+    related: ["/documents", "/applications", "/financing", "/maintenance", "/notifications", "/help"],
   },
 ] satisfies NavigationTab[];
 
-function PatientNavigation({ mobile = false }: { mobile?: boolean }) {
+function ClientNavigation({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   const tabs = mobile ? MOBILE_TABS : DESKTOP_TABS;
 
@@ -122,13 +103,13 @@ function ConnectivityStatus() {
   if (online) return null;
   return (
     <Alert title="You’re offline" tone="warning" className="mb-6">
-      Information already on screen may be stale. Reconnect before sending a message or changing an
-      appointment.
+      Information already on screen may be stale. Reconnect before sending a message or changing a
+      showing.
     </Alert>
   );
 }
 
-export function PatientShell({ children }: { children: React.ReactNode }) {
+export function ClientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname.startsWith("/auth/")) return <main id="main-content">{children}</main>;
 
@@ -141,12 +122,12 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
           </span>
           <span>
             <span className="block text-sm font-semibold tracking-[0.08em]">AURIXA</span>
-            <span className="block text-xs text-ui-muted">My care</span>
+            <span className="block text-xs text-ui-muted">My properties</span>
           </span>
         </Link>
       }
-      navigation={<PatientNavigation />}
-      bottomNavigation={<PatientNavigation mobile />}
+      navigation={<ClientNavigation />}
+      bottomNavigation={<ClientNavigation mobile />}
       actions={
         <>
           <Link
@@ -185,3 +166,6 @@ export function PatientShell({ children }: { children: React.ReactNode }) {
     </PortalShell>
   );
 }
+
+/** @deprecated Use ClientShell */
+export const PatientShell = ClientShell;

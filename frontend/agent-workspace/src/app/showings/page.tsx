@@ -17,9 +17,9 @@ import {
   useToast,
 } from "@aurixa/ui-kit";
 import {
-  getAppointments,
-  getPatients,
-  updateAppointmentStatus,
+  getShowings,
+  getClients,
+  updateShowingStatus,
   type Appointment,
 } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
@@ -42,12 +42,12 @@ function dayKey(iso: string) {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
-export default function AppointmentsPage() {
+export default function ShowingsPage() {
   const { toast } = useToast();
   const { tenantId, roleCategory } = useStaffContext();
-  const canCoordinate = roleCategory === "clinical" || roleCategory === "coordination";
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [patientMap, setPatientMap] = useState<Record<number, string>>({});
+  const canCoordinate = roleCategory === "agent" || roleCategory === "coordination";
+  const [showings, setShowings] = useState<Appointment[]>([]);
+  const [clientMap, setClientMap] = useState<Record<number, string>>({});
   const [dateFrom, setDateFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() =>
     new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
@@ -56,7 +56,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [pending, setPending] = useState<{
-    appointment: Appointment;
+    showing: Appointment;
     status: "cancelled" | "completed" | "checked_in" | "in_room";
   } | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -64,22 +64,20 @@ export default function AppointmentsPage() {
   const tid = tenantId;
 
   useEffect(() => {
-    getPatients(tid)
-      .then((patients) =>
-        setPatientMap(
-          Object.fromEntries(patients.map((patient) => [patient.id, patient.fullName])),
-        ),
+    getClients(tid)
+      .then((clients) =>
+        setClientMap(Object.fromEntries(clients.map((client) => [client.id, client.fullName]))),
       )
-      .catch(() => setPatientMap({}));
+      .catch(() => setClientMap({}));
   }, [tid]);
 
   useEffect(() => {
     setLoading(true);
     setLoadError(false);
-    getAppointments({ tenantId: tid, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
-      .then(setAppointments)
+    getShowings({ tenantId: tid, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
+      .then(setShowings)
       .catch(() => {
-        setAppointments([]);
+        setShowings([]);
         setLoadError(true);
       })
       .finally(() => {
@@ -90,29 +88,29 @@ export default function AppointmentsPage() {
 
   const byDay = useMemo(() => {
     const map = new Map<string, Appointment[]>();
-    for (const appointment of [...appointments].sort(
+    for (const showing of [...showings].sort(
       (a, b) => +new Date(a.startTime) - +new Date(b.startTime),
     )) {
-      const key = dayKey(appointment.startTime);
+      const key = dayKey(showing.startTime);
       const bucket = map.get(key) ?? [];
-      bucket.push(appointment);
+      bucket.push(showing);
       map.set(key, bucket);
     }
     return [...map.entries()];
-  }, [appointments]);
+  }, [showings]);
 
   const confirmUpdate = async () => {
     if (!pending) return;
     setUpdating(true);
     try {
-      await updateAppointmentStatus(pending.appointment.id, pending.status);
-      setAppointments((current) =>
+      await updateShowingStatus(pending.showing.id, pending.status);
+      setShowings((current) =>
         current.map((item) =>
-          item.id === pending.appointment.id ? { ...item, status: pending.status } : item,
+          item.id === pending.showing.id ? { ...item, status: pending.status } : item,
         ),
       );
       toast({
-        title: "Appointment updated",
+        title: "Showing updated",
         description: `Status is now ${pending.status.replace(/_/g, " ")}.`,
         tone: "success",
       });
@@ -120,7 +118,7 @@ export default function AppointmentsPage() {
     } catch {
       toast({
         title: "Status update failed",
-        description: "The appointment was not changed. Please try again.",
+        description: "The showing was not changed. Please try again.",
         tone: "error",
       });
     } finally {
@@ -128,13 +126,13 @@ export default function AppointmentsPage() {
     }
   };
 
-  if (loading) return <PageLoader label="Loading appointments" />;
+  if (loading) return <PageLoader label="Loading showings" />;
 
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        eyebrow="Care coordination"
-        title="Appointments"
+        eyebrow="Coordination"
+        title="Showings"
         description="List and day-board views for the selected range. Confirm consequential status changes."
         actions={
           <div className="flex flex-wrap gap-2">
@@ -152,7 +150,7 @@ export default function AppointmentsPage() {
             </Button>
             {canCoordinate && (
               <Button asChild>
-                <Link href="/schedule">Schedule appointment</Link>
+                <Link href="/schedule">Schedule showing</Link>
               </Button>
             )}
           </div>
@@ -167,8 +165,8 @@ export default function AppointmentsPage() {
       />
 
       {loadError && (
-        <Alert title="Appointments unavailable" tone="danger">
-          No appointments are shown because the service could not be reached.
+        <Alert title="Showings unavailable" tone="danger">
+          No showings are shown because the service could not be reached.
         </Alert>
       )}
 
@@ -191,67 +189,68 @@ export default function AppointmentsPage() {
         </FieldShell>
       </div>
 
-      {!appointments.length ? (
+      {!showings.length ? (
         <EmptyState
-          title="No appointments in this range"
-          description="No appointment records were returned for the selected dates and organization."
+          title="No showings in this range"
+          description="No showing records were returned for the selected dates and organization."
           action={
             <Button asChild>
-              <Link href="/schedule">Schedule a visit</Link>
+              <Link href="/schedule">Schedule a showing</Link>
             </Button>
           }
         />
       ) : view === "list" ? (
         <div className="space-y-3">
-          {appointments.map((appointment) => {
-            const patientName =
-              patientMap[appointment.patientId ?? 0] ??
-              `Patient record ${appointment.patientId ?? "unlinked"}`;
+          {showings.map((showing) => {
+            const clientName =
+              clientMap[showing.clientId ?? 0] ??
+              `Client record ${showing.clientId ?? "unlinked"}`;
+            const agentName = showing.agentName ?? showing.providerName ?? "Unassigned";
             return (
               <AppointmentCard
-                key={appointment.id}
-                provider={patientName}
-                date={formatDate(appointment.startTime)}
-                detail={`Clinician: ${appointment.providerName}`}
-                status={appointment.status}
+                key={showing.id}
+                provider={clientName}
+                date={formatDate(showing.startTime)}
+                detail={`Agent: ${agentName}`}
+                status={showing.status}
                 action={
                   <div className="flex flex-wrap gap-2">
-                    {canCoordinate && appointment.status === "confirmed" && (
+                    {canCoordinate && showing.status === "confirmed" && (
                       <>
                         <Button
                           variant="secondary"
-                          onClick={() => setPending({ appointment, status: "checked_in" })}
+                          onClick={() => setPending({ showing, status: "checked_in" })}
                         >
-                          Check in
+                          Client arrived
                         </Button>
                         <Button
                           variant="quiet"
-                          onClick={() => setPending({ appointment, status: "cancelled" })}
+                          onClick={() => setPending({ showing, status: "cancelled" })}
                         >
                           Cancel
                         </Button>
                       </>
                     )}
-                    {canCoordinate && appointment.status === "checked_in" && (
+                    {canCoordinate && showing.status === "checked_in" && (
                       <Button
                         variant="secondary"
-                        onClick={() => setPending({ appointment, status: "in_room" })}
+                        onClick={() => setPending({ showing, status: "in_room" })}
                       >
-                        Move to room
+                        On site
                       </Button>
                     )}
                     {canCoordinate &&
-                      (appointment.status === "in_room" || appointment.status === "checked_in") && (
+                      (showing.status === "in_room" || showing.status === "checked_in") && (
                         <Button
                           variant="secondary"
-                          onClick={() => setPending({ appointment, status: "completed" })}
+                          onClick={() => setPending({ showing, status: "completed" })}
                         >
                           Complete
                         </Button>
                       )}
-                    {appointment.patientId && (
+                    {showing.clientId && (
                       <Button asChild variant="quiet">
-                        <Link href={`/patients/${appointment.patientId}`}>Patient</Link>
+                        <Link href={`/clients/${showing.clientId}`}>Client</Link>
                       </Button>
                     )}
                   </div>
@@ -262,7 +261,7 @@ export default function AppointmentsPage() {
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
-          {byDay.map(([day, dayAppointments]) => (
+          {byDay.map(([day, dayShowings]) => (
             <Card key={day}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="font-display text-xl font-medium text-ui-ink">
@@ -272,24 +271,26 @@ export default function AppointmentsPage() {
                     day: "numeric",
                   })}
                 </h2>
-                <StatusBadge status="pending" label={`${dayAppointments.length} visits`} />
+                <StatusBadge status="pending" label={`${dayShowings.length} showings`} />
               </div>
               <ul className="space-y-3">
-                {dayAppointments.map((appointment) => (
+                {dayShowings.map((showing) => (
                   <li
-                    key={appointment.id}
+                    key={showing.id}
                     className="rounded-ui-md border border-ui-border bg-ui-surface-inset px-3 py-3"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="font-semibold text-ui-ink">
-                          {formatHour(appointment.startTime)} ·{" "}
-                          {patientMap[appointment.patientId ?? 0] ??
-                            `Patient ${appointment.patientId ?? "?"}`}
+                          {formatHour(showing.startTime)} ·{" "}
+                          {clientMap[showing.clientId ?? 0] ??
+                            `Client ${showing.clientId ?? "?"}`}
                         </p>
-                        <p className="text-sm text-ui-muted">{appointment.providerName}</p>
+                        <p className="text-sm text-ui-muted">
+                          {showing.agentName ?? showing.providerName ?? "Unassigned"}
+                        </p>
                       </div>
-                      <StatusBadge status={appointment.status} />
+                      <StatusBadge status={showing.status} />
                     </div>
                   </li>
                 ))}
@@ -302,8 +303,8 @@ export default function AppointmentsPage() {
       <Dialog
         open={Boolean(pending)}
         onOpenChange={(open) => !open && setPending(null)}
-        title="Confirm appointment status change?"
-        description="This updates the appointment record immediately after confirmation."
+        title="Confirm showing status change?"
+        description="This updates the showing record immediately after confirmation."
         footer={
           <>
             <Button variant="secondary" onClick={() => setPending(null)}>
@@ -322,11 +323,12 @@ export default function AppointmentsPage() {
         {pending && (
           <div className="rounded-ui-md bg-ui-surface-inset p-4 text-sm">
             <p className="font-semibold text-ui-ink">
-              {patientMap[pending.appointment.patientId ?? 0] ??
-                `Patient record ${pending.appointment.patientId ?? "unlinked"}`}
+              {clientMap[pending.showing.clientId ?? 0] ??
+                `Client record ${pending.showing.clientId ?? "unlinked"}`}
             </p>
             <p className="mt-1 text-ui-muted">
-              {formatDate(pending.appointment.startTime)} · {pending.appointment.providerName}
+              {formatDate(pending.showing.startTime)} ·{" "}
+              {pending.showing.agentName ?? pending.showing.providerName ?? "Unassigned"}
             </p>
             <p className="mt-3 text-ui-ink">
               New status: <StatusBadge status={pending.status} />

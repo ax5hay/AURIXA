@@ -12,18 +12,18 @@ import {
   useToast,
 } from "@aurixa/ui-kit";
 
-const STORAGE_KEY = "aurixa.patient.notification-prefs";
+const STORAGE_KEY = "aurixa.client.notification-prefs";
 
 type NotificationPrefs = {
-  appointmentReminders: boolean;
+  showingReminders: boolean;
   messageAlerts: boolean;
-  resultsAlerts: boolean;
+  listingAlerts: boolean;
 };
 
 const DEFAULT_PREFS: NotificationPrefs = {
-  appointmentReminders: true,
+  showingReminders: true,
   messageAlerts: true,
-  resultsAlerts: false,
+  listingAlerts: false,
 };
 
 export default function NotificationsPage() {
@@ -74,20 +74,20 @@ export default function NotificationsPage() {
       </Alert>
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <SectionHeader title="Appointments" />
+          <SectionHeader title="Showings" />
           <p className="text-sm leading-6 text-ui-muted">
-            Your connected appointment schedule remains available in the portal. Check it directly
-            rather than relying on a reminder from this site.
+            Your connected showing schedule remains available in the portal. Check it directly rather
+            than relying on a reminder from this site.
           </p>
           <Button asChild variant="secondary" size="sm" className="mt-5">
-            <Link href="/appointments">Review appointments</Link>
+            <Link href="/showings">Review showings</Link>
           </Button>
         </Card>
         <Card>
-          <SectionHeader title="Results, messages, and billing" />
+          <SectionHeader title="Messages and listings" />
           <p className="text-sm leading-6 text-ui-muted">
-            New-result, new-message, refill, billing, and insurance alerts cannot be verified from
-            the connected APIs. Continue using the established channels provided by your care team.
+            New listing, message, and financing alerts cannot be verified from the connected APIs.
+            Continue using the established channels provided by your agent.
           </p>
         </Card>
       </div>
@@ -99,9 +99,9 @@ export default function NotificationsPage() {
         <ul className="mt-4 space-y-3">
           {(
             [
-              ["appointmentReminders", "Appointment reminders"],
-              ["messageAlerts", "Care message alerts"],
-              ["resultsAlerts", "Results alerts"],
+              ["showingReminders", "Showing reminders"],
+              ["messageAlerts", "Message alerts"],
+              ["listingAlerts", "Listing alerts"],
             ] as const
           ).map(([key, label]) => (
             <li

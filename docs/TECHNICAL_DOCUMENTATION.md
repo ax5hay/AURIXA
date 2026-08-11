@@ -64,7 +64,7 @@ AURIXA is an enterprise-grade conversational AI orchestration platform built as 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    CLIENT LAYER                              │
-│  Dashboard (3100) | Patient Portal (3300) | Hospital (3400) │
+│  Dashboard (3100) | Client Portal (3300) | Agent Workspace (3400) │
 └───────────────────────┬─────────────────────────────────────┘
                         │ HTTPS/WebSocket
 ┌───────────────────────▼─────────────────────────────────────┐
@@ -185,8 +185,8 @@ aurixa/
 │
 ├── frontend/                      # User-facing applications
 │   ├── dashboard/                 # Unified admin (Next.js 15, Port 3100)
-│   ├── patient-portal/            # Patient interface (Next.js 15, Port 3300)
-│   └── hospital-portal/           # Hospital staff interface (Next.js 15, Port 3400)
+│   ├── client-portal/             # Client interface (Next.js 15, Port 3300)
+│   └── agent-workspace/           # Agent/coordination interface (Next.js 15, Port 3400)
 │
 ├── infra/                         # Infrastructure as Code
 │   ├── docker/                    # Docker Compose (local development)
@@ -306,7 +306,7 @@ User Prompt
 1. Intent Classification (LLM Router)
     ↓
 2. Route Decision:
-   ├─ Agent Path (appointments, scheduling, search)
+   ├─ Agent Path (showings, listings, financing, search)
    │   └─ Agent Runtime → Execution Engine
    └─ RAG Path (general queries)
        └─ RAG Service → LLM Router
@@ -322,7 +322,7 @@ User Prompt
 
 - `POST /api/v1/pipelines` - Full pipeline execution (returns complete response)
 - `POST /api/v1/pipelines/stream` - Streaming pipeline (NDJSON: status, text_delta, done)
-- `GET /api/v1/admin/*` - Admin operations (tenants, patients, appointments, knowledge, analytics)
+- `GET /api/v1/admin/*` - Admin operations (tenants, clients, showings, knowledge, analytics)
 
 **Caching Strategy:**
 
@@ -435,12 +435,16 @@ ROUTING_RULES = {
 
 **Tool Registry:**
 
-- `get_appointments` - List patient appointments
-- `create_appointment` - Schedule new appointment
-- `check_insurance` - Verify insurance coverage
-- `get_availability` - List available slots
-- `request_prescription_refill` - Submit refill request
+- `get_showings` - List client showings
+- `create_showing` - Schedule new showing
+- `get_client_financing` - Verify financing / pre-approval
+- `get_listings` - List available listings
+- `get_availability` - List available showing slots
+- `create_service_request` - Submit maintenance or service request
+- `create_lead` - Create a sales lead
 - `search_knowledge_base` - RAG retrieval
+
+Legacy tool names (`get_appointments`, `check_insurance`, etc.) map to the real estate tools above.
 
 **Key Endpoints:**
 
@@ -526,13 +530,13 @@ RRF_K = 60  # Reciprocal Rank Fusion constant
 - Input/output validation
 - Banned word detection
 - PII detection and redaction
-- Emergency/clinical triage escalation
+- Fair housing, fraud, legal, and property-emergency escalation
 
 **Validation Policies:**
 
-1. **Emergency Triage:** Detects clinical emergency keywords (chest pain, stroke, etc.)
-   - Sets `requires_escalation: true`
-   - Severity: 1.0 (critical)
+1. **Fair housing / fraud / legal:** Detects configured policy violations and high-risk language
+   - Sets `requires_escalation: true` with `escalation_type` (`fair_housing`, `fraud`, `legal`, `property_emergency`)
+   - Severity scoring for operator review
 2. **Banned Words:** Configurable via `SAFETY_BANNED_WORDS` env var
 3. **PII Detection:** Regex patterns for SSN, credit cards, emails, phone numbers
    - Redacts detected PII in response
@@ -635,18 +639,23 @@ Optional TTS (final response → audio)
 **Responsibilities:**
 
 - Database-backed action execution
-- Appointment management
-- Insurance verification
-- Prescription refill requests
+- Showing and listing management
+- Financing verification
+- Service request workflows
+- Lead creation
 - Availability slot queries
 
 **Actions:**
 
-- `get_appointments` - Query appointments by patient_id
-- `create_appointment` - Create new appointment (DB write)
-- `check_insurance` - Verify patient insurance coverage
-- `get_availability` - List available appointment slots
-- `request_prescription_refill` - Submit prescription refill (DB write)
+- `get_showings` - Query showings by `client_id`
+- `create_showing` - Create new showing (DB write)
+- `get_client_financing` - Verify client financing / pre-approval
+- `get_listings` - List available listings
+- `get_availability` - List available showing slots
+- `create_service_request` - Submit service request (DB write)
+- `create_lead` - Create lead (DB write)
+
+Legacy action names remain as aliases (`get_appointments` → `get_showings`, etc.).
 
 **Database Operations:**
 
@@ -661,20 +670,19 @@ Optional TTS (final response → audio)
 
 **Performance:**
 
-- Composite index on `appointments(patient_id, status, start_time)` for fast queries
+- Composite index on `showings(client_id, status, start_time)` for fast queries
 - Async database operations prevent blocking
 
 **Action Execution:**
 
 ```python
-async def _get_appointments(db: AsyncSession, params: dict) -> str:
-    """List upcoming appointments for a patient."""
-    pid = params.get("patient_id")
-    # Query with composite index
+async def _get_showings(db: AsyncSession, params: dict) -> str:
+    """List upcoming showings for a client."""
+    cid = params.get("client_id") or params.get("patient_id")
     result = await db.execute(
-        select(Appointment)
-        .where(Appointment.patient_id == pid, Appointment.status != "cancelled")
-        .order_by(Appointment.start_time.asc())
+        select(Showing)
+        .where(Showing.client_id == cid, Showing.status != "cancelled")
+        .order_by(Showing.start_time.asc())
         .limit(10)
     )
     # Format and return results
@@ -893,65 +901,66 @@ CREATE TABLE tenants (
 );
 ```
 
-#### Patients
+#### Clients
 
 ```sql
-CREATE TABLE patients (
+CREATE TABLE clients (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR NOT NULL,
     email VARCHAR,
     phone_number VARCHAR,
+    client_type VARCHAR DEFAULT 'buyer',
     tenant_id INTEGER REFERENCES tenants(id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-#### Appointments
+#### Showings
 
 ```sql
-CREATE TABLE appointments (
+CREATE TABLE showings (
     id SERIAL PRIMARY KEY,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
-    provider_name VARCHAR NOT NULL,
-    reason VARCHAR,
+    agent_name VARCHAR NOT NULL,
+    notes VARCHAR,
     status VARCHAR DEFAULT 'confirmed',
     tenant_id INTEGER REFERENCES tenants(id),
-    patient_id INTEGER REFERENCES patients(id),
+    client_id INTEGER REFERENCES clients(id),
+    listing_id INTEGER REFERENCES listings(id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Composite index for fast queries
-CREATE INDEX ix_appointments_patient_status_start
-ON appointments(patient_id, status, start_time);
+CREATE INDEX ix_showings_client_status_start
+ON showings(client_id, status, start_time);
 ```
 
-#### PatientInsurance
+#### ClientFinancing
 
 ```sql
-CREATE TABLE patient_insurance (
+CREATE TABLE client_financing (
     id SERIAL PRIMARY KEY,
-    patient_id INTEGER REFERENCES patients(id),
-    plan_name VARCHAR NOT NULL,
-    payer VARCHAR,
-    member_id VARCHAR,
-    copay VARCHAR DEFAULT '$25',
-    status VARCHAR DEFAULT 'active',
+    client_id INTEGER REFERENCES clients(id),
+    program_name VARCHAR NOT NULL,
+    lender VARCHAR,
+    approved_amount INTEGER,
+    status VARCHAR DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-#### Prescriptions
+#### ServiceRequests
 
 ```sql
-CREATE TABLE prescriptions (
+CREATE TABLE service_requests (
     id SERIAL PRIMARY KEY,
-    patient_id INTEGER REFERENCES patients(id),
-    medication_name VARCHAR NOT NULL,
-    status VARCHAR DEFAULT 'active',
-    refill_requested_at TIMESTAMP,
+    client_id INTEGER REFERENCES clients(id),
+    category VARCHAR DEFAULT 'maintenance',
+    title VARCHAR NOT NULL,
+    description TEXT,
+    status VARCHAR DEFAULT 'open',
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -1004,13 +1013,12 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 
 ### Relationships
 
-- **Tenant** → **Users** (one-to-many)
 - **Tenant** → **Staff** (one-to-many)
-- **Tenant** → **Appointments** (one-to-many)
+- **Tenant** → **Clients** (one-to-many)
+- **Tenant** → **Listings** / **Leads** / **Showings** (one-to-many)
 - **Tenant** → **KnowledgeBaseArticle** (one-to-many)
-- **Patient** → **Appointments** (one-to-many)
-- **Patient** → **PatientInsurance** (one-to-many)
-- **Patient** → **Prescriptions** (one-to-many)
+- **Client** → **Showings**, **ClientFinancing**, **ServiceRequests**, **Applications** (one-to-many)
+- **Listing** → **Showings**, **Offers**, **Leads** (one-to-many)
 - **Conversation** → **PipelineSteps** (one-to-many)
 
 ---
@@ -1041,30 +1049,33 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 **Playground Capabilities:**
 
 - Run All Tests (one-click verification)
-- Full pipeline test (E2E with patient context)
+- Full pipeline test (E2E with client context)
 - Service API tests (Route, RAG, Safety, Agent, Execution, Knowledge, LLM, Audit)
 - Test results table (last 20 runs with status, latency, errors)
-- Execution actions (get_appointments, check_insurance, create_appointment, etc.)
+- Execution actions (`get_showings`, `get_client_financing`, `create_showing`, etc.)
 - Flow visualization (Intent → RAG/Agent → Generate → Safety)
 
 ---
 
-### 2. Patient Portal (Port 3300)
+### 2. Client Portal (Port 3300)
 
 **Technology:** Next.js 15, React 19, Tailwind CSS
 
 **Features:**
 
 - **Chat:** Text-based conversation with AI assistant
-- **Voice:** WebSocket voice interface with STT/TTS
-- **Appointments:** View and manage appointments
+- **Voice:** REST and WebSocket voice interface with STT/TTS
+- **Showings:** View and manage property showings
+- **Listings, financing, applications, maintenance:** Transaction self-service surfaces
 - **Help:** Knowledge base articles
 
 **Key Pages:**
 
-- `/` - Main chat interface
+- `/` - Home and next showing summary
+- `/chat` - Text chat interface
 - `/voice` - Voice conversation interface
-- `/appointments` - Appointment management
+- `/showings` - Showing schedule
+- `/listings`, `/financing`, `/applications`, `/maintenance` - Domain workflows
 - `/help` - Help articles
 
 **Voice Interface:**
@@ -1072,30 +1083,30 @@ CREATE INDEX idx_platform_config_key ON platform_config(key);
 - Mic input or text input
 - REST-based voice processing (STT → pipeline → optional TTS)
 - User toggle for "Play aloud" (TTS on/off)
-- Real-time token streaming over WebSocket
+- Optional WebSocket path with LLM token streaming
 
 ---
 
-### 3. Hospital Portal (Port 3400)
+### 3. Agent Workspace (Port 3400)
 
 **Technology:** Next.js 15, React 19, Tailwind CSS
 
 **Features:**
 
-- **Staff Dashboard:** Role-based access (reception, nurse, doctor, scheduler, admin)
-- **Patients:** Patient management
-- **Appointments:** Scheduling and management
-- **AI Assistant:** Staff-facing conversational AI
+- **Agent Dashboard:** Role-based access (agent, coordinator, operations, admin)
+- **Clients:** Client directory and detail views
+- **Showings & leads:** Scheduling, pipeline, and follow-up
+- **AI Assistant:** Agent-facing contextual conversational AI
 - **Knowledge Base:** Internal documentation
 - **System Status:** Service health monitoring
 
 **Role-Based Access:**
 
-- **Reception:** Patient check-in, appointment scheduling
-- **Nurse:** Patient care coordination, appointment management
-- **Doctor:** Patient records, appointment review
-- **Scheduler:** Availability management, appointment booking
-- **Admin:** Full system access
+- **Agent / broker:** Clients, showings, leads, listings, assistant
+- **Coordinator / operations:** Today queue, showings, scheduling, leads
+- **Admin:** Full system access, status, diagnostics
+
+Legacy routes (`/patients`, `/appointments`) redirect to `/clients` and `/showings`.
 
 ---
 
@@ -1199,7 +1210,7 @@ Content-Type: application/json
 {
   "prompt": "What are your operating hours?",
   "session_id": "optional-session-id",
-  "patient_id": 1
+  "client_id": 1
 }
 ```
 
@@ -1213,7 +1224,7 @@ Content-Type: application/json
     "prompt": "...",
     "tenant_id": null,
     "user_id": null,
-    "patient_id": 1
+    "client_id": 1
   },
   "steps": [
     {
@@ -1345,7 +1356,7 @@ Content-Type: application/json
 
 {
   "audio_b64": "base64-encoded-audio",
-  "patient_id": 1,
+  "client_id": 1,
   "want_tts": true
 }
 ```
@@ -1372,7 +1383,7 @@ ws.send(
     type: "text",
     content: "Hello",
     session_id: "optional",
-    patient_id: 1,
+    client_id: 1,
     want_tts: true,
   }),
 );
@@ -1418,7 +1429,7 @@ ws.onmessage = (event) => {
    ↓
 5. Route Decision:
 
-   Agent Path (appointments, scheduling):
+   Agent Path (showings, listings, financing):
    ├─ Agent Runtime (Port 8003)
    │   ├─ Tool selection (LLM function calling)
    │   └─ Execution Engine (Port 8007)
@@ -1508,7 +1519,7 @@ ws.onmessage = (event) => {
 
 #### 4. Database Indexing
 
-- Composite index on `appointments(patient_id, status, start_time)`
+- Composite index on `showings(client_id, status, start_time)`
 - Indexes on `session_id`, `service`, `key` fields
 
 #### 5. Docker Healthchecks
@@ -1597,7 +1608,7 @@ ws.onmessage = (event) => {
 
 - Banned word detection
 - PII detection and redaction
-- Emergency/clinical triage escalation
+- Fair housing, fraud, legal, and property-emergency escalation
 - Configurable via environment variables
 
 **Escalation:**
@@ -1726,7 +1737,7 @@ pnpm clean
 - API Gateway root and health endpoints
 - Direct service health checks (all 8 Python services)
 - Proxy routes through gateway
-- Admin routes (tenants, patients, appointments, knowledge, analytics)
+- Admin routes (tenants, clients, showings, knowledge, analytics)
 - Full pipeline execution
 - Pipeline streaming (NDJSON)
 - Voice processing (REST)

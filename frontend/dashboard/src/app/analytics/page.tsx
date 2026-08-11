@@ -3,15 +3,27 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { getAnalytics, getAnalyticsSummary } from "@/app/services/api";
+import { getAnalytics, getAnalyticsSummary, type AnalyticsSummary } from "@/app/services/api";
 
 const AnalyticsCharts = dynamic(() => import("./AnalyticsCharts"), { ssr: false });
 
+function domainCount(
+  summary: AnalyticsSummary | null | undefined,
+  primary: keyof AnalyticsSummary,
+  legacy?: keyof AnalyticsSummary,
+): number {
+  const value = summary?.[primary];
+  if (typeof value === "number") return value;
+  if (legacy) {
+    const fallback = summary?.[legacy];
+    if (typeof fallback === "number") return fallback;
+  }
+  return 0;
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getAnalytics>> | null>(null);
-  const [dbSummary, setDbSummary] = useState<Awaited<
-    ReturnType<typeof getAnalyticsSummary>
-  > | null>(null);
+  const [dbSummary, setDbSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,13 +71,12 @@ export default function AnalyticsPage() {
           <p className="eyebrow">Investigate</p>
           <h1 className="display-title">Usage and performance</h1>
           <p className="page-description">
-            Reported platform activity, latency, and estimated cost.
+            Reported platform activity, real estate domain records, latency, and estimated cost.
           </p>
         </div>
       </div>
 
-      {/* Key metrics — compact hero strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="metric-card">
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
             Conversations
@@ -76,7 +87,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="metric-card">
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-            Tenants
+            Organizations
           </p>
           <p className="text-2xl font-bold text-white mt-0.5">
             {(dbSummary?.tenants_count ?? 0).toLocaleString()}
@@ -84,18 +95,34 @@ export default function AnalyticsPage() {
         </div>
         <div className="metric-card">
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-            Patients
+            Clients
           </p>
           <p className="text-2xl font-bold text-white mt-0.5">
-            {(dbSummary?.patients_count ?? 0).toLocaleString()}
+            {domainCount(dbSummary, "clients_count", "patients_count").toLocaleString()}
           </p>
         </div>
         <div className="metric-card">
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-            Appointments
+            Showings
           </p>
           <p className="text-2xl font-bold text-white mt-0.5">
-            {(dbSummary?.appointments_count ?? 0).toLocaleString()}
+            {domainCount(dbSummary, "showings_count", "appointments_count").toLocaleString()}
+          </p>
+        </div>
+        <div className="metric-card">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+            Listings
+          </p>
+          <p className="text-2xl font-bold text-white mt-0.5">
+            {(dbSummary?.listings_count ?? 0).toLocaleString()}
+          </p>
+        </div>
+        <div className="metric-card">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+            Leads
+          </p>
+          <p className="text-2xl font-bold text-white mt-0.5">
+            {(dbSummary?.leads_count ?? 0).toLocaleString()}
           </p>
         </div>
         <div className="glass rounded-xl p-4 border border-white/5">

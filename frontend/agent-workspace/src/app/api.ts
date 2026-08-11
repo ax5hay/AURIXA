@@ -1,6 +1,6 @@
-/** API client for AURIXA Hospital Portal - staff interface. */
+/** API client for AURIXA Agent Workspace — staff/agent interface. */
 
-const API_BASE = "/api/hospital";
+const API_BASE = "/api/workspace";
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;
 
@@ -18,21 +18,45 @@ async function fetchWithTimeout(
   }
 }
 
-export interface Patient {
+export interface Client {
   id: number;
   fullName: string;
   email?: string;
   phoneNumber?: string;
   tenantId?: number;
+  clientType?: string;
 }
 
-export interface Appointment {
+export interface Showing {
   id: number;
   startTime: string;
   endTime: string;
-  providerName: string;
+  agentName: string;
+  providerName?: string;
   status: string;
+  clientId?: number;
   patientId?: number;
+  tenantId?: number;
+  notes?: string;
+  listingId?: number;
+}
+
+export interface Lead {
+  id: number;
+  fullName: string;
+  email?: string;
+  phoneNumber?: string;
+  stage?: string;
+  source?: string;
+  tenantId?: number;
+}
+
+export interface Listing {
+  id: number;
+  marketingTitle?: string;
+  status?: string;
+  listPrice?: number;
+  rentAmount?: number;
   tenantId?: number;
 }
 
@@ -77,62 +101,82 @@ export interface AuditEntry {
   severity: string;
 }
 
-export async function getPatients(tenantId?: number): Promise<Patient[]> {
+export async function getClients(tenantId?: number): Promise<Client[]> {
   const url =
     tenantId != null
-      ? `${API_BASE}/admin/patients?tenant_id=${tenantId}`
-      : `${API_BASE}/admin/patients`;
+      ? `${API_BASE}/admin/clients?tenant_id=${tenantId}`
+      : `${API_BASE}/admin/clients`;
   const res = await fetchWithTimeout(url);
-  if (!res.ok) throw new Error("Failed to fetch patients");
+  if (!res.ok) throw new Error("Failed to fetch clients");
   return res.json();
 }
 
-export async function getPatient(patientId: number, expectedTenantId?: number): Promise<Patient> {
-  const res = await fetchWithTimeout(`${API_BASE}/admin/patients/${patientId}`);
-  if (!res.ok) throw new Error("Failed to fetch patient");
-  const patient = (await res.json()) as Patient;
-  if (expectedTenantId != null && patient.tenantId !== expectedTenantId) {
-    throw new Error("Patient is outside the verified organization scope");
+export async function getClient(clientId: number, expectedTenantId?: number): Promise<Client> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/clients/${clientId}`);
+  if (!res.ok) throw new Error("Failed to fetch client");
+  const client = (await res.json()) as Client;
+  if (expectedTenantId != null && client.tenantId !== expectedTenantId) {
+    throw new Error("Client is outside the verified organization scope");
   }
-  return patient;
+  return client;
 }
 
-export async function createPatient(data: {
+export async function createClient(data: {
   full_name: string;
   email?: string;
   phone_number?: string;
   tenant_id?: number;
-}): Promise<Patient> {
-  const res = await fetchWithTimeout(`${API_BASE}/admin/patients`, {
+}): Promise<Client> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/clients`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create patient");
+  if (!res.ok) throw new Error("Failed to create client");
   return res.json();
 }
 
-export async function getAppointments(opts?: {
+export async function getShowings(opts?: {
   tenantId?: number;
   dateFrom?: string;
   dateTo?: string;
   limit?: number;
-}): Promise<Appointment[]> {
+}): Promise<Showing[]> {
   const params = new URLSearchParams();
   if (opts?.tenantId) params.set("tenant_id", String(opts.tenantId));
   if (opts?.dateFrom) params.set("date_from", opts.dateFrom);
   if (opts?.dateTo) params.set("date_to", opts.dateTo);
   if (opts?.limit) params.set("limit", String(opts.limit));
   const qs = params.toString();
-  const url = `${API_BASE}/admin/appointments${qs ? `?${qs}` : ""}`;
+  const url = `${API_BASE}/admin/showings${qs ? `?${qs}` : ""}`;
   const res = await fetchWithTimeout(url);
-  if (!res.ok) throw new Error("Failed to fetch appointments");
+  if (!res.ok) throw new Error("Failed to fetch showings");
   return res.json();
 }
 
-export async function getPatientAppointments(patientId: number): Promise<Appointment[]> {
-  const res = await fetchWithTimeout(`${API_BASE}/admin/patients/${patientId}/appointments`);
-  if (!res.ok) throw new Error("Failed to fetch appointments");
+export async function getClientShowings(clientId: number): Promise<Showing[]> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/clients/${clientId}/showings`);
+  if (!res.ok) throw new Error("Failed to fetch showings");
+  return res.json();
+}
+
+export async function getLeads(tenantId?: number): Promise<Lead[]> {
+  const url =
+    tenantId != null
+      ? `${API_BASE}/admin/leads?tenant_id=${tenantId}`
+      : `${API_BASE}/admin/leads`;
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) throw new Error("Failed to fetch leads");
+  return res.json();
+}
+
+export async function getListings(tenantId?: number): Promise<Listing[]> {
+  const url =
+    tenantId != null
+      ? `${API_BASE}/admin/listings?tenant_id=${tenantId}`
+      : `${API_BASE}/admin/listings`;
+  const res = await fetchWithTimeout(url);
+  if (!res.ok) throw new Error("Failed to fetch listings");
   return res.json();
 }
 
@@ -163,28 +207,33 @@ export async function getStaff(opts?: { tenantId?: number; role?: string }): Pro
   return res.json();
 }
 
-export async function createAppointment(data: {
-  patient_id: number;
+export async function createShowing(data: {
+  client_id: number;
   tenant_id?: number;
-  provider_name: string;
-  reason: string;
-  date?: string;
-  start_time?: string;
-}): Promise<Appointment> {
-  const res = await fetchWithTimeout(`${API_BASE}/admin/appointments`, {
+  agent_name?: string;
+  notes?: string;
+  listing_id?: number;
+}): Promise<Showing> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/showings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      client_id: data.client_id,
+      tenant_id: data.tenant_id,
+      agent_name: data.agent_name ?? "Agent",
+      notes: data.notes ?? "Property showing",
+      listing_id: data.listing_id,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-export async function updateAppointmentStatus(
-  appointmentId: number,
+export async function updateShowingStatus(
+  showingId: number,
   status: string,
 ): Promise<{ id: number; status: string }> {
-  const res = await fetchWithTimeout(`${API_BASE}/admin/appointments/${appointmentId}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/showings/${showingId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status }),
@@ -195,10 +244,10 @@ export async function updateAppointmentStatus(
 
 export async function sendMessage(
   prompt: string,
-  opts?: { patientId?: number; tenantId?: string },
+  opts?: { clientId?: number; tenantId?: string },
 ): Promise<PipelineResponse> {
   const body: Record<string, unknown> = { prompt };
-  if (opts?.patientId) body.patient_id = opts.patientId;
+  if (opts?.clientId) body.client_id = opts.clientId;
   if (opts?.tenantId) body.tenant_id = opts.tenantId;
   const res = await fetchWithTimeout(
     `${API_BASE}/orchestration/pipelines`,
@@ -247,3 +296,33 @@ export async function getAuditLog(limit = 30): Promise<AuditEntry[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+/** @deprecated Use getClients */
+export const getPatients = getClients;
+/** @deprecated Use getClient */
+export const getPatient = getClient;
+/** @deprecated Use createClient */
+export const createPatient = createClient;
+/** @deprecated Use getShowings */
+export const getAppointments = getShowings;
+/** @deprecated Use getClientShowings */
+export const getPatientAppointments = getClientShowings;
+/** @deprecated Use createShowing */
+export const createAppointment = (data: {
+  patient_id: number;
+  tenant_id?: number;
+  provider_name: string;
+  reason: string;
+  date?: string;
+  start_time?: string;
+}) =>
+  createShowing({
+    client_id: data.patient_id,
+    tenant_id: data.tenant_id,
+    agent_name: data.provider_name,
+    notes: data.reason,
+  });
+/** @deprecated Use updateShowingStatus */
+export const updateAppointmentStatus = updateShowingStatus;
+export type Patient = Client;
+export type Appointment = Showing;

@@ -7,7 +7,7 @@ export default function NotFound() {
       <EmptyState
         eyebrow="Page not found"
         title="That page isn’t here"
-        description="The link may be out of date. Return home to find appointments, messages, and support."
+        description="The link may be out of date. Return home to find showings, messages, and support."
         action={
           <Button asChild>
             <Link href="/">Return home</Link>

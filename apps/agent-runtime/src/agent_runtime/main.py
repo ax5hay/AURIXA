@@ -8,6 +8,10 @@ from loguru import logger
 
 from .models import RunTaskRequest, RunTaskResponse, AgentResult, AgentTask
 
+AGENT_CHANNEL_PROMPT = (
+    "Operational real estate assistant: cite KB/listing sources, suggest next actions, "
+    "no legal/tax advice, fair-housing neutral language."
+)
 RAG_SERVICE_URL = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
 EXECUTION_ENGINE_URL = os.getenv("EXECUTION_ENGINE_HOST", "http://localhost:8007")
 
@@ -135,7 +139,7 @@ app = FastAPI(
     title="AURIXA Agent Runtime",
     version="0.2.0",
     lifespan=lifespan,
-    description="Autonomous agent tasks with real estate tool-calling.",
+    description="Autonomous agent tasks with real estate tool-calling and knowledge search.",
 )
 
 
@@ -181,7 +185,7 @@ async def run_task(request: RunTaskRequest, req: Request):
     agent_result = AgentResult(
         output=final_output,
         tool_calls=tool_calls,
-        steps=[{"step": "reasoning", "details": "Matched prompt keywords to real estate tools."}],
+        steps=[{"step": "reasoning", "details": AGENT_CHANNEL_PROMPT}],
     )
 
     return RunTaskResponse(result=agent_result)

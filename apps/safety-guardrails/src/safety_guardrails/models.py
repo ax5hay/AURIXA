@@ -21,6 +21,10 @@ class ValidateResponse(BaseModel):
     validated_text: str = Field(description="The original or a sanitized version of the text.")
     issues: List[ValidationIssue] = Field(description="A list of issues found, if any.", default_factory=list)
     requires_escalation: bool = Field(
-        description="When True, indicates emergency/clinical triage requiring human escalation.",
+        description="When True, indicates fair housing, legal, fraud, or property emergency escalation.",
         default=False,
+    )
+    escalation_type: str | None = Field(
+        description="fair_housing | legal | fraud | property_emergency when escalation is required.",
+        default=None,
     )

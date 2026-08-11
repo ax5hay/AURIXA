@@ -27,12 +27,12 @@ global:
       dashboard:
         host: dashboard.aurixa.local
         service: dashboard
-      patient:
-        host: patient.aurixa.local
-        service: patient-portal
-      hospital:
-        host: hospital.aurixa.local
-        service: hospital-portal
+      client:
+        host: client.aurixa.local
+        service: client-portal
+      workspace:
+        host: workspace.aurixa.local
+        service: agent-workspace
   frontend:
     apiGatewayUrl: http://api.aurixa.local
   networkPolicy:
@@ -156,21 +156,21 @@ services:
       image: { repository: dashboard, tag: latest, digest: "" },
       writablePaths: ["/app/frontend/dashboard/.next/cache"],
     }
-  patient-portal:
+  client-portal:
     {
       port: 3300,
       kind: frontend,
       healthPath: /,
-      image: { repository: patient-portal, tag: latest, digest: "" },
-      writablePaths: ["/app/frontend/patient-portal/.next/cache"],
+      image: { repository: client-portal, tag: latest, digest: "" },
+      writablePaths: ["/app/frontend/client-portal/.next/cache"],
     }
-  hospital-portal:
+  agent-workspace:
     {
       port: 3400,
       kind: frontend,
       healthPath: /,
-      image: { repository: hospital-portal, tag: latest, digest: "" },
-      writablePaths: ["/app/frontend/hospital-portal/.next/cache"],
+      image: { repository: agent-workspace, tag: latest, digest: "" },
+      writablePaths: ["/app/frontend/agent-workspace/.next/cache"],
     }
 
 migration:

@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   const session = await verifyStaffSessionToken(token);
   if (session) {
     const role = session.role.toLowerCase();
-    const clinical = ["doctor", "physician", "nurse", "clinician"].some((term) => role.includes(term));
+    const agent = ["doctor", "physician", "nurse", "clinician"].some((term) => role.includes(term));
     const coordination = ["reception", "scheduler", "coordinator", "front desk"].some((term) =>
       role.includes(term),
     );
@@ -21,9 +21,9 @@ export async function middleware(request: NextRequest) {
     const allowed =
       (path.startsWith("/status") && operations) ||
       ((path.startsWith("/schedule") || path.startsWith("/chat")) &&
-        (clinical || coordination)) ||
+        (agent || coordination)) ||
       (!path.startsWith("/status") && !path.startsWith("/schedule") && !path.startsWith("/chat") &&
-        (clinical || coordination || operations));
+        (agent || coordination || operations));
     if (allowed) return NextResponse.next();
     return NextResponse.redirect(new URL("/?access=denied", request.url));
   }

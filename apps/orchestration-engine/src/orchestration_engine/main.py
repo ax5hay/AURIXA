@@ -429,7 +429,7 @@ async def run_pipeline(
     """
     logger.info("Received new pipeline request for session: {}", request.session_id)
 
-    # Cache check: skip for agent-worthy (patient-specific) prompts
+    # Cache check: skip for agent-worthy (client-specific) prompts
     use_cache = not _is_agent_worthy(request.prompt) and CACHE_TTL_SEC > 0
     cache_key = _cache_key(request.prompt, request.tenant_id, request.user_id) if use_cache else None
     if cache_key and use_cache:
@@ -467,60 +467,69 @@ async def run_pipeline(
     
     final_response_text = ""
     try:
-        # 1. Classify intent
-        intent_result, _ = await execute_step(
-            db, conversation, "classify_intent", {"prompt": request.prompt},
-            clients.call_llm_router(request.prompt)
+        # 0. Validate user input (fair housing, fraud, legal patterns)
+        input_validation, _ = await execute_step(
+            db, conversation, "validate_input", {"text": request.prompt},
+            clients.call_safety_guardrails(request.prompt),
         )
-
-        # 2. Agent path: when prompt suggests tool use, call agent-runtime
-        generated_text = ""
-        if _is_agent_worthy(request.prompt):
-            agent_result, _ = await execute_step(
-                db, conversation, "agent_execution", {"prompt": request.prompt, "client_id": client_id, "patient_id": client_id},
-                clients.call_agent_runtime(request.prompt, client_id)
-            )
-            agent_output = agent_result.get("output")
-            if agent_output:
-                generated_text = agent_output
-                logger.info("Using agent output for session: {}", request.session_id)
-
-        # 3. Standard path: RAG + LLM generate when no agent output
-        if not generated_text:
-            rag_context, _ = await execute_step(
-                db, conversation, "knowledge_retrieval", {"prompt": request.prompt, "intent": intent_result},
-                clients.call_rag_service(request.prompt, intent_result)
-            )
-            generation_result, _ = await execute_step(
-                db, conversation, "generate_response", {"context": rag_context, "intent": intent_result},
-                clients.call_llm_generate(
-                    model=intent_result.get("model"),
-                    provider=intent_result.get("provider"),
-                    prompt=request.prompt,
-                    context=rag_context
-                )
-            )
-            generated_text = generation_result.get("content", "")
-
-        # 4. Validate output
-        validation_result, _ = await execute_step(
-            db, conversation, "validate_output", {"text": generated_text},
-            clients.call_safety_guardrails(generated_text)
-        )
-
-        if not validation_result.get("is_safe"):
-            final_response_text = validation_result.get("validated_text", "[Content Redacted]")
-            logger.warning("Pipeline finished with unsafe response for session: {}", request.session_id)
-        else:
-            final_response_text = validation_result.get("validated_text")
-            logger.success("Pipeline executed successfully for session: {}", request.session_id)
-
-        # 5. Escalation: prepend notice when safety flagged emergency
-        if validation_result.get("requires_escalation"):
+        if not input_validation.get("is_safe"):
             final_response_text = (
-                "⚠️ This may require immediate attention. Please connect with a staff member as soon as possible. "
-                + final_response_text
+                clients.escalation_notice(input_validation)
+                + input_validation.get("validated_text", "[Content Redacted]")
             )
+        else:
+            # 1. Classify intent
+            intent_result, _ = await execute_step(
+                db, conversation, "classify_intent", {"prompt": request.prompt},
+                clients.call_llm_router(request.prompt)
+            )
+
+            # 2. Agent path: when prompt suggests tool use, call agent-runtime
+            generated_text = ""
+            if _is_agent_worthy(request.prompt):
+                agent_result, _ = await execute_step(
+                    db, conversation, "agent_execution", {"prompt": request.prompt, "client_id": client_id, "patient_id": client_id},
+                    clients.call_agent_runtime(request.prompt, client_id)
+                )
+                agent_output = agent_result.get("output")
+                if agent_output:
+                    generated_text = agent_output
+                    logger.info("Using agent output for session: {}", request.session_id)
+
+            # 3. Standard path: RAG + LLM generate when no agent output
+            if not generated_text:
+                rag_context, _ = await execute_step(
+                    db, conversation, "knowledge_retrieval", {"prompt": request.prompt, "intent": intent_result},
+                    clients.call_rag_service(request.prompt, intent_result)
+                )
+                generation_result, _ = await execute_step(
+                    db, conversation, "generate_response", {"context": rag_context, "intent": intent_result},
+                    clients.call_llm_generate(
+                        model=intent_result.get("model"),
+                        provider=intent_result.get("provider"),
+                        prompt=request.prompt,
+                        context=rag_context
+                    )
+                )
+                generated_text = generation_result.get("content", "")
+
+            # 4. Validate output
+            validation_result, _ = await execute_step(
+                db, conversation, "validate_output", {"text": generated_text},
+                clients.call_safety_guardrails(generated_text)
+            )
+
+            if not validation_result.get("is_safe"):
+                final_response_text = validation_result.get("validated_text", "[Content Redacted]")
+                logger.warning("Pipeline finished with unsafe response for session: {}", request.session_id)
+            else:
+                final_response_text = validation_result.get("validated_text")
+                logger.success("Pipeline executed successfully for session: {}", request.session_id)
+
+            # 5. Escalation notice from input or output validation
+            notice = clients.escalation_notice(validation_result) or clients.escalation_notice(input_validation)
+            if notice:
+                final_response_text = notice + final_response_text
 
         # 6. Cache response for repeated general prompts
         if cache_key and use_cache and final_response_text:
@@ -570,6 +579,16 @@ async def run_pipeline_stream(request: PipelineRequest):
 
     async def event_stream():
         try:
+            yield _ndjson_line({"event": "status", "message": "Checking safety policies..."})
+            input_validation = await clients.call_safety_guardrails(request.prompt)
+            if not input_validation.get("is_safe"):
+                final_response = (
+                    clients.escalation_notice(input_validation)
+                    + input_validation.get("validated_text", "[Content Redacted]")
+                )
+                yield _ndjson_line({"event": "done", "final_response": final_response})
+                return
+
             yield _ndjson_line({"event": "status", "message": "Classifying intent..."})
             intent_result = await clients.call_llm_router(request.prompt)
             generated_text = ""
@@ -600,12 +619,10 @@ async def run_pipeline_stream(request: PipelineRequest):
             validation_result = await clients.call_safety_guardrails(generated_text)
             final_response = validation_result.get("validated_text", generated_text)
             if not validation_result.get("is_safe"):
-                final_response = "[Content Redacted]"
-            if validation_result.get("requires_escalation"):
-                final_response = (
-                    "⚠️ This may require immediate attention. Please connect with a staff member as soon as possible. "
-                    + final_response
-                )
+                final_response = validation_result.get("validated_text", "[Content Redacted]")
+            notice = clients.escalation_notice(validation_result) or clients.escalation_notice(input_validation)
+            if notice:
+                final_response = notice + final_response
             yield _ndjson_line({"event": "done", "final_response": final_response})
         except Exception as e:
             logger.error("Pipeline stream failed: {}", e)

@@ -1,33 +1,33 @@
-import { UnavailableCareSection } from "@/components/UnavailableCareSection";
+import { UnavailableSection } from "@/components/UnavailableSection";
 
 export default function InsurancePage() {
   return (
-    <UnavailableCareSection
-      eyebrow="Costs and coverage"
-      title="Insurance"
-      description="Prepare for coverage, referral, and prior-authorization conversations."
+    <UnavailableSection
+      eyebrow="Coverage"
+      title="Homeowners and renters insurance"
+      description="Prepare for coverage and binder conversations during your transaction."
       unavailableTitle="Insurance details are not connected"
-      unavailableBody="The patient API does not provide member details, eligibility, claims, referrals, or authorization status. Coverage cannot be verified from this portal."
+      unavailableBody="The client API does not provide policy details, binders, or claims status. Coverage cannot be verified from this portal."
       checklist={[
-        "Have your member ID and group number ready.",
-        "Note the provider, service date, and procedure or test description.",
-        "Call the member-services number printed on your insurance card.",
+        "Have your policy or quote reference number ready.",
+        "Note the property address and closing or move-in date.",
+        "Call the carrier or agent listed on your policy documents.",
       ]}
       steps={[
         {
-          title: "Confirm with your insurer",
+          title: "Confirm with your carrier",
           icon: "check",
-          body: "Use the member-services number on your insurance card. Ask about network status, benefits, deductible, referral rules, and prior authorization.",
+          body: "Use the number on your policy or quote. Ask about binders, deductibles, and required coverage for your loan or lease.",
         },
         {
           title: "Bring the right details",
           icon: "info",
-          body: "Have your member ID, group number, provider name, service date, and procedure or test description ready. Never post card images in an unsecured message.",
+          body: "Have the property address, effective date, and loan officer requirements ready. Never post policy images in an unsecured message.",
         },
       ]}
       related={[
-        { href: "/billing", label: "Billing guidance" },
-        { href: "/appointments", label: "Appointments" },
+        { href: "/financing", label: "Financing" },
+        { href: "/showings", label: "Showings" },
         { href: "/help", label: "Support" },
       ]}
     />

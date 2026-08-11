@@ -6,10 +6,10 @@ This document defines how end users interact with AURIXA across different channe
 
 ## Executive Summary
 
-**Current State**: The platform has **webchat**, **REST voice**, and **WebSocket voice** in the patient portal. The **telephony layer (PSTN/VoIP)** is not yet implemented. End users can interact via:
+**Current State**: The platform has **webchat**, **REST voice**, and **WebSocket voice** in the client portal. The **telephony layer (PSTN/VoIP)** is not yet implemented. End users can interact via:
 
-1. **Webchat** — Text-based conversation in the patient portal (REST pipelines).
-2. **Voice (REST)** — Patient Portal **Voice** page (`/voice`): mic or text → `POST /api/v1/voice/process` (audio_b64, want_tts) → transcript + response + optional TTS audio. User can toggle "Play aloud" (TTS on/off). Most reliable path.
+1. **Webchat** — Text-based conversation in the client portal (REST pipelines).
+2. **Voice (REST)** — Client Portal **Voice** page (`/voice`): mic or text → `POST /api/v1/voice/process` (audio_b64, want_tts) → transcript + response + optional TTS audio. User can toggle "Play aloud" (TTS on/off). Most reliable path.
 3. **WebSocket voice** — Optional: connect to `ws://host/ws/voice` (proxied to streaming-voice `/ws/stream`) for real-time duplex; same STT/TTS pipeline, supports `want_tts` in messages.
 
 **Planned**: Telephony via SIP/WebRTC gateways (e.g., Twilio, Vapi, Bland) will sit in front of the same streaming pipeline, providing PSTN/VoIP call handling.
@@ -20,10 +20,10 @@ This document defines how end users interact with AURIXA across different channe
 
 | Channel       | Status          | Endpoint/Protocol                                                                            | Primary Use                                        |
 | ------------- | --------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Voice (Web)   | Implemented     | REST `POST /api/v1/voice/process` (primary); WebSocket `/ws/voice` → `/ws/stream` (optional) | Patient portal `/voice`: mic or text, optional TTS |
-| Webchat       | Implemented     | REST `/api/v1/orchestration/pipelines`                                                       | Patient portal chat                                |
+| Voice (Web)   | Implemented     | REST `POST /api/v1/voice/process` (primary); WebSocket `/ws/voice` → `/ws/stream` (optional) | Client portal `/voice`: mic or text, optional TTS |
+| Webchat       | Implemented     | REST `/api/v1/orchestration/pipelines`                                                       | Client portal chat                                 |
 | Voice (Phone) | Not implemented | (Planned: SIP/WebRTC gateway)                                                                | Inbound/outbound phone calls                       |
-| SMS           | Stub            | (Planned)                                                                                    | Appointment reminders, alerts                      |
+| SMS           | Stub            | (Planned)                                                                                    | Showing reminders, alerts                          |
 | WhatsApp      | Planned         | (Planned)                                                                                    | International messaging                            |
 | Mobile SDK    | Planned         | (Planned)                                                                                    | Native mobile app embedding                        |
 | Smart IVR     | Planned         | (Planned)                                                                                    | Keypad/voice fallback for IVR                      |
@@ -34,14 +34,14 @@ This document defines how end users interact with AURIXA across different channe
 
 ### 1. Webchat Flow (No Telephony)
 
-**User**: Patient visiting the AURIXA Patient Portal.
+**User**: Client using the AURIXA Client Portal.
 
 **Flow**:
 
 ```
-Patient opens Patient Portal (port 3300)
+Client opens Client Portal (port 3300)
     → Types message in chat
-    → POST /api/v1/orchestration/pipelines { prompt, session_id?, patient_id? }
+    → POST /api/v1/orchestration/pipelines { prompt, session_id?, client_id? }
     → API Gateway → Orchestration Engine
         → Intent routing → RAG / Agent / Safety
         → LLM generates text response
@@ -51,39 +51,39 @@ Patient opens Patient Portal (port 3300)
 
 **I/O**:
 
-- **Input**: `{ prompt: string, session_id?: string, patient_id?: number }`
+- **Input**: `{ prompt: string, session_id?: string, client_id?: number }` (legacy `patient_id` alias accepted)
 - **Output**: `{ session_id: string, final_response: string }`
 
 ---
 
-### 2. REST Voice Flow (Patient Portal `/voice` — Recommended)
+### 2. REST Voice Flow (Client Portal `/voice` — Recommended)
 
-**User**: Patient on the Patient Portal **Voice** page.
+**User**: Client on the Client Portal **Voice** page.
 
 **Flow**:
 
 ```
-User opens Patient Portal → /voice
+User opens Client Portal → /voice
     → Option A: Records with mic → audio encoded to base64
     → Option B: Types message in text field
 
 REST (Option A — voice):
     POST /api/v1/voice/process
-    Body: { "audio_b64": "<base64>", "patient_id": 1, "want_tts": true }
+    Body: { "audio_b64": "<base64>", "client_id": 1, "want_tts": true }
     → API Gateway → Streaming-voice: STT (OSS first) → transcript
     → Orchestration pipeline → text response
     → If want_tts: TTS (Piper/edge-tts primary; OpenAI/ElevenLabs fallback) → audio_b64
     ← { "transcript", "response", "audio_b64" | null }
 
 REST (Option B — text):
-    POST /api/v1/orchestration/pipelines { "prompt", "patient_id" }
+    POST /api/v1/orchestration/pipelines { "prompt", "client_id" }
     ← { "final_response" }
     If "Play aloud" on: POST /api/v1/voice/tts { "text": "<response>" } → play audio_b64
 ```
 
 **I/O**:
 
-- **Input**: `POST /api/v1/voice/process` — `audio_b64`, `patient_id?`, `want_tts?` (default true)
+- **Input**: `POST /api/v1/voice/process` — `audio_b64`, `client_id?` (or legacy `patient_id`), `want_tts?` (default true)
 - **Output**: `{ transcript?, response, audio_b64? }` — always text; audio only when `want_tts` and TTS configured
 
 The **"Play aloud"** toggle on the Voice page controls `want_tts`; when off, only text is returned/displayed.
@@ -98,27 +98,28 @@ The **"Play aloud"** toggle on the Voice page controls `want_tts`; when off, onl
 WebSocket connect to wss://host/ws/voice (proxied to streaming-voice /ws/stream)
 
 Inbound (User → Platform):
-    {"type": "audio", "data": "<base64>", "patient_id": 1, "want_tts": true}
+    {"type": "audio", "data": "<base64>", "client_id": 1, "want_tts": true}
     or {"type": "text", "content": "...", "want_tts": true}
     → Streaming-voice: STT (OSS first) → transcript → Orchestration → TTS if want_tts
 
 Outbound (Platform → User):
     {"type": "status", "status": "processing"}
-    {"type": "audio", "data": "<base64>", "done": true}
+    {"type": "text_delta", "delta": "..."}
     {"type": "text", "content": "...", "done": true}
+    {"type": "audio", "data": "<base64>", "done": true}
     {"type": "error", "message": "..."}
 ```
 
 **I/O**:
 
 - **Input**: WebSocket messages — `text` or `audio`, optional `want_tts` (default true)
-- **Output**: WebSocket messages — `text`, `audio`, `status`, `error`
+- **Output**: WebSocket messages — `text`, `text_delta`, `audio`, `status`, `error`
 
 ---
 
 ### 4. Telephony Flow (Planned — When Implemented)
 
-**User**: Caller dialing a hospital/clinic number.
+**User**: Caller dialing a brokerage or property-management number.
 
 **Flow** (conceptual):
 
@@ -184,19 +185,19 @@ The streaming-voice service remains **gateway-agnostic**: it receives audio, ret
 
 ## How an End User Uses the Platform Today
 
-1. **As a patient (web)**:
-   - Go to Patient Portal → Chat tab
+1. **As a client (web)**:
+   - Go to Client Portal → Chat
    - Type messages; receive text responses (no voice)
 
-2. **As a patient (voice)**:
-   - Go to Patient Portal → **Voice** tab (`/voice`)
+2. **As a client (voice)**:
+   - Go to Client Portal → **Voice** (`/voice`)
    - Tap mic to speak or type in the text field; responses shown as text and optionally played aloud (toggle "Play aloud"). Uses REST `/api/v1/voice/process` for reliability.
    - Alternatively, connect to WebSocket `/ws/voice` and send `audio` or `text` messages with optional `want_tts`
 
-3. **As hospital staff**:
-   - Use Hospital Portal (port 3400)
-   - "Logged in as" dropdown to select staff identity
-   - Use AI Assistant (chat), patients, appointments, schedule
+3. **As agent staff**:
+   - Use Agent Workspace (port 3400)
+   - Select staff identity and organization context
+   - Use AI Assistant (chat), clients, showings, leads, schedule
 
 4. **As a caller (phone)**:
    - **Not yet supported**. When telephony is added, caller would dial a number, hear TTS, speak, and the same AI logic would run behind the gateway.

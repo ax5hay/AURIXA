@@ -9,14 +9,14 @@ import {
   Button,
   Card,
   EmptyState,
-  HealthcareDisclaimer,
   PageLoader,
   SectionHeader,
   StatusBadge,
   Tabs,
   Timeline,
 } from "@aurixa/ui-kit";
-import { getPatient, getPatientAppointments, type Appointment, type Patient } from "../../api";
+import { getClient, getClientShowings, type Showing, type Client } from "../../api";
+import { RealEstateDisclaimer } from "@aurixa/ui-kit";
 import { useStaffContext } from "@/context/StaffContext";
 
 function formatDate(iso: string) {
@@ -29,13 +29,13 @@ function formatDate(iso: string) {
   });
 }
 
-export default function PatientDetailPage() {
+export default function ClientDetailPage() {
   const params = useParams();
   const { tenantId, roleCategory } = useStaffContext();
-  const canCoordinate = roleCategory === "clinical" || roleCategory === "coordination";
+  const canCoordinate = roleCategory === "agent" || roleCategory === "coordination";
   const id = parseInt(String(params?.id ?? ""), 10);
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [client, setClient] = useState<Client | null>(null);
+  const [appointments, setAppointments] = useState<Showing[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -45,22 +45,22 @@ export default function PatientDetailPage() {
       return;
     }
     Promise.all([
-      getPatient(id, tenantId).then(setPatient),
-      getPatientAppointments(id).then(setAppointments),
+      getClient(id, tenantId).then(setClient),
+      getClientShowings(id).then(setAppointments),
     ])
       .catch(() => setFailed(true))
       .finally(() => setLoading(false));
   }, [id, tenantId]);
 
-  if (loading) return <PageLoader label="Loading patient record" />;
-  if (isNaN(id) || !patient) {
+  if (loading) return <PageLoader label="Loading client record" />;
+  if (isNaN(id) || !client) {
     return (
       <EmptyState
-        title="Patient record unavailable"
-        description="The record could not be found or loaded. No patient information is displayed."
+        title="Client record unavailable"
+        description="The record could not be found or loaded. No client information is displayed."
         action={
           <Button asChild>
-            <Link href="/patients">Back to patients</Link>
+            <Link href="/clients">Back to clients</Link>
           </Button>
         }
       />
@@ -78,38 +78,38 @@ export default function PatientDetailPage() {
   return (
     <div className="space-y-6 pb-8">
       <Link
-        href="/patients"
+        href="/clients"
         className="inline-flex min-h-11 items-center text-sm font-semibold text-ui-accent"
       >
-        ← Patient directory
+        ← Client directory
       </Link>
 
       <Card variant="feature" padding="lg" className="sticky top-2 z-20">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <Avatar name={patient.fullName} size="lg" />
+            <Avatar name={client.fullName} size="lg" />
             <div className="min-w-0">
-              <p className="eyebrow">Active patient context · Record #{patient.id}</p>
+              <p className="eyebrow">Active client context · Record #{client.id}</p>
               <h1 className="truncate text-2xl font-semibold text-ui-ink sm:text-3xl">
-                {patient.fullName}
+                {client.fullName}
               </h1>
               <p className="mt-1 text-sm text-ui-muted">
-                {[patient.email, patient.phoneNumber].filter(Boolean).join(" · ") ||
+                {[client.email, client.phoneNumber].filter(Boolean).join(" · ") ||
                   "No contact information on file"}
               </p>
               <p className="mt-2 text-xs text-ui-faint">
-                Organization scope {patient.tenantId ?? "unspecified"} · Keep this banner visible
-                while coordinating care.
+                Organization scope {client.tenantId ?? "unspecified"} · Keep this banner visible
+                while coordinating showings and follow-ups.
               </p>
             </div>
           </div>
           {canCoordinate && (
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="secondary">
-                <Link href={`/chat?patientId=${patient.id}`}>Open assistant</Link>
+                <Link href={`/chat?clientId=${client.id}`}>Open assistant</Link>
               </Button>
               <Button asChild>
-                <Link href={`/schedule?patientId=${patient.id}`}>Schedule visit</Link>
+                <Link href={`/schedule?clientId=${client.id}`}>Schedule showing</Link>
               </Button>
             </div>
           )}
@@ -117,13 +117,13 @@ export default function PatientDetailPage() {
       </Card>
 
       {failed && (
-        <Alert title="Some patient activity may be unavailable" tone="warning">
-          The appointment history could not be fully loaded.
+        <Alert title="Some client activity may be unavailable" tone="warning">
+          The showing history could not be fully loaded.
         </Alert>
       )}
 
       <Tabs
-        ariaLabel="Patient chart sections"
+        ariaLabel="Client record sections"
         defaultValue="overview"
         items={[
           {
@@ -133,60 +133,62 @@ export default function PatientDetailPage() {
               <section className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
                   <SectionHeader
-                    title="Care snapshot"
-                    description="Verified identity and the next operational action for this patient."
+                    title="Client snapshot"
+                    description="Verified identity and the next operational action for this client."
                   />
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-ui-faint">
                         Full name
                       </dt>
-                      <dd className="mt-1 text-sm font-semibold text-ui-ink">{patient.fullName}</dd>
+                      <dd className="mt-1 text-sm font-semibold text-ui-ink">{client.fullName}</dd>
                     </div>
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-ui-faint">
                         Record ID
                       </dt>
-                      <dd className="mt-1 font-mono text-sm text-ui-ink">{patient.id}</dd>
+                      <dd className="mt-1 font-mono text-sm text-ui-ink">{client.id}</dd>
                     </div>
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-ui-faint">
                         Email
                       </dt>
-                      <dd className="mt-1 text-sm text-ui-ink">{patient.email || "Not on file"}</dd>
+                      <dd className="mt-1 text-sm text-ui-ink">{client.email || "Not on file"}</dd>
                     </div>
                     <div>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-ui-faint">
                         Phone
                       </dt>
                       <dd className="mt-1 text-sm text-ui-ink">
-                        {patient.phoneNumber || "Not on file"}
+                        {client.phoneNumber || "Not on file"}
                       </dd>
                     </div>
                   </dl>
                 </Card>
                 <Card>
-                  <SectionHeader title="Next visit" description="Upcoming confirmed activity." />
+                  <SectionHeader title="Next showing" description="Upcoming confirmed activity." />
                   {upcoming[0] ? (
                     <div className="mt-4 space-y-3">
                       <StatusBadge status={upcoming[0].status} />
-                      <p className="font-semibold text-ui-ink">{upcoming[0].providerName}</p>
+                      <p className="font-semibold text-ui-ink">
+                        {upcoming[0].agentName ?? upcoming[0].providerName ?? "Showing"}
+                      </p>
                       <p className="text-sm text-ui-muted">{formatDate(upcoming[0].startTime)}</p>
                     </div>
                   ) : (
-                    <p className="mt-4 text-sm text-ui-muted">No upcoming visits on file.</p>
+                    <p className="mt-4 text-sm text-ui-muted">No upcoming showings on file.</p>
                   )}
                 </Card>
               </section>
             ),
           },
           {
-            value: "visits",
-            label: "Visits",
+            value: "showings",
+            label: "Showings",
             content: (
               <section>
                 <SectionHeader
-                  title="Encounter history"
+                  title="Showing history"
                   description="Newest activity first. Status includes a text label."
                   count={ordered.length}
                 />
@@ -195,7 +197,7 @@ export default function PatientDetailPage() {
                     <Timeline
                       items={ordered.map((appointment) => ({
                         id: appointment.id,
-                        title: appointment.providerName,
+                        title: appointment.agentName ?? appointment.providerName ?? "Showing",
                         time: formatDate(appointment.startTime),
                         description: <StatusBadge status={appointment.status} />,
                       }))}
@@ -204,13 +206,13 @@ export default function PatientDetailPage() {
                 ) : (
                   <EmptyState
                     compact
-                    title="No appointment history"
-                    description="No appointment records were returned for this patient."
+                    title="No showing history"
+                    description="No showing records were returned for this client."
                   />
                 )}
                 {past.length > 0 && (
                   <p className="mt-3 text-xs text-ui-faint">
-                    {past.length} past or closed encounter{past.length === 1 ? "" : "s"} included
+                    {past.length} past or closed showing{past.length === 1 ? "" : "s"} included
                     above.
                   </p>
                 )}
@@ -218,28 +220,28 @@ export default function PatientDetailPage() {
             ),
           },
           {
-            value: "clinical",
-            label: "Clinical",
+            value: "integrations",
+            label: "Integrations",
             content: (
               <section>
                 <SectionHeader
-                  title="Clinical domains"
-                  description="Only information supplied by connected clinical systems is shown. Empty cards are not negative findings."
+                  title="Connected systems"
+                  description="Only information supplied by connected brokerage systems is shown. Empty cards are not negative findings."
                 />
                 <div className="grid gap-3 md:grid-cols-2">
                   {[
                     [
-                      "Allergies",
-                      "No allergy feed is connected. Do not interpret this as no known allergies.",
+                      "Financing",
+                      "No pre-approval or mortgage feed is connected for this client.",
                     ],
                     [
-                      "Medications",
-                      "Medication reconciliation data is unavailable in this workspace.",
+                      "Applications",
+                      "Rental or purchase application status is unavailable in this workspace.",
                     ],
-                    ["Problems", "No diagnosis or problem-list integration is available."],
-                    ["Results", "Laboratory and imaging results are not connected."],
-                    ["Documents", "Clinical document repositories are not connected."],
-                    ["Care team", "Assigned care-team roster is not connected."],
+                    ["Listings", "Saved listings and shortlists are not connected."],
+                    ["Maintenance", "Property management tickets are not connected."],
+                    ["Documents", "Transaction document repositories are not connected."],
+                    ["Leads", "Inbound lead source attribution is not connected."],
                   ].map(([title, description]) => (
                     <Card key={title} variant="compact" padding="md">
                       <div className="flex items-center justify-between gap-3">
@@ -251,7 +253,7 @@ export default function PatientDetailPage() {
                   ))}
                 </div>
                 <div className="mt-4">
-                  <HealthcareDisclaimer variant="not-diagnosis" />
+                  <RealEstateDisclaimer variant="not-legal" />
                 </div>
               </section>
             ),
@@ -267,14 +269,14 @@ export default function PatientDetailPage() {
                 />
                 <Card>
                   <ul className="space-y-3 text-sm text-ui-muted">
-                    <li>Record opened in hospital portal for coordination.</li>
+                    <li>Record opened in agent workspace for coordination.</li>
                     <li>
-                      Appointment history count: {ordered.length}. Clinical domain feeds remain
+                      Showing history count: {ordered.length}. Integration feeds remain
                       disconnected.
                     </li>
                     <li>
-                      Assistant access is available with patient context disclosure when opened from
-                      this chart.
+                      Assistant access is available with client context disclosure when opened from
+                      this record.
                     </li>
                   </ul>
                 </Card>

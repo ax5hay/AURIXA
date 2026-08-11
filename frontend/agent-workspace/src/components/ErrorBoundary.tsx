@@ -26,8 +26,8 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
       return (
-        <Alert title="This clinical view could not load" tone="danger">
-          <p>No patient details are displayed. Retry the view or return to today’s work.</p>
+        <Alert title="This agent view could not load" tone="danger">
+          <p>No client details are displayed. Retry the view or return to today’s work.</p>
           <Button className="mt-3" onClick={() => this.setState({ hasError: false })}>
             Try again
           </Button>

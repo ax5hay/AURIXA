@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, Card } from "@aurixa/ui-kit";
 
-const oidcReady = Boolean(process.env.NEXT_PUBLIC_HOSPITAL_OIDC_READY === "true");
+const oidcReady = Boolean(
+  process.env.NEXT_PUBLIC_WORKSPACE_OIDC_READY === "true" ||
+    process.env.NEXT_PUBLIC_HOSPITAL_OIDC_READY === "true",
+);
 
 export default function StaffSignInPage() {
   const router = useRouter();
@@ -38,12 +41,12 @@ export default function StaffSignInPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg items-center px-4 py-12">
       <Card variant="feature" padding="lg" className="w-full">
-        <p className="eyebrow">AURIXA clinical workspace</p>
+        <p className="eyebrow">AURIXA agent workspace</p>
         <h1 className="font-display text-4xl font-medium tracking-[-0.04em] text-ui-ink">
           Authorized staff only
         </h1>
         <p className="mt-4 text-base leading-7 text-ui-muted">
-          Sign in through your healthcare organization to access patient and scheduling data.
+          Sign in through your brokerage or property manager to access clients, showings, and leads.
         </p>
         {error && (
           <Alert title="Unable to sign in" tone="danger" className="mt-6">

@@ -63,8 +63,8 @@ jobs:
           - {name: execution-engine, path: apps/execution-engine}
           - {name: observability-core, path: apps/observability-core}
           - {name: dashboard, path: frontend/dashboard}
-          - {name: patient-portal, path: frontend/patient-portal}
-          - {name: hospital-portal, path: frontend/hospital-portal}
+          - {name: client-portal, path: frontend/client-portal}
+          - {name: agent-workspace, path: frontend/agent-workspace}
           - {name: deployment-controller, path: apps/deployment-controller}
           - {name: db-migrations, path: infra/docker, dockerfile: infra/docker/Dockerfile.db-migrate}
     env:

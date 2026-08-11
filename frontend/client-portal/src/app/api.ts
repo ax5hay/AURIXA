@@ -1,6 +1,6 @@
-/** Patient-scoped same-origin API client. Patient identity is resolved server-side. */
+/** Client-scoped same-origin API client. Identity is resolved server-side. */
 
-const API_BASE = "/api/patient";
+const API_BASE = "/api/client";
 
 const FETCH_TIMEOUT_MS = 8000;
 const PIPELINE_TIMEOUT_MS = 120000;
@@ -13,33 +13,48 @@ async function fetchWithTimeout(
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${API_BASE}/${path}`, {
+    return await fetch(`${API_BASE}/${path}`, {
       ...opts,
       cache: "no-store",
       credentials: "same-origin",
       signal: ctrl.signal,
     });
-    return res;
   } finally {
     clearTimeout(id);
   }
 }
 
-export interface Appointment {
+export interface Showing {
   id: number;
   startTime: string;
   endTime: string;
-  providerName: string;
+  agentName: string;
+  providerName?: string;
   status: string;
+  notes?: string;
+  listingId?: number;
 }
 
-export class PatientApiError extends Error {
+export interface Listing {
+  id: number;
+  marketingTitle?: string;
+  marketingDescription?: string;
+  listPrice?: number;
+  rentAmount?: number;
+  listingType?: string;
+  status?: string;
+  address?: { line1?: string; city?: string; state?: string; postalCode?: string };
+  beds?: number;
+  baths?: number;
+}
+
+export class ClientApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
   ) {
     super(message);
-    this.name = "PatientApiError";
+    this.name = "ClientApiError";
   }
 }
 
@@ -52,15 +67,16 @@ async function expectJson<T>(response: Response, fallback: string): Promise<T> {
     );
   }
   const body = (await response.json().catch(() => null)) as { error?: string } | null;
-  throw new PatientApiError(body?.error ?? fallback, response.status);
+  throw new ClientApiError(body?.error ?? fallback, response.status);
 }
 
-export interface Patient {
+export interface ClientProfile {
   id: number;
   fullName: string;
   email: string;
   phoneNumber: string;
   tenantId?: number;
+  clientType?: string;
 }
 
 export interface KnowledgeArticle {
@@ -70,12 +86,16 @@ export interface KnowledgeArticle {
   tenantId?: number;
 }
 
-export async function getPatient(): Promise<Patient> {
-  return expectJson(await fetchWithTimeout("me"), "We couldn’t load your profile.");
+export async function getClient(): Promise<ClientProfile> {
+  return expectJson(await fetchWithTimeout("profile"), "We couldn’t load your profile.");
 }
 
-export async function getAppointments(): Promise<Appointment[]> {
-  return expectJson(await fetchWithTimeout("appointments"), "We couldn’t load your appointments.");
+export async function getShowings(): Promise<Showing[]> {
+  return expectJson(await fetchWithTimeout("showings"), "We couldn’t load your showings.");
+}
+
+export async function getListings(): Promise<Listing[]> {
+  return expectJson(await fetchWithTimeout("listings"), "We couldn’t load listings.");
 }
 
 export async function getKnowledgeArticles(): Promise<KnowledgeArticle[]> {
@@ -141,27 +161,33 @@ export async function processVoice(
   audioB64: string,
   wantTts = true,
 ): Promise<VoiceProcessResponse> {
-  const body: Record<string, unknown> = {
-    audio_b64: audioB64,
-    want_tts: wantTts,
-  };
   const res = await fetchWithTimeout(
     "voice/process",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ audio_b64: audioB64, want_tts: wantTts }),
     },
     PIPELINE_TIMEOUT_MS,
   );
   return expectJson(res, "We couldn’t process the recording.");
 }
 
-export async function cancelAppointment(appointmentId: number): Promise<void> {
-  const response = await fetchWithTimeout(`appointments/${appointmentId}`, {
+export async function cancelShowing(showingId: number): Promise<void> {
+  const response = await fetchWithTimeout(`showings/${showingId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status: "cancelled" }),
   });
-  await expectJson(response, "We couldn’t cancel this appointment.");
+  await expectJson(response, "We couldn’t cancel this showing.");
 }
+
+/** @deprecated Use getClient */
+export const getPatient = getClient;
+/** @deprecated Use getShowings */
+export const getAppointments = getShowings;
+/** @deprecated Use cancelShowing */
+export const cancelAppointment = cancelShowing;
+export type Patient = ClientProfile;
+export type Appointment = Showing;
+export type PatientApiError = ClientApiError;

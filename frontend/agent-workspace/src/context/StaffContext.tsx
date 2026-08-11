@@ -23,16 +23,22 @@ interface StaffContextValue {
   staff: Staff | null;
   tenantId: number | undefined;
   tenantFilter: string;
-  roleCategory: StaffRoleCategory;
+  roleCategory: AgentRoleCategory;
   demo: boolean;
 }
 
-export type StaffRoleCategory = "clinical" | "coordination" | "operations" | "unassigned";
+export type AgentRoleCategory = "agent" | "coordination" | "operations" | "unassigned";
+/** @deprecated Use AgentRoleCategory */
+export type StaffRoleCategory = AgentRoleCategory;
 
-export function getRoleCategory(role?: string): StaffRoleCategory {
+export function getRoleCategory(role?: string): AgentRoleCategory {
   const normalized = role?.toLowerCase().trim() ?? "";
-  if (["doctor", "physician", "nurse", "clinician"].some((term) => normalized.includes(term))) {
-    return "clinical";
+  if (
+    ["agent", "realtor", "broker", "listing", "doctor", "physician", "nurse", "clinician"].some(
+      (term) => normalized.includes(term),
+    )
+  ) {
+    return "agent";
   }
   if (
     ["reception", "scheduler", "coordinator", "front desk"].some((term) =>
@@ -107,12 +113,12 @@ export function StaffProvider({ children }: { children: ReactNode }) {
   );
 
   if (pathname.startsWith("/auth/")) return <>{children}</>;
-  if (loading) return <PageLoader label="Verifying staff access" />;
+  if (loading) return <PageLoader label="Verifying agent access" />;
   if (failed || !staff) {
     return (
       <div className="mx-auto max-w-xl p-6">
-        <Alert title="Staff access could not be verified" tone="danger">
-          No clinical data is displayed. Sign in again or contact your administrator.
+        <Alert title="Agent access could not be verified" tone="danger">
+          No operational data is displayed. Sign in again or contact your administrator.
         </Alert>
       </div>
     );

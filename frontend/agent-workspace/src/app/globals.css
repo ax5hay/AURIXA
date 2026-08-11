@@ -94,7 +94,8 @@
     color: var(--ui-ink);
   }
 
-  .clinical-table-row {
+  .clinical-table-row,
+  .workspace-table-row {
     @apply border-b border-ui-border last:border-0 hover:bg-ui-canvas-subtle/50;
   }
 }

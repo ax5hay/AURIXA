@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Alert, Button, ChatPanel, Input, PageLoader, useToast } from "@aurixa/ui-kit";
+import { Alert, Button, ChatPanel, Input, PageLoader, RealEstateDisclaimer, useToast } from "@aurixa/ui-kit";
 import { getConversations, sendMessage, type ConversationSummary } from "../api";
 
 const SAMPLE_PROMPTS = [
-  "When is my next appointment?",
-  "How do I request a prescription refill?",
-  "What are your billing options?",
-  "I need help with lab results.",
+  "When is my next showing?",
+  "How do I apply for a rental?",
+  "What financing options are available?",
+  "I need help with a maintenance request.",
 ];
 
 interface Message {
@@ -22,7 +22,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Hello. I can help with practical questions about appointments, billing, refills, and care information. I can’t diagnose symptoms or replace your care team.",
+      text: "Hello. I can help with practical questions about showings, listings, applications, financing, and maintenance. I can't provide legal or tax advice or replace your agent.",
       sender: "assistant",
     },
   ]);
@@ -85,7 +85,7 @@ export default function ChatPage() {
           id: Date.now() + 1,
           text:
             res.final_response ||
-            "I couldn’t find a useful answer just now. Please try asking in a different way or contact your care team.",
+            "I couldn't find a useful answer just now. Please try asking in a different way or contact your agent.",
           sender: "assistant",
         },
       ]);
@@ -96,13 +96,13 @@ export default function ChatPage() {
         ...prev,
         {
           id: Date.now() + 1,
-          text: "I’m having trouble responding right now. Your care team can still help through their usual contact channel, or you can try again in a moment.",
+          text: "I'm having trouble responding right now. Your agent can still help through their usual contact channel, or you can try again in a moment.",
           sender: "assistant",
         },
       ]);
       toast({
         title: "Assistant unavailable",
-        description: "We couldn’t confirm a response. Check the connection and try again.",
+        description: "We couldn't confirm a response. Check the connection and try again.",
         tone: "error",
       });
     } finally {
@@ -121,37 +121,29 @@ export default function ChatPage() {
       )}
       {!hasHistory && !historyError && (
         <Alert title="Start a new conversation" tone="info" className="mb-5">
-          There are no saved messages yet. Messages supported by the care service will appear here
-          the next time you return.
+          There are no saved messages yet. Messages supported by the assistant will appear here the
+          next time you return.
         </Alert>
       )}
       <ChatPanel
-        title="Care messages"
+        variant="client"
+        title="Messages"
         subtitle="Practical help, with clear limits"
         messages={messages}
         loading={chatLoading}
-        notice={
-          <Alert
-            title="For information, not diagnosis"
-            tone="info"
-            className="border-0 bg-transparent p-0"
-          >
-            This chat does not provide medical diagnosis or emergency care. If you may be in
-            immediate danger, contact your local emergency services now.
-          </Alert>
-        }
+        notice={<RealEstateDisclaimer variant="assistant-limits" className="border-0 bg-transparent p-0" />}
         composer={
           <form onSubmit={handleSendMessage} className="space-y-3">
-            <label htmlFor="care-message" className="sr-only">
-              Ask a care support question
+            <label htmlFor="client-message" className="sr-only">
+              Ask a support question
             </label>
             <div className="flex gap-2">
               <Input
-                id="care-message"
+                id="client-message"
                 type="text"
                 value={inputText}
                 onChange={(event) => setInputText(event.target.value)}
-                placeholder="Ask about an appointment, refill, bill, or next step"
+                placeholder="Ask about a showing, listing, application, or maintenance"
                 disabled={chatLoading}
                 maxLength={4000}
               />

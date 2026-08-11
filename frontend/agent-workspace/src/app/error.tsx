@@ -14,12 +14,12 @@ export default function Error({
       <EmptyState
         eyebrow="Recovery"
         title="This workspace could not load"
-        description="Retry the request. No patient details are included in the support bundle."
+        description="Retry the request. No client details are included in the support bundle."
         action={<Button onClick={reset}>Try again</Button>}
       />
       <DiagnosticBundle
         data={{ digest: error.digest, errorType: error.name }}
-        context={{ application: "AURIXA Clinical Workspace" }}
+        context={{ application: "AURIXA Agent Workspace" }}
         className="mt-6 w-full text-left"
       />
     </div>

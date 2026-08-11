@@ -11,13 +11,13 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![turborepo](https://img.shields.io/badge/monorepo-turborepo-EF4444?logo=turborepo&logoColor=white)](https://turbo.build/)
 
-> **Conversational care operations platform** — A multi-tenant foundation for patient self-service,
-> staff workflows, governed AI assistance, and observable healthcare automation.
+> **Conversational real estate operations platform** — A multi-tenant foundation for client
+> self-service, agent workflows, governed AI assistance, and observable brokerage automation.
 
 <p align="center">
   <a href="#product--business-overview">Product Overview</a> •
   <a href="#how-the-aurixa-assistant-works">Assistant Use Cases</a> •
-  <a href="#experiences-for-every-side-of-care">User Experiences</a> •
+  <a href="#experiences-for-every-side-of-the-transaction">User Experiences</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#service-architecture--responsibilities">Services</a> •
@@ -29,62 +29,62 @@
 
 ## Product & Business Overview
 
-**AURIXA is a conversational care operations platform for healthcare organizations.** It gives
-patients a calm self-service experience, gives staff a shared clinical operations workspace, and
+**AURIXA is a conversational real estate operations platform for brokerages, property managers, and developer sales teams.** It gives
+clients a calm self-service experience, gives agents a shared coordination workspace, and
 gives platform teams the controls required to operate the underlying automation safely.
 
-Instead of deploying a disconnected chatbot, scheduling tool, knowledge search, and service
-dashboard, an organization can use AURIXA as one coordinated layer across the care journey:
+Instead of deploying a disconnected chatbot, listing search, scheduling tool, and service
+dashboard separately, an organization can use AURIXA as one coordinated layer across the transaction journey:
 
 ```mermaid
 flowchart LR
-    Patient["Patient<br/>asks, speaks, reviews care"] --> CareAssistant["AURIXA care assistant"]
-    Staff["Clinical and coordination staff<br/>manage daily work"] --> ClinicalWorkspace["Clinical workspace"]
+    Client["Client<br/>asks, speaks, reviews listings"] --> ClientAssistant["AURIXA client assistant"]
+    Agent["Agents and coordinators<br/>manage daily work"] --> AgentWorkspace["Agent workspace"]
     Operator["Platform operator<br/>monitors and configures"] --> OperatorConsole["Operator console"]
 
-    CareAssistant --> Orchestration["Shared orchestration and safety"]
-    ClinicalWorkspace --> Orchestration
+    ClientAssistant --> Orchestration["Shared orchestration and safety"]
+    AgentWorkspace --> Orchestration
     OperatorConsole --> Orchestration
 
     Orchestration --> Knowledge["Organization knowledge"]
-    Orchestration --> Workflows["Scheduling, insurance, refill workflows"]
+    Orchestration --> Workflows["Showings, financing, maintenance workflows"]
     Orchestration --> Models["Configured language models"]
     Orchestration --> Telemetry["Audit, health, cost, and latency"]
 ```
 
 > [!IMPORTANT]
-> AURIXA is a decision-support and workflow platform, not a clinician. Patient-facing responses
-> clearly state that the assistant does not diagnose conditions or provide emergency care.
-> Organizations remain responsible for clinical review, privacy controls, integrations, and local
+> AURIXA is a decision-support and workflow platform, not a licensed agent or attorney. Client-facing responses
+> clearly state assistant limits and fair housing obligations.
+> Organizations remain responsible for brokerage compliance, contract review, privacy controls, integrations, and local
 > regulatory requirements.
 
 ### The product in one view
 
 | Product surface        | Primary users                                                | What it enables                                                                                          | Business value                                                                       |
 | ---------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Patient Portal**     | Patients and caregivers                                      | Appointment visibility, practical care questions, voice interaction, provider-authored help              | Reduces avoidable calls and makes routine information available outside office hours |
-| **Clinical Workspace** | Clinicians, nurses, schedulers, reception, support staff     | Patient lookup, appointment coordination, scheduling, contextual assistance, knowledge access            | Creates a shared operational view and reduces repeated manual lookup                 |
+| **Client Portal**      | Buyers, renters, sellers, prospects                          | Showing visibility, listing search, applications, financing questions, maintenance requests              | Reduces avoidable calls and makes routine information available outside office hours |
+| **Agent Workspace**    | Agents, brokers, coordinators, property managers             | Client lookup, showing coordination, scheduling, leads pipeline, contextual assistance, knowledge access | Creates a shared operational view and reduces repeated manual lookup                 |
 | **Operator Console**   | Platform admins, support engineers, analysts, content owners | Service health, audit activity, tenant management, knowledge curation, analytics, configuration, testing | Makes the automation observable, testable, and supportable                           |
 | **Assistant Runtime**  | Embedded across all experiences                              | Routes requests through knowledge retrieval, tools, safety checks, and model providers                   | Reuses one governed automation layer across multiple teams and channels              |
 
 ### Who AURIXA is for
 
 <details open>
-<summary><strong>Healthcare organizations and care networks</strong></summary>
+<summary><strong>Brokerages and property management organizations</strong></summary>
 
-- Offer one digital front door for routine patient questions and care navigation.
+- Offer one digital front door for routine client questions and transaction navigation.
 - Keep organization-specific guidance separate by tenant.
-- Give staff a coordinated view of patients, appointments, and support workflows.
+- Give agents a coordinated view of clients, showings, listings, and leads.
 - Operate local or cloud language models according to deployment and cost requirements.
 
 </details>
 
 <details>
-<summary><strong>Hospitals, clinics, and scheduling teams</strong></summary>
+<summary><strong>Agent, coordination, and operations teams</strong></summary>
 
-- Look up patient records and recent appointment context.
-- Coordinate bookings and update appointment states with confirmation steps.
-- Check availability, insurance information, and refill-request workflows through registered tools.
+- Look up client records and recent showing context.
+- Coordinate showings and update showing states with confirmation steps.
+- Check listings, financing status, and maintenance requests through registered tools.
 - Search approved organizational knowledge without leaving the active workflow.
 
 </details>
@@ -104,23 +104,23 @@ flowchart LR
 
 ## How the AURIXA Assistant Works
 
-The assistant is the conversational entry point to the platform. It is available as **patient
-webchat**, **patient voice**, and a **staff-facing contextual assistant**. The same request pipeline
+The assistant is the conversational entry point to the platform. It is available as **client
+webchat**, **client voice**, and a **staff-facing contextual assistant**. The same request pipeline
 can answer a knowledge question, look up operational data, or initiate a supported workflow.
 
 ### Functional bot use cases
 
 | User intent                                | What the assistant does                                                                               | Typical result                                                   |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| “When is my next appointment?”             | Detects appointment intent, selects the agent path, and calls `get_appointments` with patient context | Returns the relevant appointment information                     |
-| “Do you have anything available tomorrow?” | Routes to `get_availability` through the execution layer                                              | Returns available slots from the configured data source          |
-| “I need to schedule a visit”               | Collects or receives patient context and invokes `create_appointment`                                 | Creates an appointment record when required fields are available |
-| “Can I request a refill?”                  | Uses `request_prescription_refill` for an active prescription workflow                                | Records the refill request for staff follow-up                   |
-| “What will my insurance cover?”            | Invokes `check_insurance` with the selected patient context                                           | Returns the stored coverage and copay information                |
-| “What is your billing policy?”             | Searches tenant-scoped knowledge with hybrid retrieval, then generates a grounded response            | Returns an answer based on organization-authored content         |
-| “Explain my next step”                     | Combines intent routing, available context, retrieval, and response generation                        | Produces a plain-language care-navigation answer                 |
-| Spoken patient question                    | Converts audio to text, runs the same assistant pipeline, and optionally produces speech              | Displays a transcript and response, with optional audio playback |
-| Staff question about an active patient     | Keeps patient context visible while the staff member queries workflows or knowledge                   | Returns a contextual answer without leaving the patient workflow |
+| “When is my next showing?”                 | Detects showing intent, selects the agent path, and calls `get_showings` with client context          | Returns the relevant showing information                         |
+| “Do you have anything available tomorrow?” | Routes to listing or availability tools through the execution layer                                   | Returns available listings or slots from the configured data source |
+| “I need to schedule a showing”             | Collects or receives client context and invokes `create_showing`                                      | Creates a showing record when required fields are available      |
+| “Can I submit a maintenance request?”      | Uses `create_service_request` for property management workflows                                         | Records the service request for staff follow-up                  |
+| “What financing options are available?”    | Invokes `get_client_financing` with the selected client context                                       | Returns stored pre-approval or financing status                  |
+| “What is your fair housing policy?”        | Searches tenant-scoped knowledge with hybrid retrieval, then generates a grounded response            | Returns an answer based on organization-authored content         |
+| “Explain my next step”                     | Combines intent routing, available context, retrieval, and response generation                        | Produces a plain-language transaction-navigation answer          |
+| Spoken client question                     | Converts audio to text, runs the same assistant pipeline, and optionally produces speech              | Displays a transcript and response, with optional audio playback |
+| Agent question about an active client      | Keeps client context visible while the agent queries workflows or knowledge                           | Returns a contextual answer without leaving the client workflow  |
 
 ### Request lifecycle
 
@@ -128,7 +128,7 @@ can answer a knowledge question, look up operational data, or initiate a support
 sequenceDiagram
     autonumber
     actor User
-    participant UI as Patient or Staff UI
+    participant UI as Client or Agent UI
     participant Gateway as API Gateway
     participant Orchestrator as Orchestration Engine
     participant Router as Intent and Model Router
@@ -139,11 +139,11 @@ sequenceDiagram
     participant Observability as Observability Core
 
     User->>UI: Ask or speak a question
-    UI->>Gateway: Prompt, session, and optional patient context
+    UI->>Gateway: Prompt, session, and optional client context
     Gateway->>Orchestrator: Start request pipeline
     Orchestrator->>Router: Classify intent and select route
 
-    alt Workflow or patient-data request
+    alt Workflow or client-data request
         Router-->>Orchestrator: Agent route
         Orchestrator->>Agent: Select registered tool
         Agent->>Execution: Execute supported action
@@ -167,14 +167,14 @@ sequenceDiagram
 
 ### Why the assistant is more than a chat interface
 
-1. **It distinguishes questions from actions.** A policy question can use retrieval while an
-   appointment request can use a registered tool.
+1. **It distinguishes questions from actions.** A policy question can use retrieval while a
+   showing request can use a registered tool.
 2. **It preserves tenant context.** Knowledge and operational data can be scoped to the selected
    organization.
-3. **It supports patient context.** Patient-aware requests can reach appointment, insurance,
-   availability, and refill workflows.
+3. **It supports client context.** Client-aware requests can reach showing, listing, financing,
+   and maintenance workflows.
 4. **It validates responses before delivery.** Safety checks can redact detected PII, reject banned
-   content, and flag configured emergency language.
+   content, flag fair housing violations, and escalate fraud or legal-risk language.
 5. **It records operational evidence.** Sessions, audit activity, pipeline steps, model use, cost,
    and latency can be inspected by authorized operators.
 6. **It supports multiple model strategies.** Organizations can configure local OpenAI-compatible
@@ -189,61 +189,61 @@ sequenceDiagram
 
 ---
 
-## Experiences for Every Side of Care
+## Experiences for Every Side of the Transaction
 
-### Patient experience
+### Client experience
 
-The Patient Portal is designed around one question: **“What do you need today?”**
+The Client Portal is designed around one question: **“What do you need today?”**
 
 ```mermaid
 flowchart TD
-    PatientHome["Patient opens care home"] --> NextVisit{"Upcoming visit?"}
-    NextVisit -->|Yes| VisitDetails["Review clinician, date, and preparation guidance"]
-    NextVisit -->|No| SupportChoice["Choose a support path"]
-    PatientHome --> SupportChoice
+    ClientHome["Client opens home"] --> NextShowing{"Upcoming showing?"}
+    NextShowing -->|Yes| ShowingDetails["Review property, agent, and preparation guidance"]
+    NextShowing -->|No| SupportChoice["Choose a support path"]
+    ClientHome --> SupportChoice
     SupportChoice --> Messages["Ask a practical question"]
     SupportChoice --> Voice["Speak or type a question"]
-    SupportChoice --> Appointments["Review care schedule"]
-    SupportChoice --> Help["Read provider-authored guidance"]
-    Messages --> Limitation["Visible medical and emergency limitations"]
+    SupportChoice --> Showings["Review showing schedule"]
+    SupportChoice --> Help["Read brokerage-authored guidance"]
+    Messages --> Limitation["Visible assistant and fair housing limitations"]
     Voice --> Transcript["Transcript, response, optional playback"]
 ```
 
-#### What patients can do
+#### What clients can do
 
-- See the next confirmed appointment and preparation guidance immediately.
-- Review upcoming and previous appointments in a plain-language timeline.
-- Ask about appointments, billing, prescription refills, insurance, or care navigation.
+- See the next confirmed showing and preparation guidance immediately.
+- Review upcoming and previous showings in a plain-language timeline.
+- Browse listings, submit applications, ask about financing, or open maintenance requests.
+- Ask about showings, listings, applications, or transaction navigation.
 - Speak a request or type it, then read the transcript and optionally hear the response.
-- Browse provider-authored help content through an accessible support hub.
-- Understand when the assistant is unavailable, when information is incomplete, and when a person
-  or emergency service is the correct next step.
-- Keep conversation previews minimized on the home page to reduce accidental disclosure.
+- Browse brokerage-authored help content through an accessible support hub.
+- Understand when the assistant is unavailable, when information is incomplete, and when a licensed
+  professional is the correct next step.
 
-#### Patient-facing design principles
+#### Client-facing design principles
 
 - Warm, low-anxiety visual language with clear primary actions.
 - Large touch targets and keyboard-visible focus states.
-- No diagnosis claims and no hidden emergency limitations.
+- No legal or tax advice claims and no hidden fair housing limitations.
 - Plain language instead of internal service or model terminology.
 - Reduced-motion support and non-color status labels.
 
-### Clinical and coordination experience
+### Agent and coordination experience
 
-The Clinical Workspace helps staff move from **today’s work** to the relevant patient or action
+The Agent Workspace helps staff move from **today’s pipeline** to the relevant client or action
 without navigating through unrelated platform controls.
 
-#### What staff can do
+#### What agents can do
 
 - Select the acting staff member and organization context for the current workspace.
-- View a ranked daily appointment queue with freshness information.
-- Search and filter the patient directory.
-- Open a patient view with identity and appointment history kept visible.
-- Add patients through a validated, accessible workflow.
-- Review appointments by date and organization.
-- Confirm completion or cancellation before updating an appointment.
-- Schedule a patient with provider, date, time, and reason, then review the booking before submission.
-- Ask the contextual assistant about scheduling, insurance, availability, or approved knowledge.
+- View a ranked daily showing queue with freshness information.
+- Search and filter the client directory and leads pipeline.
+- Open a client view with identity and showing history kept visible.
+- Add clients through a validated, accessible workflow.
+- Review showings by date and organization.
+- Confirm completion or cancellation before updating a showing.
+- Schedule a showing with agent, date, time, and reason, then review the booking before submission.
+- Ask the contextual assistant about listings, financing, showings, or approved knowledge.
 - Search tenant-scoped knowledge articles.
 - Review platform status and copy a privacy-redacted support bundle.
 
@@ -251,9 +251,9 @@ without navigating through unrelated platform controls.
 
 | Staff context                           | Prioritized experience                                                   |
 | --------------------------------------- | ------------------------------------------------------------------------ |
-| **Clinician / nurse**                   | Today, patients, appointments, knowledge, contextual assistant           |
-| **Scheduler / coordinator / reception** | Today, appointments, scheduling, patients                                |
-| **Admin / operations / support**        | Today, organization context, status, diagnostics, and broader navigation |
+| **Agent / broker**                      | Today, clients, showings, leads, knowledge, contextual assistant         |
+| **Coordinator / operations**            | Today, showings, scheduling, clients, leads                              |
+| **Admin / support**                     | Today, organization context, status, diagnostics, and broader navigation |
 
 The role selection changes information priority and navigation order in the interface. It is a
 workspace preference for the current implementation—not a replacement for production identity and
@@ -295,13 +295,13 @@ flowchart LR
 
 ### Problems the platform is designed to address
 
-- **Repetitive administrative demand** — routine appointment, billing, insurance, and policy
-  questions consume staff time.
-- **Fragmented patient access** — patients often move between phone calls, static FAQs, portals, and
+- **Repetitive administrative demand** — routine showing, listing, financing, and policy
+  questions consume agent time.
+- **Fragmented client access** — clients often move between phone calls, static listing sites, portals, and
   scheduling teams to complete one task.
 - **Disconnected automation** — a chatbot that cannot retrieve approved knowledge or execute a
   workflow creates another dead end.
-- **Unobservable model usage** — healthcare organizations need to understand which services and
+- **Unobservable model usage** — brokerages need to understand which services and
   models were used, what they cost, and where failures occurred.
 - **Tenant complexity** — multi-organization platforms need separate content, configuration, and
   operational context.
@@ -312,12 +312,12 @@ flowchart LR
 
 | Stakeholder                 | Operational value                                                     | Suggested measures                                                                      |
 | --------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Patients**                | Faster access to routine information and clearer next steps           | Self-service completion, response time, appointment visibility, support escalation rate |
-| **Care teams**              | Less repeated lookup and better shared context                        | Time per routine request, manual handoffs, knowledge-search time                        |
-| **Scheduling teams**        | One path for availability, bookings, and appointment states           | Booking completion, abandoned requests, correction rate                                 |
+| **Clients**                 | Faster access to routine information and clearer next steps           | Self-service completion, response time, showing visibility, escalation rate             |
+| **Agent teams**             | Less repeated lookup and better shared context                        | Time per routine request, manual handoffs, knowledge-search time                        |
+| **Coordination teams**      | One path for availability, showings, and lead follow-up               | Booking completion, abandoned requests, correction rate                                 |
 | **Support teams**           | Reproducible diagnostics and centralized service evidence             | Time to triage, incident recurrence, unresolved service checks                          |
 | **Platform owners**         | Provider flexibility, cost visibility, and tenant-scoped operations   | Cost per conversation, cache use, model mix, p95 latency, error rate                    |
-| **Organization leadership** | A reusable digital service layer across patient and staff experiences | Digital adoption, call deflection, staff capacity, service availability                 |
+| **Organization leadership** | A reusable digital service layer across client and agent experiences  | Digital adoption, call deflection, agent capacity, service availability                 |
 
 These are **measurement categories**, not guaranteed outcomes. Results depend on workflow design,
 source-system quality, model configuration, adoption, staffing, and production integrations.
@@ -326,11 +326,11 @@ source-system quality, model configuration, adoption, staffing, and production i
 
 ```mermaid
 flowchart TB
-    subgraph Demand["Patient and staff demand"]
+    subgraph Demand["Client and agent demand"]
         Questions["Routine questions"]
-        Scheduling["Scheduling requests"]
-        Insurance["Insurance and refill requests"]
-        KnowledgeNeed["Policy and care guidance"]
+        Scheduling["Showing requests"]
+        Financing["Financing and application questions"]
+        KnowledgeNeed["Policy and transaction guidance"]
     end
 
     subgraph Automation["AURIXA automation layer"]
@@ -341,22 +341,22 @@ flowchart TB
     end
 
     subgraph Outcomes["Operational outcomes"]
-        SelfService["Patient self-service"]
-        StaffQueue["Structured staff follow-up"]
+        SelfService["Client self-service"]
+        AgentQueue["Structured agent follow-up"]
         AuditEvidence["Audit and diagnostic evidence"]
         Improvement["Performance and cost insight"]
     end
 
     Questions --> Route
     Scheduling --> Route
-    Insurance --> Route
+    Financing --> Route
     KnowledgeNeed --> Route
     Route --> Retrieve
     Route --> Execute
     Retrieve --> Validate
     Execute --> Validate
     Validate --> SelfService
-    Validate --> StaffQueue
+    Validate --> AgentQueue
     Validate --> AuditEvidence
     AuditEvidence --> Improvement
 ```
@@ -366,7 +366,7 @@ flowchart TB
 <details open>
 <summary><strong>1. Demonstration or workflow-discovery environment</strong></summary>
 
-Use the seeded Docker stack to demonstrate patient, staff, and operator journeys. The Playground can
+Use the seeded Docker stack to demonstrate client, agent, and operator journeys. The Playground can
 verify service behavior and show where organization-specific integrations would connect.
 
 </details>
@@ -382,8 +382,8 @@ measure self-service completion, escalations, latency, and staff feedback with a
 <details>
 <summary><strong>3. Organization-integrated deployment</strong></summary>
 
-Replace seeded workflow data with adapters for the organization’s scheduling, EHR, billing,
-insurance, identity, and communications systems. Apply tenant policies, production secrets,
+Replace seeded workflow data with adapters for the organization’s MLS, CRM, scheduling, financing,
+identity, and communications systems. Apply tenant policies, production secrets,
 retention rules, and audit requirements.
 
 </details>
@@ -408,15 +408,15 @@ workflows. Production use still requires organization-specific hardening and int
 
 | Capability                                                 | Current position                                                                                   |
 | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Patient webchat, REST voice, staff assistant               | Implemented; generated answers require a configured model/STT/TTS provider as applicable           |
-| Appointment, availability, insurance, and refill workflows | Database-backed demonstration workflows; replace with production source-system adapters            |
+| Client webchat, REST voice, agent assistant                | Implemented; generated answers require a configured model/STT/TTS provider as applicable           |
+| Showing, listing, financing, and maintenance workflows     | Database-backed demonstration workflows; replace with production source-system adapters            |
 | Tenant knowledge and hybrid retrieval                      | Implemented with tenant-scoped articles, BM25/vector retrieval, and fallback documents             |
-| Safety and PII controls                                    | Implemented baseline checks; not a substitute for clinical governance or a full compliance program |
+| Safety and PII controls                                    | Implemented baseline checks; not a substitute for brokerage compliance or a full compliance program |
 | Observability and audit views                              | Implemented for service health, recorded activity, latency, event, and model-cost telemetry        |
 | Role-aware navigation                                      | Implemented as UI context; production RBAC and identity enforcement require deployment integration |
 | Telephony, SMS, WhatsApp, native mobile SDK                | Planned integration surfaces; not complete channels in the current repository                      |
 | Commercial billing and subscriptions                       | Not implemented                                                                                    |
-| Production EHR and payer connectivity                      | Adapter scaffolding/demonstration data; organization integration required                          |
+| Production MLS, CRM, and lender connectivity               | Adapter scaffolding/demonstration data; organization integration required                          |
 
 ---
 
@@ -457,7 +457,7 @@ GitHub Actions workflows.
 │                            CLIENT APPLICATIONS                              │
 │                                                                              │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐   │
-│  │     Dashboard (Unified Admin)    │  │  Patient Portal                 │   │
+│  │     Dashboard (Unified Admin)    │  │  Client Portal                  │   │
 │  │        (Next.js 15)              │  │     (Next.js 15)                 │   │
 │  │        Port 3100                 │  │     Port 3300                   │   │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘   │
@@ -528,34 +528,38 @@ User → API Gateway (:3000)
   ↓
 Orchestration Engine (:8001)
   ├─ 1. Intent → LLM Router (:8002) — semantic + keyword routing, model selection
-  ├─ 2. Agent path (if appointment/insurance/search) → Agent Runtime (:8003)
-  │      └─ Execution Engine (:8007) — get_appointments, check_insurance, etc. (DB-backed)
+  ├─ 2. Agent path (if showing/financing/search) → Agent Runtime (:8003)
+  │      └─ Execution Engine (:8007) — get_showings, get_client_financing, etc. (DB-backed)
   ├─ 3. RAG path (else) → RAG Service (:8004) — hybrid BM25 + vector retrieval
   │      └─ LLM Router — generate response
-  ├─ 4. Safety Guardrails (:8005) — validate, emergency escalation
+  ├─ 4. Safety Guardrails (:8005) — validate, fair housing / fraud escalation
   └─ 5. Response → User
 ```
 
 - **Response caching**: Repeated prompts cached (TTL 300s) for cost reduction
-- **Emergency escalation**: Safety detects clinical keywords (chest pain, stroke) and flags `requires_escalation`
+- **Escalation**: Safety detects fair housing, fraud, legal-risk, and property-emergency language and flags `requires_escalation`
 - **Telemetry**: Orchestration, LLM Router, RAG emit to Observability Core
 
 ### Execution Engine (DB-Backed)
 
 | Action                        | Description                                |
 | ----------------------------- | ------------------------------------------ |
-| `get_appointments`            | List upcoming appointments for a patient   |
-| `create_appointment`          | Create appointment (patient, date, reason) |
-| `check_insurance`             | Verify insurance coverage and copay        |
-| `get_availability`            | List available slots by date               |
-| `request_prescription_refill` | Submit refill for active prescriptions     |
+| `get_showings`                | List upcoming showings for a client        |
+| `create_showing`              | Create showing (client, listing, time)     |
+| `get_client_financing`        | Verify financing / pre-approval status     |
+| `get_listings`                | List available listings                    |
+| `get_availability`            | List available showing slots by date       |
+| `create_service_request`      | Submit maintenance or service request      |
+| `create_lead`                 | Create a lead in the sales pipeline        |
+
+Legacy tool names (`get_appointments`, `check_insurance`, etc.) map to the real estate actions above for backward compatibility.
 
 ### Database Schema
 
-- **Patients**, **Appointments** (with reason), **Tenants**, **Conversations**
-- **PatientInsurance** — plan, payer, copay, status
-- **Prescription** — medication, status, refill_requested_at
-- **AvailabilitySlot** — date, time, provider for scheduling
+- **Clients**, **Showings**, **Listings**, **Leads**, **Tenants**, **Conversations**
+- **ClientFinancing** — program, lender, approved amount, status
+- **ServiceRequest** — category, title, description, status
+- **AvailabilitySlot** — date, time, agent for scheduling
 - **KnowledgeBaseArticle** — RAG documents per tenant
 
 ### Admin API (DB Writes)
@@ -563,20 +567,22 @@ Orchestration Engine (:8001)
 | Endpoint                 | Method | Description    |
 | ------------------------ | ------ | -------------- |
 | `/api/v1/admin/tenants`  | POST   | Create tenant  |
-| `/api/v1/admin/patients` | POST   | Create patient |
+| `/api/v1/admin/clients`  | POST   | Create client  |
 
-The Tenants page uses Add Tenant to create new organizations. Execution Engine handles appointment creation and prescription refill requests.
+Legacy aliases (`/api/v1/admin/patients`, `/api/v1/admin/appointments`) remain for backward compatibility.
+
+The Tenants page uses Add Tenant to create new organizations. Execution Engine handles showing creation and service request workflows.
 
 ### Playground (Dashboard)
 
 The **Playground** at http://localhost:3100/playground provides:
 
-- **Service Health & Metrics** — Live backend health and latency; telemetry (conversations, tenants, patients, event counts, avg latency); auto-loads on open
+- **Service Health & Metrics** — Live backend health and latency; telemetry (conversations, tenants, clients, event counts, avg latency); auto-loads on open
 - **Run All Tests** — One-click verification of all services; shows pass/fail and latency per test
-- **Full pipeline test** — Run E2E with patient context and sample prompts
+- **Full pipeline test** — Run E2E with client context and sample prompts
 - **Service API tests** — Route, RAG, Safety, Agent, Execution, Knowledge Articles, LLM Providers, LLM Models, Audit Log, Service Health
 - **Test results table** — Last 20 test runs with status, latency (ms), and errors
-- **Execution actions** — get_appointments, check_insurance, get_availability, create_appointment (DB write), request_prescription_refill (DB write)
+- **Execution actions** — get_showings, get_client_financing, get_listings, create_showing (DB write), create_service_request (DB write)
 - **Flow visualization** — Intent → RAG/Agent → Generate → Safety steps
 
 ---
@@ -675,8 +681,8 @@ aurixa/
 │
 ├── frontend/                      User-facing applications
 │   ├── dashboard/                 Unified admin: analytics, playground, tenants, services, audit, configuration (Next.js 15, Port 3100)
-│   ├── patient-portal/            Patient interface (Next.js 15, Port 3300)
-│   └── hospital-portal/           Hospital staff interface (Next.js 15, Port 3400)
+│   ├── client-portal/             Client interface (Next.js 15, Port 3300)
+│   └── agent-workspace/           Agent and coordination interface (Next.js 15, Port 3400)
 │
 ├── infra/                         Infrastructure as Code
 │   ├── deployment/                Canonical service inventory and schema
@@ -819,7 +825,7 @@ The stack will:
 1. Start Postgres and Redis
 2. Run db-seed to populate the database
 3. Build and start API Gateway, Orchestration, LLM Router, Agent Runtime, RAG, Safety, Streaming Voice, Execution Engine, Observability Core, and Deployment Controller
-4. Build and start Dashboard, Patient Portal, Hospital Portal
+4. Build and start Dashboard, Client Portal, Agent Workspace
 
 **Endpoints after startup:**
 
@@ -828,8 +834,8 @@ The stack will:
 | API Gateway           | http://localhost:3000            |
 | Dashboard             | http://localhost:3100            |
 | **Playground**        | http://localhost:3100/playground |
-| Patient Portal        | http://localhost:3300            |
-| Hospital Portal       | http://localhost:3400            |
+| Client Portal         | http://localhost:3300            |
+| Agent Workspace       | http://localhost:3400            |
 | Orchestration         | http://localhost:8001            |
 | LLM Router            | http://localhost:8002            |
 | Agent Runtime         | http://localhost:8003            |
@@ -894,15 +900,15 @@ pnpm db:seed
 
 ### Frontend Applications
 
-| App             | Port | Purpose                                                                                                                                   |
-| --------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Dashboard       | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit   |
-| Patient Portal  | 3300 | Patient chat & appointments, help articles, AI assistant                                                                                  |
-| Hospital Portal | 3400 | Staff dashboard (reception, nurses, doctors, schedulers), patients, appointments, scheduling, AI assistant, knowledge base, system status |
+| App               | Port | Purpose                                                                                                                                   |
+| ----------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard         | 3100 | System status, **Playground** (E2E + service tests + metrics), tenants (with Add Tenant), services, analytics, knowledge, config, audit   |
+| Client Portal     | 3300 | Client chat & showings, listings, financing, help articles, AI assistant                                                                  |
+| Agent Workspace   | 3400 | Agent dashboard (agents, coordinators, operations), clients, showings, leads, scheduling, AI assistant, knowledge base, system status     |
 
-- **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (create_appointment, request_prescription_refill)
+- **Playground** (`/playground`): Run All Tests, service health & telemetry, full pipeline, individual services (Route/RAG/Safety/Agent/Execution/Knowledge/LLM/Audit), and DB-backed execution actions including writes (`create_showing`, `create_service_request`)
 - **Tenants** (`/tenants`): List tenants; Add Tenant creates new tenants (DB write)
-- **Patient Portal — Voice** (`/voice`): Mic or text input; REST-based voice processing (STT → pipeline → optional TTS); user toggle for "Play aloud" (TTS on/off)
+- **Client Portal — Voice** (`/voice`): Mic or text input; REST-based voice processing (STT → pipeline → optional TTS); user toggle for "Play aloud" (TTS on/off)
 - All frontends use the API Gateway (port 3000). Deployment administration is
   available at `/deployments` in the dashboard and is backed by the
   Deployment Controller (port 8009).
@@ -1405,9 +1411,10 @@ open coverage/index.html
 
 ## Documentation
 
+- [Real Estate Domain Specification](./docs/REAL_ESTATE_DOMAIN.md) — Master domain spec, entity map, migration phases, and rename status
 - [Deployment Infrastructure](./infra/DEPLOYMENT.md) — Control-plane architecture, release flow, Terraform/Helm, authorization, variables, secrets, and costs
 - [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) — First-time provisioning, staging/production operation, rollback, incidents, and disaster recovery
-- [Streaming Service & End-User Flows](./docs/STREAMING_AND_END_USER_FLOWS.md) — Streaming-voice (REST + WebSocket with **LLM token streaming** over WS), channel layer, and full layman flows for AURIXA admin, patient, and hospital tenants
+- [Streaming Service & End-User Flows](./docs/STREAMING_AND_END_USER_FLOWS.md) — Streaming-voice (REST + WebSocket with **LLM token streaming** over WS), channel layer, and full layman flows for AURIXA admin, client, and agent tenants
 - [End-User Flow & Telephony](./docs/END_USER_FLOW_AND_TELEPHONY.md) — Webchat, WebSocket voice, REST voice, STT/TTS providers (OSS first), telephony integration points
 - [Performance Report](./performance_report.md) — System metrics and benchmarks
 - [Architecture Audit](./docs/ARCHITECTURE_AUDIT.md) — Architecture review

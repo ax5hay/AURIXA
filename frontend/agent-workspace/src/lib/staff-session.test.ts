@@ -51,7 +51,7 @@ describe("staff session", () => {
       staffId: 1,
       tenantId: 1,
       demo: true,
-      role: "clinician",
+      role: "agent",
     });
     expect(buildLocalStaffDemoSession()).toMatchObject({ staffId: 1, tenantId: 1, demo: true });
   });

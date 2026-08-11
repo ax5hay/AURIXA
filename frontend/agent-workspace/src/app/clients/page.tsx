@@ -17,14 +17,14 @@ import {
   SearchInput,
   useToast,
 } from "@aurixa/ui-kit";
-import { createPatient, getPatients, type Patient } from "../api";
+import { createClient, getClients, type Client } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
 
-export default function PatientsPage() {
+export default function ClientsPage() {
   const { toast } = useToast();
   const { tenantId, roleCategory } = useStaffContext();
-  const canCreatePatient = roleCategory === "clinical" || roleCategory === "coordination";
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const canCreateClient = roleCategory === "agent" || roleCategory === "coordination";
+  const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -37,71 +37,71 @@ export default function PatientsPage() {
   useEffect(() => {
     setLoading(true);
     setLoadError(false);
-    getPatients(tid)
-      .then(setPatients)
+    getClients(tid)
+      .then(setClients)
       .catch(() => {
-        setPatients([]);
+        setClients([]);
         setLoadError(true);
       })
       .finally(() => setLoading(false));
   }, [tid]);
 
-  const filtered = patients.filter((patient) => {
+  const filtered = clients.filter((client) => {
     const query = search.trim().toLowerCase();
     return (
       !query ||
-      patient.fullName.toLowerCase().includes(query) ||
-      patient.email?.toLowerCase().includes(query) ||
-      patient.phoneNumber?.includes(query)
+      client.fullName.toLowerCase().includes(query) ||
+      client.email?.toLowerCase().includes(query) ||
+      client.phoneNumber?.includes(query)
     );
   });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.fullName.trim()) {
-      setFormError("Enter the patient’s full name.");
+      setFormError("Enter the client’s full name.");
       return;
     }
     setSubmitting(true);
     setFormError(null);
     try {
-      const created = await createPatient({
+      const created = await createClient({
         full_name: form.fullName.trim(),
         email: form.email.trim() || undefined,
         phone_number: form.phoneNumber.trim() || undefined,
         tenant_id: tid,
       });
-      setPatients((current) => [...current, created]);
+      setClients((current) => [...current, created]);
       setDialogOpen(false);
       setForm({ fullName: "", email: "", phoneNumber: "" });
       toast({
-        title: "Patient added",
-        description: "The patient is now in the care directory.",
+        title: "Client added",
+        description: "The client is now in the client directory.",
         tone: "success",
       });
     } catch {
-      setFormError("The patient could not be added. Check the details and try again.");
+      setFormError("The client could not be added. Check the details and try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <PageLoader label="Loading patient directory" />;
+  if (loading) return <PageLoader label="Loading client directory" />;
 
   return (
     <div className="space-y-6 pb-8">
       <PageHeader
-        eyebrow="Care directory"
-        title="Patients"
-        description="Find patient context quickly. Identity remains visible before any care action."
+        eyebrow="Client directory"
+        title="Clients"
+        description="Find client context quickly. Identity remains visible before any showing or follow-up."
         actions={
-          canCreatePatient ? <Button onClick={() => setDialogOpen(true)}>Add patient</Button> : undefined
+          canCreateClient ? <Button onClick={() => setDialogOpen(true)}>Add client</Button> : undefined
         }
       />
 
       {loadError && (
-        <Alert title="Patient directory unavailable" tone="danger">
-          No patient records are shown. Check the API connection and reload this page.
+        <Alert title="Client directory unavailable" tone="danger">
+          No client records are shown. Check the API connection and reload this page.
         </Alert>
       )}
 
@@ -110,50 +110,50 @@ export default function PatientsPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search name, email, or phone"
-          aria-label="Search patients"
+          aria-label="Search clients"
         />
       </div>
-      <p className="text-sm text-ui-muted">{filtered.length} patient records</p>
+      <p className="text-sm text-ui-muted">{filtered.length} client records</p>
 
       {filtered.length ? (
         <>
           <DataTable
-            caption="Patient directory"
-            headers={["Patient", "Contact", "Record", ""]}
+            caption="Client directory"
+            headers={["Client", "Contact", "Record", ""]}
             className="hidden md:block"
           >
-            {filtered.map((patient) => (
-              <tr key={patient.id} className="clinical-table-row">
+            {filtered.map((client) => (
+              <tr key={client.id} className="clinical-table-row">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <Avatar name={patient.fullName} />
-                    <span className="font-semibold text-ui-ink">{patient.fullName}</span>
+                    <Avatar name={client.fullName} />
+                    <span className="font-semibold text-ui-ink">{client.fullName}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-ui-muted">
-                  {patient.email || patient.phoneNumber || "No contact on file"}
+                  {client.email || client.phoneNumber || "No contact on file"}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-ui-faint">#{patient.id}</td>
+                <td className="px-4 py-3 font-mono text-xs text-ui-faint">#{client.id}</td>
                 <td className="px-4 py-3 text-right">
                   <Button asChild variant="quiet">
-                    <Link href={`/patients/${patient.id}`}>Open record</Link>
+                    <Link href={`/clients/${client.id}`}>Open record</Link>
                   </Button>
                 </td>
               </tr>
             ))}
           </DataTable>
           <div className="grid gap-3 md:hidden">
-            {filtered.map((patient) => (
-              <Card key={patient.id} variant="compact" padding="md">
+            {filtered.map((client) => (
+              <Card key={client.id} variant="compact" padding="md">
                 <div className="flex items-start gap-3">
-                  <Avatar name={patient.fullName} />
+                  <Avatar name={client.fullName} />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-ui-ink">{patient.fullName}</p>
+                    <p className="font-semibold text-ui-ink">{client.fullName}</p>
                     <p className="mt-1 truncate text-sm text-ui-muted">
-                      {patient.email || patient.phoneNumber || "No contact on file"}
+                      {client.email || client.phoneNumber || "No contact on file"}
                     </p>
                     <Button asChild variant="secondary" className="mt-3 w-full">
-                      <Link href={`/patients/${patient.id}`}>Open record</Link>
+                      <Link href={`/clients/${client.id}`}>Open record</Link>
                     </Button>
                   </div>
                 </div>
@@ -163,14 +163,14 @@ export default function PatientsPage() {
         </>
       ) : (
         <EmptyState
-          title={search ? "No matching patients" : "No patients in this view"}
+          title={search ? "No matching clients" : "No clients in this view"}
           description={
             search
               ? "Try a name, email, or phone number."
-              : "No patient records were returned for this organization."
+              : "No client records were returned for this organization."
           }
           action={
-            canCreatePatient ? <Button onClick={() => setDialogOpen(true)}>Add patient</Button> : undefined
+            canCreateClient ? <Button onClick={() => setDialogOpen(true)}>Add client</Button> : undefined
           }
         />
       )}
@@ -178,28 +178,28 @@ export default function PatientsPage() {
       <Dialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        title="Add patient"
-        description="Add only the minimum information needed for the care directory."
+        title="Add client"
+        description="Add only the minimum information needed for the client directory."
         footer={
           <>
             <Button variant="secondary" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" form="add-patient-form" loading={submitting}>
-              Add patient
+            <Button type="submit" form="add-client-form" loading={submitting}>
+              Add client
             </Button>
           </>
         }
       >
-        <form id="add-patient-form" onSubmit={submit} className="space-y-4">
+        <form id="add-client-form" onSubmit={submit} className="space-y-4">
           {formError && (
-            <Alert title="Could not add patient" tone="danger">
+            <Alert title="Could not add client" tone="danger">
               {formError}
             </Alert>
           )}
-          <FieldShell label="Full name" htmlFor="patient-name" required>
+          <FieldShell label="Full name" htmlFor="client-name" required>
             <Input
-              id="patient-name"
+              id="client-name"
               autoFocus
               value={form.fullName}
               onChange={(event) =>
@@ -207,9 +207,9 @@ export default function PatientsPage() {
               }
             />
           </FieldShell>
-          <FieldShell label="Email" htmlFor="patient-email" hint="Optional">
+          <FieldShell label="Email" htmlFor="client-email" hint="Optional">
             <Input
-              id="patient-email"
+              id="client-email"
               type="email"
               value={form.email}
               onChange={(event) =>
@@ -217,9 +217,9 @@ export default function PatientsPage() {
               }
             />
           </FieldShell>
-          <FieldShell label="Phone" htmlFor="patient-phone" hint="Optional">
+          <FieldShell label="Phone" htmlFor="client-phone" hint="Optional">
             <Input
-              id="patient-phone"
+              id="client-phone"
               type="tel"
               value={form.phoneNumber}
               onChange={(event) =>

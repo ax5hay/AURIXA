@@ -1,48 +1,52 @@
 import { NextResponse } from "next/server";
 import {
-  createPatientSessionToken,
-  getPatientSessionSecret,
-  isLocalPatientDemoEnabled,
-  PATIENT_SESSION_COOKIE,
-  PATIENT_SESSION_MAX_AGE_SECONDS,
-} from "@/lib/patient-session";
+  CLIENT_SESSION_COOKIE,
+  CLIENT_SESSION_MAX_AGE_SECONDS,
+  createClientSessionToken,
+  getClientSessionSecret,
+  isLocalClientDemoEnabled,
+} from "@/lib/client-session";
+
+function env(name: string, legacy?: string): string | undefined {
+  return process.env[name] ?? (legacy ? process.env[legacy] : undefined);
+}
 
 export async function POST() {
-  const secret = getPatientSessionSecret();
-  if (!isLocalPatientDemoEnabled() || !secret) {
+  const secret = getClientSessionSecret();
+  if (!isLocalClientDemoEnabled() || !secret) {
     return NextResponse.json(
-      { error: "Local patient demo sign-in is not configured." },
+      { error: "Local client demo sign-in is not configured." },
       { status: 403 },
     );
   }
 
-  const patientId = Number(process.env.PATIENT_DEMO_PATIENT_ID ?? "1");
-  const tenantId = Number(process.env.PATIENT_DEMO_TENANT_ID ?? "1");
+  const clientId = Number(env("CLIENT_DEMO_CLIENT_ID", "PATIENT_DEMO_PATIENT_ID") ?? "1");
+  const tenantId = Number(env("CLIENT_DEMO_TENANT_ID", "PATIENT_DEMO_TENANT_ID") ?? "1");
   if (
-    !Number.isSafeInteger(patientId) ||
-    patientId < 1 ||
+    !Number.isSafeInteger(clientId) ||
+    clientId < 1 ||
     !Number.isSafeInteger(tenantId) ||
     tenantId < 1
   ) {
-    return NextResponse.json({ error: "Local patient demo identity is invalid." }, { status: 500 });
+    return NextResponse.json({ error: "Local client demo identity is invalid." }, { status: 500 });
   }
 
-  const token = await createPatientSessionToken(
+  const token = await createClientSessionToken(
     {
-      patientId,
+      clientId,
       tenantId,
-      subject: `local-demo-patient-${patientId}`,
+      subject: `local-demo-client-${clientId}`,
       demo: true,
     },
     secret,
   );
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(PATIENT_SESSION_COOKIE, token, {
+  response.cookies.set(CLIENT_SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: PATIENT_SESSION_MAX_AGE_SECONDS,
+    maxAge: CLIENT_SESSION_MAX_AGE_SECONDS,
   });
   response.headers.set("Cache-Control", "no-store");
   return response;

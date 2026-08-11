@@ -1,34 +1,34 @@
-import { UnavailableCareSection } from "@/components/UnavailableCareSection";
+import { UnavailableSection } from "@/components/UnavailableSection";
 
 export default function ResultsPage() {
   return (
-    <UnavailableCareSection
-      eyebrow="Records and results"
-      title="Test results"
-      description="A safe place to understand result availability and choose your next step."
-      unavailableTitle="Results are not connected yet"
-      unavailableBody="The current patient API does not provide laboratory, imaging, pathology, or clinician-reviewed results. We do not display placeholders because they could be mistaken for complete medical information."
+    <UnavailableSection
+      eyebrow="Inspections and reports"
+      title="Property reports"
+      description="Guidance when inspection or appraisal reports are not yet available in the portal."
+      unavailableTitle="Reports are not connected"
+      unavailableBody="The current client API does not provide inspection summaries, appraisal PDFs, or title updates. We do not display placeholders because they could be mistaken for finalized reports."
       checklist={[
-        "Write down the test name, collection or imaging date, and ordering clinician.",
-        "Ask whether the result needs clinician review before it is released to you.",
-        "Prepare one clear question you want answered when the result is available.",
+        "Write down the property address, report type, and inspection or due-diligence date.",
+        "Ask your agent whether the report needs review before it is shared with you.",
+        "Use the secure channel your brokerage provided for document delivery.",
       ]}
       steps={[
         {
-          title: "Check the verified source",
-          icon: "check",
-          body: "Use the laboratory, imaging center, or care-team channel you were given. Result timing varies, and some findings need clinician review before release.",
+          title: "Request the report",
+          icon: "info",
+          body: "Ask your agent for the report type, date, and expected delivery method. Timing varies by vendor and transaction stage.",
         },
         {
-          title: "Prepare your question",
-          icon: "message",
-          body: "Note the test name, date, ordering clinician, and what you want explained. Do not make medication or treatment changes from an unverified result.",
+          title: "Review with your agent",
+          icon: "check",
+          body: "Do not make offer or repair decisions from an unverified draft. Walk through findings with your licensed agent.",
         },
       ]}
       related={[
-        { href: "/records", label: "Records overview" },
         { href: "/documents", label: "Documents" },
-        { href: "/chat", label: "Care messages" },
+        { href: "/showings", label: "Showings" },
+        { href: "/help", label: "Support" },
       ]}
     />
   );

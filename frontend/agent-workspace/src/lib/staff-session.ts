@@ -82,9 +82,16 @@ export function buildLocalStaffDemoSession(): StaffSession | null {
 
   const staffId = Number(runtimeEnv("STAFF_DEMO_STAFF_ID") ?? "1");
   const tenantId = Number(runtimeEnv("STAFF_DEMO_TENANT_ID") ?? "1");
-  const fullName = runtimeEnv("STAFF_DEMO_FULL_NAME")?.trim() || "Demo Clinician";
-  const email = runtimeEnv("STAFF_DEMO_EMAIL")?.trim() || "demo-clinician@localhost";
-  const role = runtimeEnv("STAFF_DEMO_ROLE")?.trim() || "clinician";
+  const fullName =
+    runtimeEnv("AGENT_DEMO_FULL_NAME")?.trim() ||
+    runtimeEnv("STAFF_DEMO_FULL_NAME")?.trim() ||
+    "Demo Agent";
+  const email =
+    runtimeEnv("AGENT_DEMO_EMAIL")?.trim() ||
+    runtimeEnv("STAFF_DEMO_EMAIL")?.trim() ||
+    "demo-agent@localhost";
+  const role =
+    runtimeEnv("AGENT_DEMO_ROLE")?.trim() || runtimeEnv("STAFF_DEMO_ROLE")?.trim() || "agent";
   if (
     !Number.isSafeInteger(staffId) ||
     staffId < 1 ||

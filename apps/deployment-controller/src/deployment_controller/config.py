@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     deployment_allowed_services: str = (
         "api-gateway,orchestration-engine,llm-router,agent-runtime,rag-service,"
         "safety-guardrails,streaming-voice,execution-engine,observability-core,"
-        "deployment-controller,dashboard,patient-portal,hospital-portal"
+        "deployment-controller,dashboard,client-portal,agent-workspace"
     )
 
     deployment_jwt_secret: str | None = None

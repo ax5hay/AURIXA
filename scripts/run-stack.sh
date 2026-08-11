@@ -3,7 +3,7 @@
 # 1. Starts Postgres (and Redis) via Docker if not running
 # 2. Seeds the database
 # 3. Starts API Gateway, Orchestration, Observability
-# 4. Starts frontends (Dashboard, Patient Portal, Hospital Portal)
+# 4. Starts frontends (Dashboard, Client Portal, Agent Workspace)
 # Frontends use --hostname 127.0.0.1 for sandbox/CI compatibility.
 
 set -e
@@ -21,21 +21,21 @@ for port in 3000 3100 3300 3400 8001 8002 8003 8004 8005 8006 8007 8008; do
   done
 done
 
-# Pre-build patient and hospital portals while system is idle (avoids build during heavy load; start is instant)
-echo "Pre-building Patient Portal..."
-if (cd "$ROOT/frontend/patient-portal" && rm -rf .next && pnpm build 2>&1); then
-  echo "Patient Portal build complete."
+# Pre-build client portal and agent workspace while system is idle (avoids build during heavy load; start is instant)
+echo "Pre-building Client Portal..."
+if (cd "$ROOT/frontend/client-portal" && rm -rf .next && pnpm build 2>&1); then
+  echo "Client Portal build complete."
 else
-  echo "Warn: Patient Portal build failed; will try dev mode as fallback."
-  PATIENT_PORTAL_DEV_FALLBACK=1
+  echo "Warn: Client Portal build failed; will try dev mode as fallback."
+  CLIENT_PORTAL_DEV_FALLBACK=1
 fi
 
-echo "Pre-building Hospital Portal..."
-if (cd "$ROOT/frontend/hospital-portal" && rm -rf .next && pnpm build 2>&1); then
-  echo "Hospital Portal build complete."
-  HOSPITAL_PORTAL_BUILT=1
+echo "Pre-building Agent Workspace..."
+if (cd "$ROOT/frontend/agent-workspace" && rm -rf .next && pnpm build 2>&1); then
+  echo "Agent Workspace build complete."
+  AGENT_WORKSPACE_BUILT=1
 else
-  echo "Warn: Hospital Portal build failed; will use dev mode."
+  echo "Warn: Agent Workspace build failed; will use dev mode."
 fi
 
 # Load .env if present
@@ -80,7 +80,7 @@ for attempt in 1 2 3 4 5; do
   fi
 done
 if [ "$SEED_OK" != "true" ]; then
-  echo "Warn: db:seed failed after 5 attempts. Run 'pnpm db:seed' manually. Patient portal may show 'Could not load profile'."
+  echo "Warn: db:seed failed after 5 attempts. Run 'pnpm db:seed' manually. Client portal may show 'Could not load profile'."
 fi
 
 # Start backend services in background
@@ -141,18 +141,18 @@ sleep 1
 # Start frontends
 echo "Starting frontends..."
 pnpm --filter @aurixa/dashboard dev &
-# Patient portal: use pre-built start if available, else dev mode
-if [ "${PATIENT_PORTAL_DEV_FALLBACK:-}" = "1" ]; then
-  WATCHPACK_POLLING=true pnpm --filter @aurixa/patient-portal dev &
+# Client portal: use pre-built start if available, else dev mode
+if [ "${CLIENT_PORTAL_DEV_FALLBACK:-}" = "1" ]; then
+  WATCHPACK_POLLING=true pnpm --filter @aurixa/client-portal dev &
 else
-  (cd "$ROOT/frontend/patient-portal" && pnpm start) &
+  (cd "$ROOT/frontend/client-portal" && pnpm start) &
 fi
 
-echo "Starting Hospital Portal..."
-if [ "${HOSPITAL_PORTAL_BUILT:-}" = "1" ]; then
-  (cd "$ROOT/frontend/hospital-portal" && pnpm start) &
+echo "Starting Agent Workspace..."
+if [ "${AGENT_WORKSPACE_BUILT:-}" = "1" ]; then
+  (cd "$ROOT/frontend/agent-workspace" && pnpm start) &
 else
-  pnpm --filter @aurixa/hospital-portal dev &
+  pnpm --filter @aurixa/agent-workspace dev &
 fi
 
 echo ""
@@ -167,8 +167,8 @@ echo "  Voice:        http://localhost:8006"
 echo "  Execution:    http://localhost:8007"
 echo "  Observability: http://localhost:8008"
 echo "  Dashboard:    http://localhost:3100 (unified)"
-echo "  Patient:      http://localhost:3300"
-echo "  Hospital:     http://localhost:3400 (staff)"
+echo "  Client portal:  http://localhost:3300"
+echo "  Agent workspace: http://localhost:3400"
 echo ""
 echo "Run ./scripts/e2e-check.sh to verify APIs."
 echo "If Python services fail, run ./scripts/bootstrap-python.sh once."

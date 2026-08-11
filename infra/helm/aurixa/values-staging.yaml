@@ -5,8 +5,8 @@ global:
     routes:
       api: { host: api.staging.aurixa.example }
       dashboard: { host: dashboard.staging.aurixa.example }
-      patient: { host: patient.staging.aurixa.example }
-      hospital: { host: hospital.staging.aurixa.example }
+      client: { host: client.staging.aurixa.example, service: client-portal }
+      workspace: { host: workspace.staging.aurixa.example, service: agent-workspace }
   frontend:
     apiGatewayUrl: https://api.staging.aurixa.example
   externalSecrets:

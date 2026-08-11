@@ -160,7 +160,7 @@ This inventory maps healthcare-specific names across the repo to their real esta
 
 | File | Action |
 | --- | --- |
-| `README.md` | Full RE rewrite (Phase 12); mark healthcare sections deprecated |
+| `README.md` | Real estate product overview (Phase 9); legacy API aliases documented where retained |
 | `docs/FRONTEND_AUTH.md` | Update PATIENT/HOSPITAL → CLIENT/WORKSPACE |
 | `docs/FRONTEND_UX_QUALITY.md` | Personas: client/agent |
 | `docs/END_USER_FLOW_AND_TELEPHONY.md` | Patient → client channels |
@@ -203,16 +203,21 @@ This inventory maps healthcare-specific names across the repo to their real esta
 
 ---
 
-## 10. CI grep gate (recommended Phase 12)
+## 10. CI grep gate (Phase 10)
 
-Block user-facing paths containing (case-insensitive), with allowlist for this inventory and migration docs:
+Implemented in `scripts/check-real-estate-domain-copy.sh` and `pnpm run check:domain-copy` (runs in CI).
+
+Block user-facing frontend paths containing (case-insensitive), with allowlist for legacy role aliases and deprecated wrappers:
 
 ```
 patient portal, hospital portal, clinical workspace, healthcare assistant,
-prescription, refill, diagnosis, clinician, HIPAA, medication
+prescription, refill, diagnosis, clinician, HIPAA, medication, my care,
+medical record, care messages, care team
 ```
 
-Allowed in: `docs/REAL_ESTATE_*`, git history, migration scripts.
+Allowed in: `docs/REAL_ESTATE_*`, migration docs, `Healthcare.tsx` deprecated wrapper, middleware/BFF legacy role arrays.
+
+Scan paths: `frontend/client-portal/src`, `frontend/agent-workspace/src`, `frontend/dashboard/src`.
 
 ---
 

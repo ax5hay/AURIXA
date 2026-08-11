@@ -1,14 +1,15 @@
 # Frontend UX quality gates
 
-This document defines how AURIXA’s patient, hospital, and operator frontends stay
-production-grade: accessible, measurable, privacy-safe, and visually consistent.
+This document defines how AURIXA’s client portal, agent workspace, and operator
+frontends stay production-grade: accessible, measurable, privacy-safe, and visually
+consistent.
 
 ## Product themes
 
 | Product | Theme | Primary users |
 |---|---|---|
-| Patient portal | `patient` | Patients and caregivers |
-| Hospital portal | `clinical` | Coordinators, clinicians, operations |
+| Client portal | `client` | Clients and prospects |
+| Agent workspace | `workspace` | Agents, coordinators, operations |
 | Operator dashboard | `operator` | Platform administrators |
 
 All products consume `@aurixa/ui-kit` tokens and `PortalShell` landmarks. Prefer
@@ -21,11 +22,11 @@ Before marking a journey complete:
 1. **Completion:** a first-time user can finish the primary task without dead ends.
 2. **Recovery:** loading, empty, offline, and error states are explicit and retryable.
 3. **Keyboard:** the flow is completable with keyboard only.
-4. **Responsive:** usable at 320px, tablet, laptop, 1440px, and wide clinical workstations.
+4. **Responsive:** usable at 320px, tablet, laptop, 1440px, and wide agent workstations.
 5. **Zoom:** content remains usable at 200% browser zoom.
 6. **Motion:** `prefers-reduced-motion` disables nonessential animation.
 7. **Contrast/focus:** WCAG 2.2 AA contrast and visible focus are preserved.
-8. **Safety:** consequential clinical or production actions require confirmation.
+8. **Safety:** consequential production actions require confirmation.
 
 ## Automated gates
 
@@ -35,8 +36,8 @@ Run locally:
 pnpm --filter @aurixa/ui-kit test
 pnpm --filter @aurixa/ui-kit typecheck
 pnpm --filter @aurixa/dashboard lint
-pnpm --filter @aurixa/patient-portal lint
-pnpm --filter @aurixa/hospital-portal lint
+pnpm --filter @aurixa/client-portal lint
+pnpm --filter @aurixa/agent-workspace lint
 pnpm exec playwright test --config=e2e/playwright.config.ts
 ```
 

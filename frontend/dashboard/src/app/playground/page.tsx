@@ -10,7 +10,7 @@ import {
   runAgentTask,
   executeAction,
   listExecutionActions,
-  getPatients,
+  getClients,
   getServiceHealth,
   getAnalytics,
   getAnalyticsSummary,
@@ -23,12 +23,12 @@ import {
 } from "@/app/services/api";
 
 const PIPELINE_SAMPLES = [
-  "What are your operating hours?",
-  "How do I request a prescription refill?",
-  "Tell me about billing and insurance.",
-  "I need to schedule an appointment.",
-  "Get my appointments for patient 1",
-  "Check my insurance",
+  "What are your office hours?",
+  "How do I schedule a property showing?",
+  "Tell me about financing and pre-approval.",
+  "I need help with a maintenance request.",
+  "Get showings for client 1",
+  "What listings are available downtown?",
 ];
 
 interface TestResult {
@@ -48,21 +48,21 @@ const SERVICE_TESTS: {
   action?: string;
   params?: Record<string, unknown>;
 }[] = [
-  { id: "route", label: "LLM Route", fn: "route", sample: "I need to schedule an appointment" },
-  { id: "rag", label: "RAG Retrieve", fn: "rag", sample: "prescription refill" },
+  { id: "route", label: "LLM Route", fn: "route", sample: "I need to schedule a showing" },
+  { id: "rag", label: "RAG Retrieve", fn: "rag", sample: "fair housing policy" },
   {
     id: "safety",
     label: "Safety Validate",
     fn: "safety",
     sample: "Hello, this is a normal message",
   },
-  { id: "agent", label: "Agent Run", fn: "agent", sample: "Get appointments for patient 1" },
+  { id: "agent", label: "Agent Run", fn: "agent", sample: "Get showings for client 1" },
   {
     id: "execute",
     label: "Execute",
     fn: "execute",
-    action: "get_appointments",
-    params: { patient_id: 1 },
+    action: "get_showings",
+    params: { client_id: 1 },
   },
   { id: "knowledge", label: "Knowledge Articles", fn: "knowledge" },
   { id: "llm-providers", label: "LLM Providers", fn: "llm-providers" },
@@ -76,14 +76,14 @@ export default function PlaygroundPage() {
     "pipeline",
   );
   const [prompt, setPrompt] = useState("");
-  const [patientId, setPatientId] = useState<number | "">("");
+  const [clientId, setClientId] = useState<number | "">("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<PipelineResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [serviceResult, setServiceResult] = useState<Record<string, unknown> | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [actions, setActions] = useState<string[]>([]);
-  const [patients, setPatients] = useState<{ id: number; fullName: string }[]>([]);
+  const [clients, setClients] = useState<{ id: number; fullName: string }[]>([]);
   const [flowSteps, setFlowSteps] = useState<{ name: string; status: string }[]>([]);
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [runningAll, setRunningAll] = useState(false);
@@ -117,11 +117,11 @@ export default function PlaygroundPage() {
     let mounted = true;
     Promise.all([
       listExecutionActions().catch(() => ({ actions: [] })),
-      getPatients().catch(() => []),
-    ]).then(([actionsRes, patientsList]) => {
+      getClients().catch(() => []),
+    ]).then(([actionsRes, clientsList]) => {
       if (mounted) {
         setActions(actionsRes?.actions ?? []);
-        setPatients(Array.isArray(patientsList) ? patientsList : []);
+        setClients(Array.isArray(clientsList) ? clientsList : []);
       }
     });
     return () => {
@@ -148,7 +148,7 @@ export default function PlaygroundPage() {
 
     try {
       const res = await runPipeline(prompt, {
-        patient_id: patientId !== "" ? patientId : undefined,
+        client_id: clientId !== "" ? clientId : undefined,
       });
       setResponse(res);
       setFlowSteps([
@@ -429,7 +429,10 @@ export default function PlaygroundPage() {
                     <>
                       <p>Conversations: {metrics.summary.conversations_total}</p>
                       <p>Tenants: {metrics.summary.tenants_count}</p>
-                      <p>Patients: {metrics.summary.patients_count}</p>
+                      <p>Clients: {metrics.summary.clients_count ?? metrics.summary.patients_count}</p>
+                      <p>Showings: {metrics.summary.showings_count ?? metrics.summary.appointments_count}</p>
+                      <p>Listings: {metrics.summary.listings_count ?? 0}</p>
+                      <p>Leads: {metrics.summary.leads_count ?? 0}</p>
                     </>
                   )}
                   {metrics.performance?.overall_metrics &&
@@ -469,19 +472,19 @@ export default function PlaygroundPage() {
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ask about appointments, billing, prescriptions..."
+              placeholder="Ask about showings, listings, financing, maintenance..."
               className="flex-grow bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-aurixa-500/50"
             />
             <select
-              aria-label="Patient context"
-              value={patientId}
-              onChange={(e) => setPatientId(e.target.value ? Number(e.target.value) : "")}
+              aria-label="Client context"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value ? Number(e.target.value) : "")}
               className="bg-surface-secondary/50 border border-white/10 rounded-lg px-4 py-3 text-white max-w-[180px]"
             >
-              <option value="">No patient</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.fullName} (#{p.id})
+              <option value="">No client</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.fullName} (#{client.id})
                 </option>
               ))}
             </select>
@@ -635,8 +638,8 @@ export default function PlaygroundPage() {
               Execution Engine Actions
             </h2>
             <p className="text-white/50 text-sm mb-4">
-              DB-backed: get_appointments, create_appointment, check_insurance, get_availability,
-              request_prescription_refill
+              DB-backed: get_showings, create_showing, get_client_financing, get_listings,
+              create_service_request, create_lead
             </p>
             <div className="flex flex-wrap gap-2">
               {actions.map((a) => (
@@ -652,7 +655,7 @@ export default function PlaygroundPage() {
               <button
                 onClick={async () => {
                   try {
-                    const r = await executeAction("get_appointments", { patient_id: 1 });
+                    const r = await executeAction("get_showings", { client_id: 1 });
                     setServiceResult(r as Record<string, unknown>);
                     setServiceError(null);
                   } catch (e) {
@@ -661,12 +664,12 @@ export default function PlaygroundPage() {
                 }}
                 className="px-4 py-2 rounded-lg bg-aurixa-600/30 hover:bg-aurixa-600/50 text-aurixa-300 text-sm"
               >
-                get_appointments(1)
+                get_showings(1)
               </button>
               <button
                 onClick={async () => {
                   try {
-                    const r = await executeAction("check_insurance", { patient_id: 1 });
+                    const r = await executeAction("get_client_financing", { client_id: 1 });
                     setServiceResult(r as Record<string, unknown>);
                     setServiceError(null);
                   } catch (e) {
@@ -675,12 +678,12 @@ export default function PlaygroundPage() {
                 }}
                 className="px-4 py-2 rounded-lg bg-aurixa-600/30 hover:bg-aurixa-600/50 text-aurixa-300 text-sm"
               >
-                check_insurance(1)
+                get_client_financing(1)
               </button>
               <button
                 onClick={async () => {
                   try {
-                    const r = await executeAction("get_availability", { date: "tomorrow" });
+                    const r = await executeAction("get_listings", { tenant_id: 1 });
                     setServiceResult(r as Record<string, unknown>);
                     setServiceError(null);
                   } catch (e) {
@@ -689,14 +692,14 @@ export default function PlaygroundPage() {
                 }}
                 className="px-4 py-2 rounded-lg bg-aurixa-600/30 hover:bg-aurixa-600/50 text-aurixa-300 text-sm"
               >
-                get_availability(tomorrow)
+                get_listings(1)
               </button>
               <button
                 onClick={async () => {
                   try {
-                    const r = await executeAction("create_appointment", {
-                      patient_id: 1,
-                      reason: "Checkup",
+                    const r = await executeAction("create_showing", {
+                      client_id: 1,
+                      reason: "Second walkthrough",
                     });
                     setServiceResult(r as Record<string, unknown>);
                     setServiceError(null);
@@ -707,12 +710,16 @@ export default function PlaygroundPage() {
                 className="px-4 py-2 rounded-lg bg-green-600/30 hover:bg-green-600/50 text-green-300 text-sm"
                 title="DB write"
               >
-                create_appointment(1)
+                create_showing(1)
               </button>
               <button
                 onClick={async () => {
                   try {
-                    const r = await executeAction("request_prescription_refill", { patient_id: 1 });
+                    const r = await executeAction("create_service_request", {
+                      client_id: 1,
+                      category: "maintenance",
+                      description: "Leaky faucet",
+                    });
                     setServiceResult(r as Record<string, unknown>);
                     setServiceError(null);
                   } catch (e) {
@@ -722,7 +729,7 @@ export default function PlaygroundPage() {
                 className="px-4 py-2 rounded-lg bg-green-600/30 hover:bg-green-600/50 text-green-300 text-sm"
                 title="DB write"
               >
-                request_prescription_refill(1)
+                create_service_request(1)
               </button>
             </div>
           </section>

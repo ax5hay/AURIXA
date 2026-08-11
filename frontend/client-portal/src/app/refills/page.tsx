@@ -1,34 +1,23 @@
-import { UnavailableCareSection } from "@/components/UnavailableCareSection";
+import { UnavailableSection } from "@/components/UnavailableSection";
 
 export default function RefillsPage() {
   return (
-    <UnavailableCareSection
-      eyebrow="Medicines"
-      title="Refills"
-      description="Prepare a complete refill request and send it through a verified channel."
-      unavailableTitle="Refill requests cannot be submitted here"
-      unavailableBody="No prescribing or pharmacy API is connected. This portal will not show a confirmation or imply that a refill request reached your clinician."
-      checklist={[
-        "Medication name and strength from the label",
-        "Prescription number and pharmacy phone number",
-        "Days of supply remaining and the prescribing clinician",
-      ]}
+    <UnavailableSection
+      eyebrow="Maintenance"
+      title="Service requests"
+      description="This legacy route redirects to maintenance. Use maintenance for property service follow-up."
+      unavailableTitle="Use the maintenance page"
+      unavailableBody="Service request status will sync from your property manager in a later phase. For urgent property emergencies, contact on-call maintenance or call 911 for life-safety issues."
       steps={[
         {
-          title: "Start with your pharmacy",
+          title: "Open maintenance",
           icon: "refresh",
-          body: "Use the pharmacy named on your medication label. Have the medication name, prescription number, remaining supply, and prescriber ready.",
-        },
-        {
-          title: "Allow time for review",
-          icon: "clock",
-          body: "Some medicines require a visit, monitoring, or prior authorization. Contact your care team early using their established secure channel.",
+          body: "Report maintenance issues for rental or managed properties from the maintenance section.",
         },
       ]}
       related={[
-        { href: "/medications", label: "Medication guidance" },
-        { href: "/chat", label: "Care messages" },
-        { href: "/appointments", label: "Appointments" },
+        { href: "/maintenance", label: "Maintenance" },
+        { href: "/help", label: "Help" },
       ]}
     />
   );

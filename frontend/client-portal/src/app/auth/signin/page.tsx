@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, Card } from "@aurixa/ui-kit";
 
-const oidcReady = Boolean(process.env.NEXT_PUBLIC_PATIENT_OIDC_READY === "true");
+const oidcReady = Boolean(
+  process.env.NEXT_PUBLIC_CLIENT_OIDC_READY === "true" ||
+    process.env.NEXT_PUBLIC_PATIENT_OIDC_READY === "true",
+);
 
-export default function PatientSignInPage() {
+export default function ClientSignInPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -19,13 +22,13 @@ export default function PatientSignInPage() {
       const response = await fetch("/api/auth/local-demo", { method: "POST" });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error ?? "Patient sign-in is unavailable.");
+        throw new Error(body?.error ?? "Client sign-in is unavailable.");
       }
       const returnTo = searchParams.get("returnTo");
       router.replace(returnTo?.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Patient sign-in is unavailable.");
+      setError(caught instanceof Error ? caught.message : "Client sign-in is unavailable.");
     } finally {
       setLoading(false);
     }
@@ -38,12 +41,13 @@ export default function PatientSignInPage() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg items-center px-4 py-12">
       <Card variant="feature" padding="lg" className="w-full">
-        <p className="eyebrow">AURIXA patient portal</p>
+        <p className="eyebrow">AURIXA client portal</p>
         <h1 className="font-display text-4xl font-medium tracking-[-0.04em] text-ui-ink">
-          Your care, kept private
+          Your property journey
         </h1>
         <p className="mt-4 text-base leading-7 text-ui-muted">
-          Sign in through your healthcare organization to view personal care information.
+          Sign in through your brokerage or property manager to view showings, listings, and
+          messages.
         </p>
 
         {error && (

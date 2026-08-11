@@ -3,7 +3,7 @@
 import { Button, Dialog, Icon, SearchInput } from "@aurixa/ui-kit";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getPatients, type Patient } from "@/app/api";
+import { getClients, type Client } from "@/app/api";
 import { useStaffContext } from "@/context/StaffContext";
 
 interface NavigationItem {
@@ -17,8 +17,8 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
   const { tenantId } = useStaffContext();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(false);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -34,13 +34,13 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
   }, []);
 
   useEffect(() => {
-    if (!open || patients.length) return;
-    setLoadingPatients(true);
-    getPatients(tenantId)
-      .then(setPatients)
-      .catch(() => setPatients([]))
-      .finally(() => setLoadingPatients(false));
-  }, [open, patients.length, tenantId]);
+    if (!open || clients.length) return;
+    setLoadingClients(true);
+    getClients(tenantId)
+      .then(setClients)
+      .catch(() => setClients([]))
+      .finally(() => setLoadingClients(false));
+  }, [open, clients.length, tenantId]);
 
   useEffect(() => {
     if (open) window.setTimeout(() => inputRef.current?.focus(), 20);
@@ -56,14 +56,14 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
         description: "Workspace",
         href: item.href,
       })),
-      ...patients.map((patient) => ({
-        key: `patient-${patient.id}`,
-        label: patient.fullName,
-        description: `Patient record #${patient.id}`,
-        href: `/patients/${patient.id}`,
+      ...clients.map((client) => ({
+        key: `client-${client.id}`,
+        label: client.fullName,
+        description: `Client record #${client.id}`,
+        href: `/clients/${client.id}`,
       })),
     ],
-    [navigation, patients],
+    [navigation, clients],
   );
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -91,19 +91,19 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
       <Dialog
         open={open}
         onOpenChange={setOpen}
-        title="Find a patient or page"
+        title="Find a client or page"
         description="Search within your verified organization scope."
       >
         <SearchInput
           ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Patient name, record number, or page"
-          aria-label="Search commands and patients"
+          placeholder="Client name, record number, or page"
+          aria-label="Search commands and clients"
           role="combobox"
           aria-expanded="true"
-          aria-controls="hospital-command-results"
-          aria-activedescendant={results[selected] ? `hospital-command-${selected}` : undefined}
+          aria-controls="workspace-command-results"
+          aria-activedescendant={results[selected] ? `workspace-command-${selected}` : undefined}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
               event.preventDefault();
@@ -117,12 +117,12 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
             }
           }}
         />
-        <div id="hospital-command-results" role="listbox" className="mt-3 max-h-80 overflow-y-auto">
-          {loadingPatients && <p className="px-3 py-2 text-xs text-ui-muted">Loading patient index…</p>}
+        <div id="workspace-command-results" role="listbox" className="mt-3 max-h-80 overflow-y-auto">
+          {loadingClients && <p className="px-3 py-2 text-xs text-ui-muted">Loading client index…</p>}
           {results.map((item, index) => (
             <button
               key={item.key}
-              id={`hospital-command-${index}`}
+              id={`workspace-command-${index}`}
               type="button"
               role="option"
               aria-selected={index === selected}
@@ -137,8 +137,8 @@ export function CommandPalette({ navigation }: { navigation: NavigationItem[] })
               <Icon name="chevron-right" size="sm" className="text-ui-faint" />
             </button>
           ))}
-          {!loadingPatients && !results.length && (
-            <p className="py-8 text-center text-sm text-ui-muted">No matching patient or page.</p>
+          {!loadingClients && !results.length && (
+            <p className="py-8 text-center text-sm text-ui-muted">No matching client or page.</p>
           )}
         </div>
       </Dialog>

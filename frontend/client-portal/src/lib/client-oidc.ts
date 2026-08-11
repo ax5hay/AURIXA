@@ -1,24 +1,32 @@
-/** Production OIDC readiness for the patient portal. */
+/** Production OIDC readiness for the client portal. */
 
-export function patientOidcConfigured() {
+function env(name: string, legacy?: string): string | undefined {
+  return process.env[name] ?? (legacy ? process.env[legacy] : undefined);
+}
+
+export function clientOidcConfigured() {
   return Boolean(
-    process.env.PATIENT_OIDC_ISSUER &&
-      process.env.PATIENT_OIDC_CLIENT_ID &&
-      process.env.PATIENT_OIDC_REDIRECT_URI,
+    env("CLIENT_OIDC_ISSUER", "PATIENT_OIDC_ISSUER") &&
+      env("CLIENT_OIDC_CLIENT_ID", "PATIENT_OIDC_CLIENT_ID") &&
+      env("CLIENT_OIDC_REDIRECT_URI", "PATIENT_OIDC_REDIRECT_URI"),
   );
 }
 
-export function patientOidcAuthorizeUrl(state: string) {
-  const issuer = process.env.PATIENT_OIDC_ISSUER;
-  const clientId = process.env.PATIENT_OIDC_CLIENT_ID;
-  const redirectUri = process.env.PATIENT_OIDC_REDIRECT_URI;
-  if (!issuer || !clientId || !redirectUri) return null;
-
-  const url = new URL(`${issuer.replace(/\/$/, "")}/authorize`);
+export function clientOidcAuthorizeUrl(state: string) {
+  const issuer = env("CLIENT_OIDC_ISSUER", "PATIENT_OIDC_ISSUER");
+  const clientId = env("CLIENT_OIDC_CLIENT_ID", "PATIENT_OIDC_CLIENT_ID");
+  const redirectUri = env("CLIENT_OIDC_REDIRECT_URI", "PATIENT_OIDC_REDIRECT_URI");
+  if (!issuer || !clientId || !redirectUri) {
+    throw new Error("Client OIDC is not configured.");
+  }
+  const url = new URL(`${issuer.replace(/\/$/, "")}/oauth2/v2.0/authorize`);
   url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", process.env.PATIENT_OIDC_SCOPE ?? "openid profile email");
+  url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
+  url.searchParams.set(
+    "scope",
+    env("CLIENT_OIDC_SCOPE", "PATIENT_OIDC_SCOPE") ?? "openid profile email",
+  );
   return url.toString();
 }

@@ -2,6 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
   - "frontend/dashboard"
-  - "frontend/patient-portal"
-  - "frontend/hospital-portal"
+  - "frontend/client-portal"
+  - "frontend/agent-workspace"
   - "e2e"

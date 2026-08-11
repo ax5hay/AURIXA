@@ -9,6 +9,7 @@ import {
   Icon,
   type IconName,
   PageHeader,
+  RealEstateDisclaimer,
   SearchSelect,
   StatusBadge,
 } from "@aurixa/ui-kit";
@@ -28,8 +29,10 @@ const icons: IconName[] = [
 
 const themes = [
   { value: "operator", label: "Operator", description: "Technical, precise, status-led" },
-  { value: "clinical", label: "Clinical", description: "Dense, clear, task-oriented" },
-  { value: "patient", label: "Patient", description: "Warm, calm, editorial" },
+  { value: "workspace", label: "Agent workspace", description: "Dense, clear, task-oriented" },
+  { value: "client", label: "Client portal", description: "Warm, calm, editorial" },
+  { value: "clinical", label: "Clinical (legacy)", description: "Alias for agent workspace theme" },
+  { value: "patient", label: "Patient (legacy)", description: "Alias for client portal theme" },
 ];
 
 const chartColors = [
@@ -121,10 +124,16 @@ export default function FoundationsPage() {
             </div>
           </Card>
           <Card>
-            <h2 className="font-display text-xl font-medium">Healthcare disclaimers</h2>
+            <h2 className="font-display text-xl font-medium">Real estate disclaimers</h2>
+            <div className="mt-4 space-y-3">
+              <RealEstateDisclaimer variant="assistant-limits" />
+              <RealEstateDisclaimer variant="fair-housing" />
+            </div>
+          </Card>
+          <Card>
+            <h2 className="font-display text-xl font-medium">Deprecated disclaimer wrapper</h2>
             <div className="mt-4 space-y-3">
               <HealthcareDisclaimer variant="assistant-limits" />
-              <HealthcareDisclaimer variant="emergency" />
             </div>
           </Card>
         </section>

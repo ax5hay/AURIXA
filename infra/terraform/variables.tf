@@ -64,7 +64,7 @@ variable "service_repositories" {
     "api-gateway", "orchestration-engine", "llm-router", "agent-runtime",
     "rag-service", "safety-guardrails", "streaming-voice", "execution-engine",
     "observability-core", "deployment-controller", "dashboard",
-    "patient-portal", "hospital-portal", "db-migrations"
+    "client-portal", "agent-workspace", "db-migrations"
   ]
 }
 

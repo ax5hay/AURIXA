@@ -82,6 +82,104 @@ importers:
         specifier: ^1.51.0
         version: 1.62.1
 
+  frontend/agent-workspace:
+    dependencies:
+      '@aurixa/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      framer-motion:
+        specifier: ^11.15.0
+        version: 11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next:
+        specifier: ^15.1.0
+        version: 15.5.12(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3.3.0
+        version: 3.3.6
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      autoprefixer:
+        specifier: ^10.4.0
+        version: 10.4.24(postcss@8.5.6)
+      eslint:
+        specifier: ^9.21.0
+        version: 9.39.5(jiti@1.21.7)
+      eslint-config-next:
+        specifier: ^15.1.0
+        version: 15.5.23(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+      postcss:
+        specifier: ^8.4.0
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19(tsx@4.21.0)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.11)(jiti@1.21.7)(tsx@4.21.0)
+
+  frontend/client-portal:
+    dependencies:
+      '@aurixa/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      framer-motion:
+        specifier: ^11.15.0
+        version: 11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      next:
+        specifier: ^15.1.0
+        version: 15.5.12(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3.3.0
+        version: 3.3.6
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.11
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      autoprefixer:
+        specifier: ^10.4.0
+        version: 10.4.24(postcss@8.5.6)
+      eslint:
+        specifier: ^9.21.0
+        version: 9.39.5(jiti@1.21.7)
+      eslint-config-next:
+        specifier: ^15.1.0
+        version: 15.5.23(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
+      postcss:
+        specifier: ^8.4.0
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19(tsx@4.21.0)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@22.19.11)(jiti@1.21.7)(tsx@4.21.0)
+
   frontend/dashboard:
     dependencies:
       '@aurixa/ui-kit':
@@ -136,104 +234,6 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
-
-  frontend/hospital-portal:
-    dependencies:
-      '@aurixa/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
-      framer-motion:
-        specifier: ^11.15.0
-        version: 11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      next:
-        specifier: ^15.1.0
-        version: 15.5.12(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react:
-        specifier: ^19.0.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@eslint/eslintrc':
-        specifier: ^3.3.0
-        version: 3.3.6
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.11
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.14
-      autoprefixer:
-        specifier: ^10.4.0
-        version: 10.4.24(postcss@8.5.6)
-      eslint:
-        specifier: ^9.21.0
-        version: 9.39.5(jiti@1.21.7)
-      eslint-config-next:
-        specifier: ^15.1.0
-        version: 15.5.23(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
-      postcss:
-        specifier: ^8.4.0
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^3.4.0
-        version: 3.4.19(tsx@4.21.0)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.19.11)(jiti@1.21.7)(tsx@4.21.0)
-
-  frontend/patient-portal:
-    dependencies:
-      '@aurixa/ui-kit':
-        specifier: workspace:*
-        version: link:../../packages/ui-kit
-      framer-motion:
-        specifier: ^11.15.0
-        version: 11.18.2(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      next:
-        specifier: ^15.1.0
-        version: 15.5.12(@opentelemetry/api@1.9.0)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      react:
-        specifier: ^19.0.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.4(react@19.2.4)
-    devDependencies:
-      '@eslint/eslintrc':
-        specifier: ^3.3.0
-        version: 3.3.6
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.11
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.14
-      autoprefixer:
-        specifier: ^10.4.0
-        version: 10.4.24(postcss@8.5.6)
-      eslint:
-        specifier: ^9.21.0
-        version: 9.39.5(jiti@1.21.7)
-      eslint-config-next:
-        specifier: ^15.1.0
-        version: 15.5.23(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
-      postcss:
-        specifier: ^8.4.0
-        version: 8.5.6
-      tailwindcss:
-        specifier: ^3.4.0
-        version: 3.4.19(tsx@4.21.0)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/node@22.19.11)(jiti@1.21.7)(tsx@4.21.0)
 
   packages/auth:
     dependencies:
@@ -7360,8 +7360,8 @@ snapshots:
       '@typescript-eslint/parser': 8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
       eslint: 9.39.5(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@1.21.7))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@1.21.7))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.5(jiti@1.21.7))
       eslint-plugin-react: 7.37.5(eslint@9.39.5(jiti@1.21.7))
       eslint-plugin-react-hooks: 5.2.0(eslint@9.39.5(jiti@1.21.7))
@@ -7380,7 +7380,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@1.21.7)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -7391,22 +7391,22 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@1.21.7))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)):
+  eslint-module-utils@2.14.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@1.21.7)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3)
       eslint: 9.39.5(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.5(jiti@1.21.7))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@1.21.7)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -7417,7 +7417,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.5(jiti@1.21.7)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7)))(eslint@9.39.5(jiti@1.21.7))
+      eslint-module-utils: 2.14.0(@typescript-eslint/parser@8.66.0(eslint@9.39.5(jiti@1.21.7))(typescript@5.9.3))(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.5(jiti@1.21.7))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3

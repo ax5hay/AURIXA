@@ -1,17 +1,20 @@
 # AURIXA UI kit
 
-Shared foundations for the patient, clinical, and operator products. Components
-are theme-aware and use semantic `ui-*` Tailwind utilities rather than product
-colors.
+Shared foundations for the client portal, agent workspace, and operator console.
+Components are theme-aware and use semantic `ui-*` Tailwind utilities rather than
+product colors.
 
 ## Themes and tokens
 
 Import `@aurixa/ui-kit/src/styles/themes.css` once in each frontend and set one
 of these themes on the document root:
 
-- `patient` — warm, editorial, mobile-first
-- `clinical` — crisp, dense, task-oriented
-- `operator` — dark, technical, status-led (also the default)
+- `client` — warm, editorial, mobile-first (client portal)
+- `workspace` — crisp, dense, task-oriented (agent workspace)
+- `operator` — dark, technical, status-led (dashboard; also the default)
+
+Legacy aliases `patient` → `client` and `clinical` → `workspace` remain for
+backward compatibility during migration.
 
 The CSS contract covers canvas/surface/ink, borders, brand and status colors,
 chart colors, typography, spacing, radii, elevation, focus, motion, shell
@@ -61,8 +64,8 @@ comfortable/compact density. Products supply navigation content:
 2. Use at least 44px targets for primary controls and mobile navigation.
 3. Announce loading/errors, keep retry near the failed region, and preserve
    entered values across retries.
-4. Confirm consequential clinical/production actions explicitly. Optimistic
-   updates are for safely reversible actions only.
+4. Confirm consequential production actions explicitly. Optimistic updates are
+   for safely reversible actions only.
 5. Test keyboard-only, reduced motion, forced colors, 200% zoom, and widths
    from 320px through wide workstations.
 
@@ -85,8 +88,9 @@ pnpm --filter @aurixa/ui-kit build
 pnpm --filter @aurixa/ui-kit storybook
 ```
 
-Shared healthcare helpers:
+Shared real estate helpers:
 
-- `HealthcareDisclaimer` — emergency / assistant-limits / not-diagnosis copy
+- `RealEstateDisclaimer` — fair-housing / assistant-limits / not-legal copy
+- `HealthcareDisclaimer` — deprecated alias mapping to `RealEstateDisclaimer`
 - `resolveProductStatus` / `humanizeStatus` — map free-form API statuses
 - `AsyncBoundary` — Suspense + recoverable render errors

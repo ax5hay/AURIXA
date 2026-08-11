@@ -22,7 +22,8 @@
     "deploy:status": "node scripts/deploy.js status",
     "test:e2e": "pnpm --filter @aurixa/e2e test:smoke",
     "test:visual": "pnpm --filter @aurixa/e2e test:visual",
-    "budget:frontends": "node scripts/frontend-bundle-budget.mjs"
+    "budget:frontends": "node scripts/frontend-bundle-budget.mjs",
+    "check:domain-copy": "bash scripts/check-real-estate-domain-copy.sh"
   },
   "devDependencies": {
     "prettier": "^3.5.0",

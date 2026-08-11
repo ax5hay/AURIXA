@@ -1,31 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { applyPatientPreference, preferenceEnabled } from "./patient-preferences";
-import { isSectionActive, PATIENT_SECTIONS } from "./patient-sections";
+import { applyClientPreference, preferenceEnabled } from "./client-preferences";
+import { isSectionActive, CLIENT_SECTIONS } from "./client-sections";
 
-describe("patient expansion navigation", () => {
-  it("includes every expanded patient area without duplicate routes", () => {
-    const routes = PATIENT_SECTIONS.map((section) => section.href);
+describe("client expansion navigation", () => {
+  it("includes every expanded client area without duplicate routes", () => {
+    const routes = CLIENT_SECTIONS.map((section) => section.href);
     expect(routes).toEqual([
-      "/records",
-      "/results",
+      "/listings",
       "/documents",
-      "/medications",
-      "/refills",
-      "/billing",
-      "/insurance",
+      "/applications",
+      "/financing",
+      "/maintenance",
       "/notifications",
     ]);
     expect(new Set(routes).size).toBe(routes.length);
   });
 
   it("keeps related routes active in their navigation group", () => {
-    expect(isSectionActive("/results", "/records", ["/results", "/documents"])).toBe(true);
-    expect(isSectionActive("/insurance", "/billing", ["/insurance"])).toBe(true);
-    expect(isSectionActive("/appointments", "/records", ["/results"])).toBe(false);
+    expect(isSectionActive("/applications", "/documents", ["/applications"])).toBe(true);
+    expect(isSectionActive("/maintenance", "/financing", ["/maintenance"])).toBe(true);
+    expect(isSectionActive("/showings", "/listings", ["/documents"])).toBe(false);
   });
 });
 
-describe("local patient preferences", () => {
+describe("local client preferences", () => {
   it("only treats an explicit true value as enabled", () => {
     expect(preferenceEnabled("true")).toBe(true);
     expect(preferenceEnabled("false")).toBe(false);
@@ -34,9 +32,9 @@ describe("local patient preferences", () => {
 
   it("maps preferences to portal data attributes", () => {
     const root = { dataset: {} } as unknown as HTMLElement;
-    applyPatientPreference(root, "highContrast", true);
-    applyPatientPreference(root, "reduceMotion", false);
-    expect(root.dataset.patientHighContrast).toBe("true");
-    expect(root.dataset.patientReduceMotion).toBe("false");
+    applyClientPreference(root, "highContrast", true);
+    applyClientPreference(root, "reduceMotion", false);
+    expect(root.dataset.clientHighContrast).toBe("true");
+    expect(root.dataset.clientReduceMotion).toBe("false");
   });
 });

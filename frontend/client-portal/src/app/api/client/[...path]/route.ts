@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
-  PATIENT_SESSION_COOKIE,
-  resolvePatientSession,
-  type PatientSession,
-} from "@/lib/patient-session";
+  CLIENT_SESSION_COOKIE,
+  LEGACY_PATIENT_SESSION_COOKIE,
+  resolveClientSession,
+  type ClientSession,
+} from "@/lib/client-session";
 
 const API_GATEWAY_URL = (
   process.env.API_GATEWAY_URL ??
@@ -14,9 +15,11 @@ const API_GATEWAY_URL = (
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-async function currentSession(): Promise<PatientSession | null> {
+async function currentSession(): Promise<ClientSession | null> {
   const store = await cookies();
-  return resolvePatientSession(store.get(PATIENT_SESSION_COOKIE)?.value);
+  const token =
+    store.get(CLIENT_SESSION_COOKIE)?.value ?? store.get(LEGACY_PATIENT_SESSION_COOKIE)?.value;
+  return resolveClientSession(token);
 }
 
 async function gatewayFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -28,7 +31,7 @@ async function gatewayFetch(path: string, init?: RequestInit): Promise<Response>
 }
 
 async function forward(response: Response): Promise<NextResponse> {
-  const result = new NextResponse(await response.arrayBuffer(), {
+  return new NextResponse(await response.arrayBuffer(), {
     status: response.status,
     headers: {
       "Content-Type": response.headers.get("content-type") ?? "application/json",
@@ -36,23 +39,22 @@ async function forward(response: Response): Promise<NextResponse> {
       "X-Content-Type-Options": "nosniff",
     },
   });
-  return result;
 }
 
 function unauthorized() {
   return NextResponse.json(
-    { error: "A valid patient session is required." },
+    { error: "A valid client session is required." },
     { status: 401, headers: { "Cache-Control": "no-store" } },
   );
 }
 
-async function verifyAppointmentOwnership(session: PatientSession, appointmentId: number) {
-  const response = await gatewayFetch(`admin/patients/${session.patientId}/appointments`);
+async function verifyShowingOwnership(session: ClientSession, showingId: number) {
+  const response = await gatewayFetch(`admin/clients/${session.clientId}/showings`);
   if (!response.ok) return { response };
-  const appointments = (await response.json()) as Array<{ id?: number }>;
+  const showings = (await response.json()) as Array<{ id?: number }>;
   return {
     response,
-    owned: appointments.some((appointment) => appointment.id === appointmentId),
+    owned: showings.some((showing) => showing.id === showingId),
   };
 }
 
@@ -67,37 +69,36 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     if (resource === "session") {
       return NextResponse.json(
-        {
-          expiresAt: session.expiresAt,
-          demo: session.demo,
-        },
+        { expiresAt: session.expiresAt, demo: session.demo },
         { headers: { "Cache-Control": "private, no-store" } },
       );
     }
-    if (resource === "me") {
-      const response = await gatewayFetch(`admin/patients/${session.patientId}`);
+    if (resource === "me" || resource === "profile") {
+      const response = await gatewayFetch(`admin/clients/${session.clientId}`);
       if (!response.ok) return forward(response);
-      const patient = (await response.json()) as { tenantId?: number };
-      if (patient.tenantId != null && patient.tenantId !== session.tenantId) {
-        return NextResponse.json(
-          { error: "Patient scope could not be verified." },
-          { status: 403 },
-        );
+      const client = (await response.json()) as { tenantId?: number };
+      if (client.tenantId != null && client.tenantId !== session.tenantId) {
+        return NextResponse.json({ error: "Client scope could not be verified." }, { status: 403 });
       }
-      return NextResponse.json(patient, { headers: { "Cache-Control": "private, no-store" } });
+      return NextResponse.json(client, { headers: { "Cache-Control": "private, no-store" } });
     }
-    if (resource === "appointments") {
-      return forward(await gatewayFetch(`admin/patients/${session.patientId}/appointments`));
+    if (resource === "showings") {
+      return forward(await gatewayFetch(`admin/clients/${session.clientId}/showings`));
+    }
+    if (resource === "listings") {
+      return forward(
+        await gatewayFetch(`admin/listings?tenant_id=${session.tenantId}&status=active`),
+      );
     }
     if (resource === "conversations") {
-      return forward(await gatewayFetch(`admin/patients/${session.patientId}/conversations`));
+      return forward(await gatewayFetch(`admin/clients/${session.clientId}/conversations`));
     }
     if (resource === "knowledge") {
       return forward(await gatewayFetch(`admin/knowledge/articles?tenant_id=${session.tenantId}`));
     }
-    return NextResponse.json({ error: "Patient resource not found." }, { status: 404 });
+    return NextResponse.json({ error: "Client resource not found." }, { status: 404 });
   } catch {
-    return NextResponse.json({ error: "The care service is unavailable." }, { status: 502 });
+    return NextResponse.json({ error: "The real estate service is unavailable." }, { status: 502 });
   }
 }
 
@@ -109,7 +110,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    if (resource === "messages") {
+    if (resource === "messages" || resource === "chat") {
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
       if (!prompt || prompt.length > 4_000) {
         return NextResponse.json(
@@ -121,7 +122,7 @@ export async function POST(request: Request, context: RouteContext) {
         await gatewayFetch("orchestration/pipelines", {
           method: "POST",
           headers: JSON_HEADERS,
-          body: JSON.stringify({ prompt, patient_id: session.patientId }),
+          body: JSON.stringify({ prompt, client_id: session.clientId }),
         }),
       );
     }
@@ -133,7 +134,7 @@ export async function POST(request: Request, context: RouteContext) {
           body: JSON.stringify({
             audio_b64: body.audio_b64,
             want_tts: body.want_tts !== false,
-            patient_id: session.patientId,
+            client_id: session.clientId,
           }),
         }),
       );
@@ -147,9 +148,9 @@ export async function POST(request: Request, context: RouteContext) {
         }),
       );
     }
-    return NextResponse.json({ error: "Patient action not found." }, { status: 404 });
+    return NextResponse.json({ error: "Client action not found." }, { status: 404 });
   } catch {
-    return NextResponse.json({ error: "The care service is unavailable." }, { status: 502 });
+    return NextResponse.json({ error: "The real estate service is unavailable." }, { status: 502 });
   }
 }
 
@@ -157,35 +158,35 @@ export async function PATCH(request: Request, context: RouteContext) {
   const session = await currentSession();
   if (!session) return unauthorized();
   const { path } = await context.params;
-  if (path.length !== 2 || path[0] !== "appointments") {
-    return NextResponse.json({ error: "Patient action not found." }, { status: 404 });
+  if (path.length !== 2 || path[0] !== "showings") {
+    return NextResponse.json({ error: "Client action not found." }, { status: 404 });
   }
-  const appointmentId = Number(path[1]);
-  if (!Number.isSafeInteger(appointmentId) || appointmentId < 1) {
-    return NextResponse.json({ error: "Invalid appointment." }, { status: 400 });
+  const showingId = Number(path[1]);
+  if (!Number.isSafeInteger(showingId) || showingId < 1) {
+    return NextResponse.json({ error: "Invalid showing." }, { status: 400 });
   }
 
   try {
     const body = (await request.json()) as { status?: string };
     if (body.status !== "cancelled") {
       return NextResponse.json(
-        { error: "Only cancellation is available to patients." },
+        { error: "Only cancellation is available to clients." },
         { status: 400 },
       );
     }
-    const ownership = await verifyAppointmentOwnership(session, appointmentId);
+    const ownership = await verifyShowingOwnership(session, showingId);
     if (!ownership.response.ok) return forward(ownership.response);
     if (!ownership.owned) {
-      return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
+      return NextResponse.json({ error: "Showing not found." }, { status: 404 });
     }
     return forward(
-      await gatewayFetch(`admin/appointments/${appointmentId}`, {
+      await gatewayFetch(`admin/showings/${showingId}`, {
         method: "PATCH",
         headers: JSON_HEADERS,
         body: JSON.stringify({ status: "cancelled" }),
       }),
     );
   } catch {
-    return NextResponse.json({ error: "The appointment could not be updated." }, { status: 502 });
+    return NextResponse.json({ error: "The showing could not be updated." }, { status: 502 });
   }
 }

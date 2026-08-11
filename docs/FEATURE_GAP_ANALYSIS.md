@@ -9,13 +9,13 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 | Layer                     | Prompt Requirement                                   | Current Implementation                               | Gap                                               |
 | ------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- |
-| Channel                   | Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR | Voice WebSocket, Webchat (patient portal/playground) | SMS, WhatsApp, Mobile SDK, IVR missing            |
+| Channel                   | Voice, SMS, Webchat, WhatsApp, Mobile SDK, Smart IVR | Voice REST/WS, Webchat (client portal/playground)    | SMS, WhatsApp, Mobile SDK, IVR missing            |
 | Streaming                 | Streaming ASR, duplex, partial transcripts, <800ms   | Text + placeholder audio; no ASR                     | No Whisper/Deepgram; no duplex; high latency      |
 | Conversation Intelligence | Hybrid NLU, semantic routing, confidence scoring     | Keyword-based routing; LOCAL/cloud fallback          | No embeddings; no confidence in routing           |
 | Agent Orchestration       | Tool-using agents, multi-step, LangGraph/CrewAI      | Keyword tool dispatch; no LLM function calling       | Not in pipeline; no state machine                 |
 | RAG 2.0                   | BM25 + vector, rerankers, context injection          | Vector + keyword boost; FAISS                        | No BM25; no rerankers; no history injection       |
-| Safety                    | Risk classifiers, emergency detection, escalation    | Banned words, PII redaction                          | No emergency/escalation                           |
-| Execution                 | EHR, billing, appointments, prescriptions            | send_email, schedule_reminder, log_audit             | No real integrations                              |
+| Safety                    | Risk classifiers, fair housing, escalation             | Banned words, PII redaction, RE escalation policies  | No full compliance program                        |
+| Execution                 | MLS, CRM, showings, financing, maintenance           | DB-backed RE tools + send_email, log_audit            | No production MLS/CRM integrations                |
 | Observability             | Intent accuracy, hallucination, voice metrics        | Mock telemetry only                                  | No live ingestion from pipeline                   |
 | Infrastructure            | GPU/vLLM, K8s, WebRTC                                | Microservices, LM Studio                             | No vLLM; limited scaling                          |
 | Cost Optimization         | 40–70% LLM reduction                                 | Local-first routing                                  | No context compression, caching, distilled models |
@@ -29,7 +29,7 @@ A deep-dive audit of service code against the production-grade conversational AI
 | Channel            | Status      | Location                                               | Notes                                             |
 | ------------------ | ----------- | ------------------------------------------------------ | ------------------------------------------------- |
 | Voice              | Implemented | `streaming-voice` `/ws/stream`, gateway `/voice` proxy | Accepts text + base64 audio; audio is placeholder |
-| Webchat            | Implemented | Patient portal, Playground                             | Chat UI → orchestration pipeline                  |
+| Webchat            | Implemented | Client portal, Playground                              | Chat UI → orchestration pipeline                  |
 | SMS                | Missing     | —                                                      | Requires Twilio/similar adapter                   |
 | WhatsApp           | Missing     | —                                                      | Requires WhatsApp Business API                    |
 | Mobile SDK         | Missing     | —                                                      | Would need iOS/Android native SDK                 |
@@ -96,34 +96,34 @@ A deep-dive audit of service code against the production-grade conversational AI
 
 ---
 
-## 6. Clinical / Compliance Safety
+## 6. Compliance Safety Layer
 
-**Prompt:** Risk classifiers, response validators, emergency detection, PHI leakage, escalation triggers.
+**Prompt:** Risk classifiers, response validators, fair housing / fraud escalation, PII leakage controls.
 
 | Feature                     | Status      | Code Location                                    |
 | --------------------------- | ----------- | ------------------------------------------------ |
 | Banned words                | Implemented | `safety_guardrails/main.py` configurable via env |
 | PII detection               | Implemented | SSN, email, phone, credit card patterns          |
 | PII redaction               | Implemented | Pattern substitution                             |
-| Emergency symptom detection | Missing     | —                                                |
+| Fair housing / fraud        | Implemented | `SAFETY_*` real estate keywords                  |
 | Unsafe advice detection     | Missing     | —                                                |
-| Escalation triggers         | Missing     | No `requires_escalation` flag                    |
+| Escalation triggers         | Implemented | `requires_escalation` + `escalation_type`        |
 
 ---
 
 ## 7. Execution Layer
 
-**Prompt:** Appointment APIs, EHR, billing, prescriptions, insurance verification.
+**Prompt:** Showing APIs, listings, financing, maintenance, lead capture.
 
 | Feature                              | Status      | Code Location                        |
 | ------------------------------------ | ----------- | ------------------------------------ |
 | send_email                           | Placeholder | `execution_engine`                   |
 | schedule_reminder                    | Placeholder | —                                    |
 | log_audit                            | Placeholder | —                                    |
-| get_appointments, create_appointment | Stub        | Execution engine + agent integration |
-| check_insurance, get_availability    | Stub        | —                                    |
-| request_prescription_refill          | Stub        | —                                    |
-| EHR integration                      | Stub        | Scaffolding for real integrations    |
+| get_showings, create_showing         | Stub        | Execution engine + agent integration |
+| get_listings, get_client_financing   | Stub        | —                                    |
+| create_service_request, create_lead  | Stub        | —                                    |
+| MLS / CRM integration                | Stub        | Scaffolding for real integrations    |
 
 ---
 
@@ -174,7 +174,7 @@ A deep-dive audit of service code against the production-grade conversational AI
 ### P3 – Medium-term (Partial)
 
 8. **Streaming ASR:** Deepgram integration when DEEPGRAM_API_KEY set
-9. **Execution:** EHR/appointment adapters (get_appointments, create_appointment, check_insurance, get_availability, request_prescription_refill)
+9. **Execution:** MLS/CRM adapters (`get_showings`, `create_showing`, `get_listings`, `get_client_financing`, `create_service_request`, `create_lead`)
 10. **Channel:** SMS adapter (Twilio) — not implemented
 11. **Cost:** Response caching (ORCHESTRATION_RESPONSE_CACHE_TTL, skip for agent path)
 

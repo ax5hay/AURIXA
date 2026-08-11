@@ -1,6 +1,6 @@
 import type { IconName } from "@aurixa/ui-kit";
 
-export interface PatientSection {
+export interface ClientSection {
   href: string;
   label: string;
   description: string;
@@ -8,60 +8,46 @@ export interface PatientSection {
   capability: "available" | "limited" | "local";
 }
 
-export const PATIENT_SECTIONS: PatientSection[] = [
+export const CLIENT_SECTIONS: ClientSection[] = [
   {
-    href: "/records",
-    label: "Records",
-    description: "Review visit history and understand what clinical information is connected.",
-    icon: "calendar",
-    capability: "limited",
-  },
-  {
-    href: "/results",
-    label: "Results",
-    description: "Learn how to get verified test and imaging results.",
-    icon: "check",
-    capability: "limited",
+    href: "/listings",
+    label: "Listings",
+    description: "Browse active properties and open houses from your brokerage.",
+    icon: "home",
+    capability: "available",
   },
   {
     href: "/documents",
     label: "Documents",
-    description: "Find safe next steps for forms, letters, and visit documents.",
+    description: "Find lease packets, disclosures, and closing checklists.",
     icon: "info",
     capability: "limited",
   },
   {
-    href: "/medications",
-    label: "Medications",
-    description: "Medication safety guidance without an incomplete medicine list.",
-    icon: "info",
-    capability: "limited",
-  },
-  {
-    href: "/refills",
-    label: "Refills",
-    description: "Prepare a refill request through your verified pharmacy or care team.",
-    icon: "refresh",
-    capability: "limited",
-  },
-  {
-    href: "/billing",
-    label: "Billing",
-    description: "Understand where to get an authoritative balance or itemized statement.",
-    icon: "info",
-    capability: "limited",
-  },
-  {
-    href: "/insurance",
-    label: "Insurance",
-    description: "Review what to have ready when confirming coverage.",
+    href: "/applications",
+    label: "Applications",
+    description: "Track rental or buyer application status and required items.",
     icon: "check",
+    capability: "limited",
+  },
+  {
+    href: "/financing",
+    label: "Financing",
+    description: "Review pre-approval steps and what to prepare for lenders.",
+    icon: "info",
+    capability: "limited",
+  },
+  {
+    href: "/maintenance",
+    label: "Maintenance",
+    description: "Submit or follow up on property maintenance requests.",
+    icon: "refresh",
     capability: "limited",
   },
   {
     href: "/notifications",
     label: "Notifications",
-    description: "See notification availability and device-level portal preferences.",
+    description: "Portal notification preferences on this device.",
     icon: "bell",
     capability: "local",
   },

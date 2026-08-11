@@ -17,12 +17,20 @@ OBSERVABILITY_URL = os.getenv("OBSERVABILITY_CORE_HOST", "http://localhost:8008"
 RAG_SERVICE_URL = os.getenv("RAG_SERVICE_HOST", "http://localhost:8004")
 SEMANTIC_ROUTING_THRESHOLD = float(os.getenv("SEMANTIC_ROUTING_THRESHOLD", "0.5"))
 
-# Intent examples for semantic routing - phrase -> optional model override
+# Intent examples for semantic routing (real estate domain)
 INTENT_EXAMPLES: dict[str, list[str]] = {
-    "appointment": ["schedule appointment", "book a visit", "reschedule", "cancel appointment"],
-    "billing": ["bill", "payment", "insurance", "copay", "balance due"],
-    "prescription": ["refill", "prescription", "medication"],
-    "general": ["hello", "help", "hours", "contact"],
+    "showing": ["schedule a showing", "book a tour", "reschedule showing", "cancel showing"],
+    "availability": ["agent availability", "open house times", "when can I tour"],
+    "listing_search": ["find homes", "apartments for rent", "listings near me", "open house"],
+    "listing_detail": ["property details", "square footage", "HOA fees", "listing status"],
+    "financing": ["mortgage", "pre-approval", "down payment", "loan options"],
+    "application": ["rental application", "lease application", "apply for unit"],
+    "offer": ["submit an offer", "counter offer", "earnest money"],
+    "maintenance": ["maintenance request", "repair ticket", "leak in unit"],
+    "neighborhood": ["school district", "commute time", "walk score", "neighborhood info"],
+    "policy": ["fair housing", "pet policy", "HOA rules", "move-in requirements"],
+    "billing_fees": ["application fee", "security deposit", "closing costs", "HOA dues"],
+    "general": ["hello", "help", "office hours", "contact agent"],
 }
 
 # Keyword-based routing (cloud providers for specific use cases)
