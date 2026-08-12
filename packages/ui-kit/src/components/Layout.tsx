@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import clsx from "clsx";
+import { RealEstateAtmosphere } from "./RealEstateAtmosphere";
 
 export type PortalDensity = "comfortable" | "compact";
 
@@ -49,12 +52,13 @@ export function PortalShell({
   return (
     <div
       className={clsx(
-        "ui-re-backdrop min-h-dvh bg-ui-canvas text-ui-ink",
+        "ui-re-backdrop ui-re-backdrop--lit min-h-dvh bg-ui-canvas text-ui-ink",
         bottomNavigation && "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:pb-0",
         className,
       )}
       data-density={density}
     >
+      <RealEstateAtmosphere mainId={mainId} />
       <a
         href={`#${mainId}`}
         className="sr-only z-[200] rounded-ui-md bg-ui-accent px-4 py-3 font-semibold text-ui-accent-ink focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -64,7 +68,7 @@ export function PortalShell({
 
       {hasHeader &&
         (header ?? (
-          <header className="ui-re-header-accent sticky top-0 z-40 border-b border-ui-border bg-ui-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-ui-canvas/85">
+          <header className="ui-re-header-accent sticky top-0 z-40 border-b border-ui-border bg-ui-canvas/88 backdrop-blur-md supports-[backdrop-filter]:bg-ui-canvas/78">
             <div
               className={clsx(
                 "mx-auto flex w-full items-center gap-4 px-ui-gutter",

@@ -15,34 +15,10 @@ import {
   useToast,
 } from "@aurixa/ui-kit";
 import { cancelShowing, getShowings, type Showing } from "../../api";
+import { downloadShowingCalendar } from "@/lib/showing-calendar";
 
 function downloadCalendarEntry(showing: Showing) {
-  const stamp = (value: string) =>
-    new Date(value)
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}/, "");
-  const escape = (value: string) => value.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
-  const agent = showing.agentName || showing.providerName || "Agent";
-  const calendar = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//AURIXA//Client Portal//EN",
-    "BEGIN:VEVENT",
-    `UID:showing-${showing.id}@aurixa`,
-    `DTSTART:${stamp(showing.startTime)}`,
-    `DTEND:${stamp(showing.endTime)}`,
-    `SUMMARY:${escape(`Property showing with ${agent}`)}`,
-    "DESCRIPTION:Confirm property address and tour instructions with your agent.",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].join("\r\n");
-  const url = URL.createObjectURL(new Blob([calendar], { type: "text/calendar;charset=utf-8" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `aurixa-showing-${showing.id}.ics`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadShowingCalendar(showing);
 }
 
 export default function ShowingDetailPage() {

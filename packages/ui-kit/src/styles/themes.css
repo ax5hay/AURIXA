@@ -1,6 +1,7 @@
 @import "@fontsource-variable/instrument-sans";
 @import "@fontsource-variable/newsreader";
 @import "./real-estate-decor.css";
+@import "./real-estate-building.css";
 
 :root,
 [data-theme="operator"] {

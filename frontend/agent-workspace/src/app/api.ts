@@ -18,6 +18,13 @@ async function fetchWithTimeout(
   }
 }
 
+export interface ClientSearchPreferences {
+  budget_max?: number;
+  beds_min?: number;
+  areas?: string[];
+  pets?: boolean;
+}
+
 export interface Client {
   id: number;
   fullName: string;
@@ -25,6 +32,7 @@ export interface Client {
   phoneNumber?: string;
   tenantId?: number;
   clientType?: string;
+  preferences?: ClientSearchPreferences;
 }
 
 export interface Showing {

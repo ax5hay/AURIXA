@@ -115,7 +115,12 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath fill='%23c9a962' fill-opacity='0.16' d='M0 120V72h48v16h56V52h64v68h40V64h72v56h48V44h80v76h56V80h96v40H0z'/%3E%3Cpath fill='%23c9a962' fill-opacity='0.08' d='M0 120V92h32v28h24V76h40v44h28V68h52v52h36V84h44v36H0z'/%3E%3C/svg%3E");
 }
 
-.ui-re-backdrop > * {
+.ui-re-backdrop > *:not(.ui-re-atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-re-backdrop:not(.ui-re-backdrop--lit) > * {
   position: relative;
   z-index: 1;
 }

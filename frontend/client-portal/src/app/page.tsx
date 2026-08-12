@@ -15,6 +15,7 @@ import {
   SectionHeader,
 } from "@aurixa/ui-kit";
 import { RealEstateDisclaimer } from "@aurixa/ui-kit";
+import { TourDayCard } from "@/components/TourDayCard";
 import {
   getClient,
   getShowings,
@@ -27,15 +28,6 @@ import {
   type KnowledgeArticle,
   type ConversationSummary,
 } from "./api";
-
-const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 
 export default function DashboardPage() {
   return (
@@ -87,7 +79,10 @@ function DashboardContent() {
 
   const firstName = client?.fullName?.split(" ")[0] || "";
   const nextShowing = upcomingShowings[0];
-  const agentName = nextShowing?.agentName || nextShowing?.providerName || "your agent";
+  const nextListing =
+    nextShowing?.listingId != null
+      ? listings.find((listing) => listing.id === nextShowing.listingId)
+      : undefined;
 
   return (
     <div className="space-y-10 py-8 sm:py-10">
@@ -131,19 +126,7 @@ function DashboardContent() {
           description="The most useful detail from your schedule, up front."
         />
         {nextShowing ? (
-          <Card variant="feature" padding="lg">
-            <p className="text-xs font-semibold tracking-wide text-ui-accent">Next showing</p>
-            <h2 className="mt-3 max-w-2xl font-display text-3xl font-medium tracking-[-0.035em] text-ui-ink sm:text-4xl">
-              Tour with {agentName}
-            </h2>
-            <p className="mt-3 text-base leading-7 text-ui-muted">
-              {formatDate(nextShowing.startTime)}. Note any questions about the property, HOA rules,
-              or financing before you arrive.
-            </p>
-            <Button asChild className="mt-6">
-              <Link href={`/showings/${nextShowing.id}`}>See showing details</Link>
-            </Button>
-          </Card>
+          <TourDayCard showing={nextShowing} listing={nextListing} />
         ) : (
           <EmptyState
             title="Nothing scheduled right now"

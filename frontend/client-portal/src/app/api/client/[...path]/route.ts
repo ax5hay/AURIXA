@@ -96,6 +96,28 @@ export async function GET(_request: Request, context: RouteContext) {
     if (resource === "knowledge") {
       return forward(await gatewayFetch(`admin/knowledge/articles?tenant_id=${session.tenantId}`));
     }
+    if (resource === "notifications/summary") {
+      const [showingsRes, listingsRes, conversationsRes, profileRes] = await Promise.all([
+        gatewayFetch(`admin/clients/${session.clientId}/showings`),
+        gatewayFetch(`admin/listings?tenant_id=${session.tenantId}&status=active`),
+        gatewayFetch(`admin/clients/${session.clientId}/conversations`),
+        gatewayFetch(`admin/clients/${session.clientId}`),
+      ]);
+      if (!showingsRes.ok) return forward(showingsRes);
+      const showings = await showingsRes.json();
+      const listings = listingsRes.ok ? await listingsRes.json() : [];
+      const conversations = conversationsRes.ok ? await conversationsRes.json() : [];
+      const profile = profileRes.ok ? await profileRes.json() : {};
+      return NextResponse.json(
+        {
+          showings,
+          listings,
+          conversations,
+          preferences: profile.preferences ?? {},
+        },
+        { headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
     return NextResponse.json({ error: "Client resource not found." }, { status: 404 });
   } catch {
     return NextResponse.json({ error: "The real estate service is unavailable." }, { status: 502 });
@@ -110,6 +132,22 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
+    if (resource === "safety/validate") {
+      const text = typeof body.text === "string" ? body.text.trim() : "";
+      if (!text || text.length > 4_000) {
+        return NextResponse.json(
+          { error: "Enter text of up to 4,000 characters." },
+          { status: 400 },
+        );
+      }
+      return forward(
+        await gatewayFetch("safety/validate", {
+          method: "POST",
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ text }),
+        }),
+      );
+    }
     if (resource === "messages" || resource === "chat") {
       const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
       if (!prompt || prompt.length > 4_000) {

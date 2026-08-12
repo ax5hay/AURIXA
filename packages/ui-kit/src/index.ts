@@ -68,6 +68,9 @@ export type { RealEstateDisclaimerVariant } from "./components/RealEstate";
 export { RealEstateBrandMark, RealEstateSkyline } from "./components/RealEstateBrand";
 export type { RealEstateBrandMarkProps, RealEstateSkylineProps } from "./components/RealEstateBrand";
 
+export { RealEstateAtmosphere } from "./components/RealEstateAtmosphere";
+export type { RealEstateAtmosphereProps } from "./components/RealEstateAtmosphere";
+
 export { MotifFrame, ToastMotifIcon } from "./components/RealEstateMotif";
 
 /** @deprecated Use RealEstateDisclaimer */
@@ -76,7 +79,7 @@ export { HealthcareDisclaimer } from "./components/Healthcare";
 export type { HealthcareDisclaimerVariant } from "./components/Healthcare";
 
 export { ChatPanel, AppointmentCard } from "./components/Domain";
-export type { ChatPanelMessage } from "./components/Domain";
+export type { ChatPanelMessage, ChatActionChip } from "./components/Domain";
 
 // Animation presets
 export {

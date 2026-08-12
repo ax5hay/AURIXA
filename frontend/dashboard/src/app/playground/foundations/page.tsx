@@ -12,6 +12,7 @@ import {
   RealEstateDisclaimer,
   RealEstateBrandMark,
   RealEstateSkyline,
+  RealEstateAtmosphere,
   SearchSelect,
   StatusBadge,
 } from "@aurixa/ui-kit";
@@ -58,8 +59,9 @@ export default function FoundationsPage() {
   const [theme, setTheme] = useState("operator");
 
   return (
-    <div data-theme={theme} className="min-h-screen bg-ui-canvas p-ui-gutter text-ui-ink">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div data-theme={theme} className="ui-re-backdrop ui-re-backdrop--lit relative min-h-screen bg-ui-canvas p-ui-gutter text-ui-ink">
+      <RealEstateAtmosphere />
+      <div className="relative z-[1] mx-auto max-w-6xl space-y-8">
         <PageHeader
           eyebrow="UI kit workbench"
           title="Shared foundations"

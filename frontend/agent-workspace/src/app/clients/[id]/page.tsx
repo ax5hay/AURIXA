@@ -18,6 +18,7 @@ import {
 import { getClient, getClientShowings, type Showing, type Client } from "../../api";
 import { RealEstateDisclaimer } from "@aurixa/ui-kit";
 import { useStaffContext } from "@/context/StaffContext";
+import { ClientBrief } from "@/components/ClientBrief";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -121,6 +122,8 @@ export default function ClientDetailPage() {
           The showing history could not be fully loaded.
         </Alert>
       )}
+
+      <ClientBrief client={client} upcoming={upcoming} showingCount={ordered.length} />
 
       <Tabs
         ariaLabel="Client record sections"

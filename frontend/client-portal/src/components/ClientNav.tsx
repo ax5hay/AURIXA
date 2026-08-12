@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, Icon, PortalShell, RealEstateBrandMark, type IconName } from "@aurixa/ui-kit";
 import { isSectionActive } from "@/lib/client-sections";
+import { getNotificationSummary } from "@/app/api";
+import { buildClientNotifications } from "@/lib/client-notifications";
 
 type NavigationTab = {
   id: string;
@@ -48,6 +50,39 @@ const MOBILE_TABS = [
     related: ["/documents", "/applications", "/financing", "/maintenance", "/notifications", "/help"],
   },
 ] satisfies NavigationTab[];
+
+function NotificationBell() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    getNotificationSummary()
+      .then((summary) => {
+        const items = buildClientNotifications({
+          showings: summary.showings,
+          listings: summary.listings,
+          conversations: summary.conversations,
+          preferences: summary.preferences,
+        });
+        setCount(items.length);
+      })
+      .catch(() => setCount(0));
+  }, []);
+
+  return (
+    <Link
+      href="/notifications"
+      aria-label={count > 0 ? `Notifications, ${count} updates` : "Notifications"}
+      className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-ui-md text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink"
+    >
+      <Icon name="bell" />
+      {count > 0 && (
+        <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-ui-accent px-1 text-[10px] font-bold text-ui-accent-ink">
+          {count > 9 ? "9+" : count}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function ClientNavigation({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
@@ -128,13 +163,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       bottomNavigation={<ClientNavigation mobile />}
       actions={
         <>
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-ui-md text-ui-muted hover:bg-ui-surface-inset hover:text-ui-ink"
-          >
-            <Icon name="bell" />
-          </Link>
+          <NotificationBell />
           <Link
             href="/help"
             className="hidden min-h-11 items-center rounded-ui-md px-3 text-sm font-semibold text-ui-muted hover:bg-ui-surface-inset sm:inline-flex"

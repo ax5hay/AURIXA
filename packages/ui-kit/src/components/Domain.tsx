@@ -4,12 +4,20 @@ import React, { useEffect, useRef } from "react";
 import clsx from "clsx";
 import { Avatar } from "./Layout";
 import { Badge, type BadgeTone } from "./DataDisplay";
+import { Button } from "./Button";
 import { CopyButton } from "./CopyButton";
+
+export interface ChatActionChip {
+  label: string;
+  href: string;
+}
 
 export interface ChatPanelMessage {
   id: string | number;
   text: string;
   sender: "user" | "assistant";
+  actions?: ChatActionChip[];
+  fairHousingNotice?: string;
 }
 
 export function ChatPanel({
@@ -80,6 +88,24 @@ export function ChatPanel({
               >
                 {message.text}
               </div>
+              {message.sender === "assistant" && message.fairHousingNotice && (
+                <div
+                  role="note"
+                  className="mt-2 rounded-ui-md border border-ui-warning/30 bg-ui-warning/10 px-3 py-2 text-xs leading-5 text-ui-ink"
+                >
+                  <span className="font-semibold">Fair Housing Assist · </span>
+                  {message.fairHousingNotice}
+                </div>
+              )}
+              {message.sender === "assistant" && message.actions && message.actions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2" aria-label="Suggested next steps">
+                  {message.actions.map((action) => (
+                    <Button key={action.href} asChild variant="secondary" size="sm">
+                      <a href={action.href}>{action.label}</a>
+                    </Button>
+                  ))}
+                </div>
+              )}
               {message.sender === "assistant" && (
                 <CopyButton
                   value={message.text}

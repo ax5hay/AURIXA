@@ -1,4 +1,4 @@
-"""Seed the database with real estate demo data."""
+"""Seed the database with real estate demo data (~60% US / ~40% India)."""
 
 import asyncio
 import datetime
@@ -24,6 +24,7 @@ from aurixa_db.models import (
     ListingMedia,
     Offer,
     PipelineStage,
+    PipelineStep,
     PlatformConfig,
     Property,
     ServiceRequest,
@@ -33,6 +34,38 @@ from aurixa_db.models import (
     User,
 )
 
+from seed_random import (
+    DEFAULT_RANDOM_SEED,
+    TARGET_CLIENT_TOTAL,
+    bulk_insert_clients,
+    bulk_insert_listings,
+    bulk_insert_properties,
+    compute_random_counts,
+    generate_client_specs,
+    generate_lead_specs,
+    generate_listing_specs_for_indices,
+    generate_property_specs,
+    generate_showing_specs,
+)
+from seed_data import (
+    CONVERSATION_SEEDS,
+    IN_CLIENTS,
+    IN_KB_ARTICLES,
+    IN_LEADS,
+    IN_LISTINGS,
+    IN_PROPERTIES,
+    IN_SHOWINGS,
+    IN_STAFF,
+    IN_TENANTS,
+    US_CLIENTS,
+    US_KB_ARTICLES,
+    US_LEADS,
+    US_LISTINGS,
+    US_PROPERTIES,
+    US_SHOWINGS,
+    US_STAFF,
+    US_TENANTS,
+)
 
 RESIDENTIAL_STAGES = [
     ("new", "New", 0, False),
@@ -69,6 +102,50 @@ DEVELOPER_STAGES = [
 ]
 
 
+def _add_pipeline_stages(db, tenants) -> None:
+    for tenant, stages, segment in [
+        (tenants[0], RESIDENTIAL_STAGES, "residential"),
+        (tenants[1], PM_STAGES, "pm"),
+        (tenants[2], DEVELOPER_STAGES, "developer"),
+        (tenants[4], RESIDENTIAL_STAGES, "residential"),
+        (tenants[5], PM_STAGES, "pm"),
+    ]:
+        for slug, display_name, sort_order, is_terminal in stages:
+            db.add(
+                PipelineStage(
+                    tenant_id=tenant.id,
+                    segment=segment,
+                    slug=slug,
+                    display_name=display_name,
+                    sort_order=sort_order,
+                    is_terminal=is_terminal,
+                )
+            )
+
+
+def _build_showing(now, spec, tenants, clients, listings, staff_list):
+    start = now + datetime.timedelta(days=spec["days_offset"], hours=spec["hour"])
+    end = start + datetime.timedelta(minutes=30 if spec["showing_type"] != "open_house" else 45)
+    listing_id = listings[spec["listing_index"]].id if spec.get("listing_index") is not None else None
+    staff_id = staff_list[spec["staff_index"]].id if spec.get("staff_index") is not None else None
+    agent_name = spec.get("agent_name")
+    if not agent_name and spec.get("staff_index") is not None:
+        agent_name = staff_list[spec["staff_index"]].full_name
+    agent_name = agent_name or "Agent"
+    return Showing(
+        start_time=start,
+        end_time=end,
+        agent_name=agent_name,
+        staff_id=staff_id,
+        notes=spec.get("notes"),
+        showing_type=spec["showing_type"],
+        status=spec["status"],
+        tenant_id=tenants[spec["tenant_index"]].id,
+        client_id=clients[spec["client_index"]].id,
+        listing_id=listing_id,
+    )
+
+
 async def seed_database() -> None:
     """Wipe and re-seed the database with real estate mock data."""
 
@@ -79,41 +156,11 @@ async def seed_database() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as db:
-        logger.info("Seeding real estate database...")
+        logger.info("Seeding real estate database (60%% US / 40%% IN)...")
 
         tenants = [
-            Tenant(
-                name="Harbor Realty Group",
-                domain="harborrealty.com",
-                org_type="brokerage",
-                plan="enterprise",
-                status="active",
-                api_key_count=5,
-            ),
-            Tenant(
-                name="Urban Living PM",
-                domain="urbanlivingpm.com",
-                org_type="pm",
-                plan="professional",
-                status="active",
-                api_key_count=3,
-            ),
-            Tenant(
-                name="Summit Homes Development",
-                domain="summithomes.dev",
-                org_type="developer",
-                plan="enterprise",
-                status="active",
-                api_key_count=4,
-            ),
-            Tenant(
-                name="Lakeview Brokers",
-                domain="lakeviewbrokers.com",
-                org_type="brokerage",
-                plan="starter",
-                status="active",
-                api_key_count=1,
-            ),
+            Tenant(status="active", **spec)
+            for spec in [*US_TENANTS, *IN_TENANTS]
         ]
         db.add_all(tenants)
         await db.commit()
@@ -141,24 +188,7 @@ async def seed_database() -> None:
                 ),
             ]
         )
-
-        for tenant, stages, segment in [
-            (tenants[0], RESIDENTIAL_STAGES, "residential"),
-            (tenants[1], PM_STAGES, "pm"),
-            (tenants[2], DEVELOPER_STAGES, "developer"),
-        ]:
-            for slug, display_name, sort_order, is_terminal in stages:
-                db.add(
-                    PipelineStage(
-                        tenant_id=tenant.id,
-                        segment=segment,
-                        slug=slug,
-                        display_name=display_name,
-                        sort_order=sort_order,
-                        is_terminal=is_terminal,
-                    )
-                )
-        await db.commit()
+        _add_pipeline_stages(db, tenants)
 
         users = [
             User(
@@ -173,213 +203,160 @@ async def seed_database() -> None:
                 full_name="Urban Ops",
                 tenant_id=tenants[1].id,
             ),
+            User(
+                email="admin@bengaluruprime.in",
+                hashed_password="fake-password",
+                full_name="Bengaluru Admin",
+                tenant_id=tenants[4].id,
+            ),
+            User(
+                email="ops@mumbaiurbanliving.in",
+                hashed_password="fake-password",
+                full_name="Mumbai Ops",
+                tenant_id=tenants[5].id,
+            ),
         ]
         db.add_all(users)
         await db.commit()
 
-        staff_list = [
-            Staff(
-                full_name="Alex Rivera",
-                email="alex.rivera@harborrealty.com",
-                role="agent",
-                tenant_id=tenants[0].id,
-            ),
-            Staff(
-                full_name="Jordan Lee",
-                email="jordan.lee@harborrealty.com",
-                role="broker",
-                tenant_id=tenants[0].id,
-            ),
-            Staff(
-                full_name="Sam Ortiz",
-                email="sam.ortiz@harborrealty.com",
-                role="showing_coordinator",
-                tenant_id=tenants[0].id,
-            ),
-            Staff(
-                full_name="Harbor Admin",
-                email="admin@harborrealty.com",
-                role="admin",
-                tenant_id=tenants[0].id,
-            ),
-            Staff(
-                full_name="Morgan Chen",
-                email="morgan.chen@urbanlivingpm.com",
-                role="leasing_coordinator",
-                tenant_id=tenants[1].id,
-            ),
-            Staff(
-                full_name="Riley Park",
-                email="riley.park@urbanlivingpm.com",
-                role="property_manager",
-                tenant_id=tenants[1].id,
-            ),
-            Staff(
-                full_name="Casey Brooks",
-                email="casey.brooks@summithomes.dev",
-                role="agent",
-                tenant_id=tenants[2].id,
-            ),
-        ]
+        staff_list: list[Staff] = []
+        for spec in [*US_STAFF, *IN_STAFF]:
+            staff_list.append(
+                Staff(
+                    full_name=spec["full_name"],
+                    email=spec["email"],
+                    role=spec["role"],
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                )
+            )
         db.add_all(staff_list)
         await db.commit()
         for member in staff_list:
             await db.refresh(member)
 
-        conversations = [
-            Conversation(session_id="conv-001", meta_data={"tenant_id": 1, "client_id": 1}),
-            Conversation(session_id="conv-002", meta_data={"tenant_id": 1, "listing_id": 1}),
-            Conversation(session_id="conv-003", meta_data={"tenant_id": 2, "client_id": 3}),
-        ]
-        db.add_all(conversations)
-        await db.commit()
-
-        clients = [
-            Client(
-                full_name="Jane Smith",
-                email="jane.smith@email.com",
-                phone_number="555-0101",
-                client_type="buyer",
-                tenant_id=tenants[0].id,
-                preferences={"areas": ["Downtown", "Westside"], "budget_max": 500000, "beds_min": 3},
-            ),
-            Client(
-                full_name="Michael Torres",
-                email="m.torres@email.com",
-                phone_number="555-0102",
-                client_type="buyer",
-                tenant_id=tenants[0].id,
-                preferences={"areas": ["Suburbs"], "budget_max": 650000, "beds_min": 4},
-            ),
-            Client(
-                full_name="Emily Nguyen",
-                email="emily.nguyen@email.com",
-                phone_number="555-0103",
-                client_type="renter",
-                tenant_id=tenants[1].id,
-                preferences={"beds_min": 2, "pets": True},
-            ),
-            Client(
-                full_name="David Kim",
-                email="david.kim@email.com",
-                client_type="seller",
-                tenant_id=tenants[0].id,
-            ),
-            Client(
-                full_name="Sarah Patel",
-                email="sarah.patel@email.com",
-                phone_number="555-0104",
-                client_type="buyer",
-                tenant_id=tenants[2].id,
-            ),
-        ]
+        clients: list[Client] = []
+        for spec in [*US_CLIENTS, *IN_CLIENTS]:
+            clients.append(
+                Client(
+                    full_name=spec["full_name"],
+                    email=spec.get("email"),
+                    phone_number=spec.get("phone_number"),
+                    client_type=spec.get("client_type", "buyer"),
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                    preferences=spec.get("preferences"),
+                )
+            )
         db.add_all(clients)
         await db.commit()
         for client in clients:
             await db.refresh(client)
 
-        properties = [
-            Property(
-                tenant_id=tenants[0].id,
-                address_line1="123 Oak Street",
-                city="Portland",
-                state="OR",
-                postal_code="97201",
-                property_type="single_family",
-                beds=3,
-                baths=2.0,
-                sqft=1850,
-                year_built=1998,
-            ),
-            Property(
-                tenant_id=tenants[0].id,
-                address_line1="456 Maple Avenue",
-                city="Portland",
-                state="OR",
-                postal_code="97209",
-                property_type="townhouse",
-                beds=4,
-                baths=2.5,
-                sqft=2100,
-                year_built=2015,
-            ),
-            Property(
-                tenant_id=tenants[1].id,
-                address_line1="789 River View #204",
-                city="Portland",
-                state="OR",
-                postal_code="97204",
-                property_type="condo",
-                beds=2,
-                baths=2.0,
-                sqft=1100,
-                year_built=2018,
-            ),
-            Property(
-                tenant_id=tenants[2].id,
-                address_line1="12 Summit Ridge Lane",
-                city="Beaverton",
-                state="OR",
-                postal_code="97005",
-                property_type="single_family",
-                beds=4,
-                baths=3.0,
-                sqft=2450,
-                year_built=2024,
-            ),
-        ]
+        curated_client_count = len(clients)
+        curated_property_count = len(US_PROPERTIES) + len(IN_PROPERTIES)
+        random_counts = compute_random_counts(
+            curated_client_count,
+            curated_property_count,
+            TARGET_CLIENT_TOTAL,
+        )
+        logger.info(
+            "Generating {} random clients (~60%% US / ~40%% IN)...",
+            random_counts["random_us_clients"] + random_counts["random_in_clients"],
+        )
+        random_us_client_specs, random_in_client_specs = generate_client_specs(
+            random_counts["random_us_clients"],
+            random_counts["random_in_clients"],
+            seed=DEFAULT_RANDOM_SEED,
+        )
+        extra_clients = await bulk_insert_clients(
+            db,
+            [*random_us_client_specs, *random_in_client_specs],
+            tenants,
+        )
+        clients.extend(extra_clients)
+
+        properties: list[Property] = []
+        for spec, country in [(s, "US") for s in US_PROPERTIES] + [(s, "IN") for s in IN_PROPERTIES]:
+            properties.append(
+                Property(
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                    address_line1=spec["address_line1"],
+                    city=spec["city"],
+                    state=spec["state"],
+                    postal_code=spec["postal_code"],
+                    country=country,
+                    property_type=spec["property_type"],
+                    beds=spec.get("beds"),
+                    baths=spec.get("baths"),
+                    sqft=spec.get("sqft"),
+                    year_built=spec.get("year_built"),
+                )
+            )
         db.add_all(properties)
         await db.commit()
         for prop in properties:
             await db.refresh(prop)
 
+        if random_counts["random_us_properties"] + random_counts["random_in_properties"] > 0:
+            logger.info(
+                "Generating {} random properties...",
+                random_counts["random_us_properties"] + random_counts["random_in_properties"],
+            )
+            random_us_prop_specs, random_in_prop_specs = generate_property_specs(
+                random_counts["random_us_properties"],
+                random_counts["random_in_properties"],
+                seed=DEFAULT_RANDOM_SEED,
+            )
+            extra_properties = await bulk_insert_properties(
+                db,
+                random_us_prop_specs,
+                random_in_prop_specs,
+                tenants,
+            )
+            properties.extend(extra_properties)
+
         now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-        listings = [
-            Listing(
-                tenant_id=tenants[0].id,
-                property_id=properties[0].id,
-                listing_type="sale",
-                status="active",
-                list_price=485000,
-                marketing_title="Charming 3BR Craftsman near parks",
-                marketing_description="Updated kitchen, fenced yard, walkable neighborhood.",
-                published_at=now - datetime.timedelta(days=14),
-            ),
-            Listing(
-                tenant_id=tenants[0].id,
-                property_id=properties[1].id,
-                listing_type="sale",
-                status="active",
-                list_price=625000,
-                marketing_title="Modern townhouse with garage",
-                marketing_description="Open floor plan, primary suite, low HOA.",
-                published_at=now - datetime.timedelta(days=7),
-            ),
-            Listing(
-                tenant_id=tenants[1].id,
-                property_id=properties[2].id,
-                listing_type="rent",
-                status="active",
-                rent_amount=2400,
-                marketing_title="2BR river-view condo",
-                marketing_description="Pet-friendly building with gym and rooftop deck.",
-                published_at=now - datetime.timedelta(days=3),
-            ),
-            Listing(
-                tenant_id=tenants[2].id,
-                property_id=properties[3].id,
-                listing_type="sale",
-                status="active",
-                list_price=789000,
-                marketing_title="New construction at Summit Ridge",
-                marketing_description="Model home now open — energy-efficient build with smart home package.",
-                published_at=now - datetime.timedelta(days=1),
-            ),
-        ]
+        listings: list[Listing] = []
+        for spec in [*US_LISTINGS, *IN_LISTINGS]:
+            listings.append(
+                Listing(
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                    property_id=properties[spec["property_index"]].id,
+                    listing_type=spec["listing_type"],
+                    status=spec["status"],
+                    list_price=spec.get("list_price"),
+                    rent_amount=spec.get("rent_amount"),
+                    marketing_title=spec.get("marketing_title"),
+                    marketing_description=spec.get("marketing_description"),
+                    published_at=now - datetime.timedelta(days=spec.get("days_published", 1)),
+                )
+            )
         db.add_all(listings)
         await db.commit()
         for listing in listings:
             await db.refresh(listing)
+
+        tenant_id_to_index = {tenant.id: index for index, tenant in enumerate(tenants)}
+        random_property_meta: list[tuple[int, int, str]] = []
+        for index, prop in enumerate(properties):
+            if index < curated_property_count:
+                continue
+            tenant_index = tenant_id_to_index[prop.tenant_id]
+            random_property_meta.append((index, tenant_index, prop.country))
+
+        if random_property_meta:
+            logger.info("Generating {} random listings...", len(random_property_meta))
+            random_listing_specs = generate_listing_specs_for_indices(
+                random_property_meta,
+                seed=DEFAULT_RANDOM_SEED,
+            )
+            extra_listings = await bulk_insert_listings(
+                db,
+                random_listing_specs,
+                tenants,
+                properties,
+                now,
+            )
+            listings.extend(extra_listings)
 
         db.add_all(
             [
@@ -397,61 +374,48 @@ async def seed_database() -> None:
                     caption="3D walkthrough",
                     sort_order=1,
                 ),
+                ListingMedia(
+                    listing_id=listings[12].id,
+                    media_type="photo",
+                    url="https://images.example.in/koramangala/living.jpg",
+                    caption="Living room — Koramangala 3BHK",
+                    sort_order=0,
+                ),
+                ListingMedia(
+                    listing_id=listings[14].id,
+                    media_type="photo",
+                    url="https://images.example.in/mumbai/lower-parel/view.jpg",
+                    caption="Sea glimpse from balcony",
+                    sort_order=0,
+                ),
             ]
         )
 
         showings = [
-            Showing(
-                start_time=now + datetime.timedelta(days=1, hours=14),
-                end_time=now + datetime.timedelta(days=1, hours=14, minutes=30),
-                agent_name="Alex Rivera",
-                staff_id=staff_list[0].id,
-                notes="First-time buyer",
-                showing_type="private_tour",
-                status="confirmed",
-                tenant_id=tenants[0].id,
-                client_id=clients[0].id,
-                listing_id=listings[0].id,
-            ),
-            Showing(
-                start_time=now + datetime.timedelta(days=2, hours=11),
-                end_time=now + datetime.timedelta(days=2, hours=11, minutes=30),
-                agent_name="Alex Rivera",
-                staff_id=staff_list[0].id,
-                notes="Second showing",
-                showing_type="private_tour",
-                status="confirmed",
-                tenant_id=tenants[0].id,
-                client_id=clients[1].id,
-                listing_id=listings[1].id,
-            ),
-            Showing(
-                start_time=now + datetime.timedelta(days=3, hours=16),
-                end_time=now + datetime.timedelta(days=3, hours=16, minutes=30),
-                agent_name="Morgan Chen",
-                staff_id=staff_list[4].id,
-                notes="Rental tour",
-                showing_type="private_tour",
-                status="confirmed",
-                tenant_id=tenants[1].id,
-                client_id=clients[2].id,
-                listing_id=listings[2].id,
-            ),
-            Showing(
-                start_time=now - datetime.timedelta(days=2),
-                end_time=now - datetime.timedelta(days=2) + datetime.timedelta(minutes=45),
-                agent_name="Casey Brooks",
-                staff_id=staff_list[6].id,
-                notes="Model home visit",
-                showing_type="open_house",
-                status="completed",
-                tenant_id=tenants[2].id,
-                client_id=clients[4].id,
-                listing_id=listings[3].id,
-            ),
+            _build_showing(now, spec, tenants, clients, listings, staff_list)
+            for spec in [*US_SHOWINGS, *IN_SHOWINGS]
         ]
         db.add_all(showings)
         await db.commit()
+
+        if random_counts["random_showings"] > 0:
+            logger.info("Generating {} random showings...", random_counts["random_showings"])
+            random_showing_specs = generate_showing_specs(
+                len(clients),
+                len(listings),
+                len(staff_list),
+                random_counts["random_showings"],
+                seed=DEFAULT_RANDOM_SEED,
+            )
+            random_showings = [
+                _build_showing(now, spec, tenants, clients, listings, staff_list)
+                for spec in random_showing_specs
+            ]
+            for start in range(0, len(random_showings), 200):
+                batch = random_showings[start : start + 200]
+                db.add_all(batch)
+                await db.commit()
+            showings.extend(random_showings)
 
         db.add_all(
             [
@@ -465,18 +429,29 @@ async def seed_database() -> None:
                     status="pre_approved",
                 ),
                 ClientFinancing(
-                    client_id=clients[0].id,
-                    program_name="Legacy active plan",
-                    lender="First National Bank",
-                    deposit_amount="$25",
-                    status="active",
-                ),
-                ClientFinancing(
                     client_id=clients[1].id,
                     program_name="Jumbo loan",
                     lender="Pacific Mortgage",
                     deposit_amount="$25,000",
                     approved_amount=600000,
+                    status="pending",
+                ),
+                ClientFinancing(
+                    client_id=clients[12].id,
+                    program_name="SBI Home Loan",
+                    lender="State Bank of India",
+                    reference_id="SBI-HL-2026-4412",
+                    deposit_amount="₹5,00,000",
+                    approved_amount=12000000,
+                    status="pre_approved",
+                ),
+                ClientFinancing(
+                    client_id=clients[13].id,
+                    program_name="HDFC NRI Home Loan",
+                    lender="HDFC Bank",
+                    reference_id="HDFC-NRI-9921",
+                    deposit_amount="₹10,00,000",
+                    approved_amount=20000000,
                     status="pending",
                 ),
             ]
@@ -494,62 +469,106 @@ async def seed_database() -> None:
                     listing_id=listings[2].id,
                 ),
                 ServiceRequest(
-                    client_id=clients[0].id,
+                    client_id=clients[14].id,
+                    category="maintenance",
+                    title="AC service — Powai flat",
+                    description="Split unit not cooling in master bedroom",
+                    status="open",
+                    requested_at=now - datetime.timedelta(hours=3),
+                    listing_id=listings[15].id,
+                ),
+                ServiceRequest(
+                    client_id=clients[7].id,
                     category="application_follow_up",
-                    title="Home warranty renewal",
-                    description="Legacy execution-tool demo row",
+                    title="Lease renewal question",
+                    description="Asking about 12-month extension terms",
                     status="active",
+                    requested_at=now - datetime.timedelta(days=1),
+                    listing_id=listings[8].id,
                 ),
             ]
         )
+
+        leads: list[Lead] = []
+        for spec in [*US_LEADS, *IN_LEADS]:
+            leads.append(
+                Lead(
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                    client_id=clients[spec["client_index"]].id if spec.get("client_index") is not None else None,
+                    listing_id=listings[spec["listing_index"]].id if spec.get("listing_index") is not None else None,
+                    assigned_staff_id=staff_list[spec["staff_index"]].id if spec.get("staff_index") is not None else None,
+                    full_name=spec["full_name"],
+                    email=spec.get("email"),
+                    phone_number=spec.get("phone_number"),
+                    source=spec["source"],
+                    stage=spec["stage"],
+                    segment=spec["segment"],
+                )
+            )
+        db.add_all(leads)
+
+        if random_counts["random_leads"] > 0:
+            logger.info("Generating {} random leads...", random_counts["random_leads"])
+            random_lead_specs = generate_lead_specs(
+                len(clients),
+                len(listings),
+                len(staff_list),
+                random_counts["random_leads"],
+                seed=DEFAULT_RANDOM_SEED,
+            )
+            random_leads = [
+                Lead(
+                    tenant_id=tenants[spec["tenant_index"]].id,
+                    client_id=clients[spec["client_index"]].id
+                    if spec.get("client_index") is not None
+                    else None,
+                    listing_id=listings[spec["listing_index"]].id
+                    if spec.get("listing_index") is not None
+                    else None,
+                    assigned_staff_id=staff_list[spec["staff_index"]].id
+                    if spec.get("staff_index") is not None
+                    else None,
+                    full_name=spec["full_name"],
+                    email=spec.get("email"),
+                    phone_number=spec.get("phone_number"),
+                    source=spec["source"],
+                    stage=spec["stage"],
+                    segment=spec["segment"],
+                )
+                for spec in random_lead_specs
+            ]
+            for start in range(0, len(random_leads), 200):
+                db.add_all(random_leads[start : start + 200])
+                await db.commit()
+            leads.extend(random_leads)
 
         db.add_all(
             [
-                Lead(
-                    tenant_id=tenants[0].id,
-                    client_id=clients[1].id,
-                    listing_id=listings[1].id,
-                    assigned_staff_id=staff_list[0].id,
-                    full_name="Michael Torres",
-                    email="m.torres@email.com",
-                    phone_number="555-0102",
-                    source="website",
-                    stage="showing_scheduled",
-                    segment="residential",
-                ),
-                Lead(
-                    tenant_id=tenants[0].id,
-                    listing_id=listings[0].id,
-                    assigned_staff_id=staff_list[0].id,
-                    full_name="Chris Anderson",
-                    email="chris.anderson@email.com",
-                    source="zillow",
-                    stage="new",
-                    segment="residential",
-                ),
-                Lead(
+                Application(
                     tenant_id=tenants[1].id,
                     client_id=clients[2].id,
                     listing_id=listings[2].id,
-                    assigned_staff_id=staff_list[4].id,
-                    full_name="Emily Nguyen",
-                    email="emily.nguyen@email.com",
-                    source="apartments.com",
-                    stage="tour_scheduled",
-                    segment="pm",
+                    application_type="rental",
+                    status="submitted",
+                    submitted_at=now - datetime.timedelta(days=1),
+                ),
+                Application(
+                    tenant_id=tenants[5].id,
+                    client_id=clients[14].id,
+                    listing_id=listings[14].id,
+                    application_type="rental",
+                    status="under_review",
+                    submitted_at=now - datetime.timedelta(hours=18),
+                ),
+                Application(
+                    tenant_id=tenants[4].id,
+                    client_id=clients[12].id,
+                    listing_id=listings[12].id,
+                    application_type="purchase",
+                    status="submitted",
+                    submitted_at=now - datetime.timedelta(days=2),
                 ),
             ]
-        )
-
-        db.add(
-            Application(
-                tenant_id=tenants[1].id,
-                client_id=clients[2].id,
-                listing_id=listings[2].id,
-                application_type="rental",
-                status="submitted",
-                submitted_at=now - datetime.timedelta(days=1),
-            )
         )
 
         offer = Offer(
@@ -565,33 +584,75 @@ async def seed_database() -> None:
         await db.commit()
         await db.refresh(offer)
 
-        db.add(
-            Deal(
-                tenant_id=tenants[0].id,
-                client_id=clients[0].id,
-                listing_id=listings[0].id,
-                offer_id=offer.id,
-                status="under_contract",
-                milestone="inspection_scheduled",
-            )
+        in_offer = Offer(
+            tenant_id=tenants[4].id,
+            client_id=clients[12].id,
+            listing_id=listings[12].id,
+            amount=12200000,
+            status="submitted",
+            contingencies={"registration": "45 days", "home_loan": "30 days"},
+            submitted_at=now - datetime.timedelta(hours=8),
+        )
+        db.add(in_offer)
+        await db.commit()
+        await db.refresh(in_offer)
+
+        db.add_all(
+            [
+                Deal(
+                    tenant_id=tenants[0].id,
+                    client_id=clients[0].id,
+                    listing_id=listings[0].id,
+                    offer_id=offer.id,
+                    status="under_contract",
+                    milestone="inspection_scheduled",
+                ),
+                Deal(
+                    tenant_id=tenants[4].id,
+                    client_id=clients[12].id,
+                    listing_id=listings[12].id,
+                    offer_id=in_offer.id,
+                    status="under_contract",
+                    milestone="loan_sanction_pending",
+                ),
+            ]
         )
 
-        db.add(
-            Document(
-                tenant_id=tenants[1].id,
-                client_id=clients[2].id,
-                listing_id=listings[2].id,
-                document_type="application",
-                title="Rental application packet",
-                status="uploaded",
-            )
+        db.add_all(
+            [
+                Document(
+                    tenant_id=tenants[1].id,
+                    client_id=clients[2].id,
+                    listing_id=listings[2].id,
+                    document_type="application",
+                    title="Rental application packet",
+                    status="uploaded",
+                ),
+                Document(
+                    tenant_id=tenants[5].id,
+                    client_id=clients[14].id,
+                    listing_id=listings[14].id,
+                    document_type="application",
+                    title="Leave and license agreement draft",
+                    status="uploaded",
+                ),
+                Document(
+                    tenant_id=tenants[4].id,
+                    client_id=clients[12].id,
+                    listing_id=listings[12].id,
+                    document_type="offer",
+                    title="MOU — Koramangala 3BHK",
+                    status="signed",
+                ),
+            ]
         )
 
         today = datetime.date.today()
-        agents = ["Alex Rivera", "Jordan Lee", "Morgan Chen"]
+        us_agents = ["Alex Rivera", "Jordan Lee", "Morgan Chen", "Taylor Walsh"]
+        in_agents = ["Priya Sharma", "Arjun Mehta", "Kavitha Nair"]
         for day_offset in range(7):
             slot_date = today + datetime.timedelta(days=day_offset)
-            for agent in agents:
+            for agent in us_agents:
                 for start_time, end_time in [("09:00", "09:30"), ("10:00", "10:30"), ("14:00", "14:30")]:
                     db.add(
                         AvailabilitySlot(
@@ -602,41 +663,68 @@ async def seed_database() -> None:
                             tenant_id=tenants[0].id,
                         )
                     )
+            for agent in in_agents:
+                for start_time, end_time in [("10:30", "11:00"), ("15:00", "15:30"), ("17:00", "17:30")]:
+                    db.add(
+                        AvailabilitySlot(
+                            slot_date=slot_date,
+                            start_time=start_time,
+                            end_time=end_time,
+                            agent_name=agent,
+                            tenant_id=tenants[4].id,
+                        )
+                    )
         await db.commit()
 
         kb_articles = [
             KnowledgeBaseArticle(
-                title="Buyer Process Overview",
-                content="Learn the steps from pre-approval to closing. Your agent will guide showings, offers, and inspections.",
-                tenant_id=tenants[0].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Scheduling a Showing",
-                content="Book a private tour through the client portal or ask the assistant for available times.",
-                tenant_id=tenants[0].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Fair Housing Policy",
-                content="We do not discriminate based on race, color, religion, sex, disability, familial status, or national origin.",
-                tenant_id=tenants[0].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Rental Application Checklist",
-                content="Bring photo ID, proof of income, and references. Application fee may apply.",
-                tenant_id=tenants[1].id,
-            ),
-            KnowledgeBaseArticle(
-                title="Pet Policy — River View",
-                content="Cats and dogs under 50 lbs welcome with deposit. Breed restrictions apply per building policy.",
-                tenant_id=tenants[1].id,
-            ),
-            KnowledgeBaseArticle(
-                title="New Construction Incentives",
-                content="Summit Ridge Phase 2 includes closing cost credits for contracts signed before month end.",
-                tenant_id=tenants[2].id,
-            ),
+                title=spec["title"],
+                content=spec["content"],
+                tenant_id=tenants[spec["tenant_index"]].id,
+            )
+            for spec in [*US_KB_ARTICLES, *IN_KB_ARTICLES]
         ]
         db.add_all(kb_articles)
+
+        conversations: list[Conversation] = []
+        for spec in CONVERSATION_SEEDS:
+            meta: dict = {"tenant_id": tenants[spec["tenant_index"]].id}
+            if spec.get("client_index") is not None:
+                meta["client_id"] = clients[spec["client_index"]].id
+            if spec.get("listing_index") is not None:
+                meta["listing_id"] = listings[spec["listing_index"]].id
+            conversations.append(Conversation(session_id=spec["session_id"], meta_data=meta))
+        db.add_all(conversations)
+        await db.commit()
+        for convo in conversations:
+            await db.refresh(convo)
+
+        for convo, spec in zip(conversations, CONVERSATION_SEEDS, strict=True):
+            if not spec.get("prompt"):
+                continue
+            ts = now.timestamp()
+            db.add(
+                PipelineStep(
+                    conversation_id=convo.id,
+                    step_name="classify_intent",
+                    status="completed",
+                    input={"prompt": spec["prompt"]},
+                    output={"intent": "general_inquiry"},
+                    start_time=ts,
+                    end_time=ts + 0.2,
+                )
+            )
+            db.add(
+                PipelineStep(
+                    conversation_id=convo.id,
+                    step_name="generate_response",
+                    status="completed",
+                    input={"prompt": spec["prompt"]},
+                    output={"content": spec.get("response", "")},
+                    start_time=ts + 0.3,
+                    end_time=ts + 1.5,
+                )
+            )
 
         audit_logs = [
             AuditLog(
@@ -650,7 +738,7 @@ async def seed_database() -> None:
                 service="Execution Engine",
                 action="showing.create",
                 user="system",
-                details="Created showing for client 1 at listing 1",
+                details="Created showing for client 1 at listing 1 (Portland, US)",
                 severity="info",
             ),
             AuditLog(
@@ -662,16 +750,23 @@ async def seed_database() -> None:
             ),
             AuditLog(
                 service="Orchestration Engine",
-                action="Pipeline Complete",
+                action="pipeline.complete",
                 user="system",
-                details="Pipeline session conv-001 completed successfully",
+                details="Pipeline session conv-004 completed for Bengaluru client",
                 severity="info",
             ),
             AuditLog(
                 service="RAG Service",
-                action="Knowledge Retrieved",
+                action="knowledge.retrieved",
                 user="system",
-                details="Retrieved Fair Housing Policy for tenant 1",
+                details="Retrieved RERA Registration Checklist for tenant Bengaluru Prime",
+                severity="info",
+            ),
+            AuditLog(
+                service="API Gateway",
+                action="client.view",
+                user="priya.sharma@bengaluruprime.in",
+                details="Viewed client profile Ananya Iyer (Koramangala buyer)",
                 severity="info",
             ),
         ]
@@ -686,11 +781,30 @@ async def seed_database() -> None:
             PlatformConfig(key="domain", value="real_estate", category="general"),
             PlatformConfig(key="default_llm_provider", value="openai", category="api"),
             PlatformConfig(key="environment", value="development", category="general"),
+            PlatformConfig(key="supported_markets", value="US,IN", category="general"),
         ]
         db.add_all(config_entries)
         await db.commit()
 
-        logger.info("Real estate database seeding complete.")
+        us_props = sum(1 for p in properties if p.country == "US")
+        in_props = sum(1 for p in properties if p.country == "IN")
+        us_clients = sum(
+            1 for c in clients if c.tenant_id in {tenants[i].id for i in (0, 1, 2, 3)}
+        )
+        in_clients = len(clients) - us_clients
+        logger.info(
+            "Seed complete: {} tenants, {} clients ({} US / {} IN), {} properties ({} US / {} IN), {} listings, {} showings, {} leads",
+            len(tenants),
+            len(clients),
+            us_clients,
+            in_clients,
+            len(properties),
+            us_props,
+            in_props,
+            len(listings),
+            len(showings),
+            len(leads),
+        )
 
 
 async def main() -> None:

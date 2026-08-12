@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
-import { ToastProvider } from "@aurixa/ui-kit";
+import { ToastProvider, RealEstateAtmosphere } from "@aurixa/ui-kit";
 import { authOptions, authSessionConfigured } from "@/auth";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
@@ -23,7 +23,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" data-theme="operator" className="dark" style={{ colorScheme: "dark" }}>
-      <body className="ui-re-backdrop bg-ui-canvas font-sans text-ui-ink antialiased">
+      <body className="ui-re-backdrop ui-re-backdrop--lit bg-ui-canvas font-sans text-ui-ink antialiased">
+        <RealEstateAtmosphere mainId="main-content" />
         <OperatorProvider initialRole={initialRole}>
           <ToastProvider>
             <a
@@ -32,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             >
               Skip to content
             </a>
-            <div className="relative flex min-h-screen">
+            <div className="relative z-[1] flex min-h-screen">
               <Sidebar />
               <div className="min-w-0 flex-1">
                 <ContextBar />

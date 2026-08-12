@@ -35,10 +35,21 @@ export function RealEstateBrandMark({
         preserveAspectRatio="none"
         aria-hidden
       >
-        <path
-          fill="currentColor"
-          d="M20 2 4 16h8V10h16v6h8L20 2z"
-        />
+        <path fill="currentColor" d="M20 2 4 16h8V10h16v6h8L20 2z" />
+      </svg>
+      <svg
+        className="pointer-events-none absolute inset-x-[18%] bottom-[12%] h-[28%] w-[64%] opacity-70"
+        viewBox="0 0 24 10"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <rect x="1" y="1" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.2" />
+        <rect x="7" y="1" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.35" />
+        <rect x="13" y="1" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.25" />
+        <rect x="19" y="1" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.3" />
+        <rect x="4" y="6" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.28" />
+        <rect x="10" y="6" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.22" />
+        <rect x="16" y="6" width="4" height="3" rx="0.5" fill="currentColor" opacity="0.32" />
       </svg>
       <span className="relative z-[1] mt-1">{monogram}</span>
     </span>

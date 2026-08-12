@@ -39,6 +39,29 @@ const PROMPTS = {
   ],
 };
 
+const ACTION_RULES: Array<{ pattern: RegExp; label: string; href: string }> = [
+  { pattern: /\b(showing|tour|schedule)\b/i, label: "Today queue", href: "/" },
+  { pattern: /\b(client|buyer|renter)\b/i, label: "Client directory", href: "/clients" },
+  { pattern: /\b(listing|property|inventory)\b/i, label: "Listings", href: "/listings" },
+  { pattern: /\b(lead|pipeline)\b/i, label: "Leads", href: "/leads" },
+];
+
+function suggestWorkspaceActions(prompt: string, reply: string, clientId?: number) {
+  const haystack = `${prompt}\n${reply}`;
+  const chips: { label: string; href: string }[] = [];
+  const seen = new Set<string>();
+  for (const rule of ACTION_RULES) {
+    if (!rule.pattern.test(haystack)) continue;
+    const href =
+      rule.href === "/clients" && clientId ? `/clients/${clientId}` : rule.href;
+    if (seen.has(href)) continue;
+    seen.add(href);
+    chips.push({ label: rule.label, href });
+    if (chips.length >= 3) break;
+  }
+  return chips;
+}
+
 export default function ChatPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -90,12 +113,14 @@ export default function ChatPage() {
         tenantId: tenantFilter || undefined,
       });
       setLastSessionId(response.session_id);
+      const reply = response.final_response || "The assistant returned no content.";
       setMessages((current) => [
         ...current,
         {
           id: Date.now() + 1,
-          text: response.final_response || "The assistant returned no content.",
+          text: reply,
           sender: "assistant",
+          actions: suggestWorkspaceActions(prompt, reply, clientId),
         },
       ]);
     } catch {
@@ -105,6 +130,7 @@ export default function ChatPage() {
           id: Date.now() + 1,
           text: "I couldn’t complete that request. Check the service connection or try again.",
           sender: "assistant",
+          actions: [{ label: "Today queue", href: "/" }],
         },
       ]);
       toast({

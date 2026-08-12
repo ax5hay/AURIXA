@@ -54,6 +54,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         className={clsx(
           "overflow-hidden rounded-ui-lg border",
           variantClasses[resolvedVariant],
+          (resolvedVariant === "standard" || resolvedVariant === "feature") && "relative",
           className,
         )}
         {...props}

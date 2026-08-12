@@ -1412,6 +1412,7 @@ open coverage/index.html
 ## Documentation
 
 - [Real Estate Domain Specification](./docs/REAL_ESTATE_DOMAIN.md) — Master domain spec, entity map, migration phases, and rename status
+- [Docker fresh start (MCP coder)](./docs/DOCKER_FRESH_START_MCP.md) — Bootstrap the full stack on a new machine via Docker
 - [Demo Presentation Guide](./docs/DEMO_PRESENTATION.md) — User flows, diagrams, and talking points for live demos
 - [Deployment Infrastructure](./infra/DEPLOYMENT.md) — Control-plane architecture, release flow, Terraform/Helm, authorization, variables, secrets, and costs
 - [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) — First-time provisioning, staging/production operation, rollback, incidents, and disaster recovery

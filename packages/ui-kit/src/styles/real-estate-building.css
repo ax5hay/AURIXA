@@ -1,0 +1,226 @@
+/**
+ * Lit skyline, Tyndall beams, and scroll-reactive atmosphere.
+ * Paired with RealEstateAtmosphere (client) + useBuildingLightScroll.
+ */
+
+[data-theme="client"],
+[data-theme="patient"] {
+  --ui-re-window-lit: 255 214 158;
+  --ui-re-window-dim: 26 39 68;
+  --ui-re-beam-color: 255 236 200;
+  --ui-re-haze-color: 30 74 110;
+}
+
+[data-theme="workspace"],
+[data-theme="clinical"] {
+  --ui-re-window-lit: 186 228 240;
+  --ui-re-window-dim: 20 40 61;
+  --ui-re-beam-color: 208 236 244;
+  --ui-re-haze-color: 15 92 110;
+}
+
+[data-theme="operator"] {
+  --ui-re-window-lit: 229 201 138;
+  --ui-re-window-dim: 12 21 36;
+  --ui-re-beam-color: 201 169 98;
+  --ui-re-haze-color: 201 169 98;
+}
+
+.ui-re-backdrop--lit::before {
+  display: none;
+}
+
+.ui-re-atmosphere {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  --re-beam-intensity: 0.35;
+  --re-beam-0-x: 14%;
+  --re-beam-1-x: 31%;
+  --re-beam-2-x: 48%;
+  --re-beam-3-x: 66%;
+  --re-beam-4-x: 83%;
+  --re-beam-0-opacity: 0.2;
+  --re-beam-1-opacity: 0.2;
+  --re-beam-2-opacity: 0.45;
+  --re-beam-3-opacity: 0.2;
+  --re-beam-4-opacity: 0.2;
+}
+
+/* ── Building scene ─────────────────────────────────────────────────── */
+
+.ui-re-building-scene {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: min(32vh, 16rem);
+  color: rgb(var(--ui-accent-rgb));
+  opacity: 0.92;
+  mask-image: linear-gradient(to top, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 55%, transparent 100%);
+}
+
+.ui-re-building-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ui-re-window {
+  fill: rgb(var(--ui-re-window-dim) / 0.35);
+  transition: fill 1.2s ease, filter 1.2s ease;
+}
+
+.ui-re-window--lit {
+  fill: rgb(var(--ui-re-window-lit) / 0.55);
+  animation: ui-re-window-glow 4.5s ease-in-out infinite;
+}
+
+@keyframes ui-re-window-glow {
+  0%,
+  100% {
+    fill: rgb(var(--ui-re-window-lit) / 0.42);
+    filter: drop-shadow(0 0 2px rgb(var(--ui-re-window-lit) / 0.25));
+  }
+  50% {
+    fill: rgb(var(--ui-re-window-lit) / 0.78);
+    filter: drop-shadow(0 0 5px rgb(var(--ui-re-window-lit) / 0.45));
+  }
+}
+
+/* ── Tyndall beams (soft, no hard edges) ────────────────────────────── */
+
+.ui-re-beams {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 9% 52% at var(--re-beam-0-x) 96%,
+      rgb(var(--ui-re-beam-color) / calc(var(--re-beam-0-opacity) * var(--re-beam-intensity))) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 8% 48% at var(--re-beam-1-x) 97%,
+      rgb(var(--ui-re-beam-color) / calc(var(--re-beam-1-opacity) * var(--re-beam-intensity))) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 10% 58% at var(--re-beam-2-x) 95%,
+      rgb(var(--ui-re-beam-color) / calc(var(--re-beam-2-opacity) * var(--re-beam-intensity))) 0%,
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 8% 50% at var(--re-beam-3-x) 96%,
+      rgb(var(--ui-re-beam-color) / calc(var(--re-beam-3-opacity) * var(--re-beam-intensity))) 0%,
+      transparent 71%
+    ),
+    radial-gradient(
+      ellipse 9% 46% at var(--re-beam-4-x) 97%,
+      rgb(var(--ui-re-beam-color) / calc(var(--re-beam-4-opacity) * var(--re-beam-intensity))) 0%,
+      transparent 69%
+    );
+  filter: blur(18px);
+  opacity: 0.85;
+  transition: background 0.55s ease, opacity 0.45s ease;
+  transform: translateZ(0);
+}
+
+/* Foreground haze — content appears to pass through window light */
+.ui-re-tyndall {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to top,
+      rgb(var(--ui-re-haze-color) / calc(0.06 + var(--re-beam-intensity) * 0.1)) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      ellipse 120% 40% at var(--re-beam-2-x) 100%,
+      rgb(var(--ui-re-beam-color) / calc(0.04 + var(--re-beam-intensity) * 0.08)) 0%,
+      transparent 58%
+    );
+  mix-blend-mode: soft-light;
+  opacity: calc(0.35 + var(--re-beam-intensity) * 0.4);
+  transition: opacity 0.5s ease, background 0.55s ease;
+}
+
+/* ── Enhanced surfaces (domain polish) ──────────────────────────────── */
+
+.ui-re-backdrop--lit {
+  background-image:
+    var(--ui-hero-gradient),
+    var(--ui-re-surface-grain),
+    radial-gradient(ellipse 90% 50% at 50% 100%, rgb(var(--ui-re-beam-color) / 0.06) 0%, transparent 55%);
+}
+
+.ui-re-backdrop--lit > *:not(.ui-re-atmosphere) {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-re-header-accent {
+  backdrop-filter: blur(14px) saturate(1.08);
+  box-shadow: 0 1px 0 color-mix(in srgb, rgb(var(--ui-accent-rgb)) 12%, transparent);
+}
+
+.ui-re-card-lift {
+  backdrop-filter: blur(8px);
+  box-shadow:
+    var(--ui-shadow-soft),
+    inset 0 1px 0 color-mix(in srgb, white 42%, transparent);
+}
+
+[data-theme="operator"] .ui-re-card-lift {
+  box-shadow:
+    var(--ui-shadow-soft),
+    inset 0 1px 0 color-mix(in srgb, rgb(var(--ui-accent-rgb)) 18%, transparent);
+}
+
+.ui-re-card-lift::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, rgb(var(--ui-re-beam-color)) 4%, transparent) 0%,
+    transparent 45%
+  );
+  opacity: calc(0.35 + var(--re-beam-intensity, 0.35) * 0.25);
+}
+
+.ui-re-card-lift {
+  position: relative;
+  overflow: hidden;
+}
+
+.ui-re-mobile-nav {
+  backdrop-filter: blur(16px) saturate(1.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-re-window--lit {
+    animation: none;
+    fill: rgb(var(--ui-re-window-lit) / 0.58);
+    filter: none;
+  }
+
+  .ui-re-beams,
+  .ui-re-tyndall {
+    transition: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .ui-re-building-scene {
+    height: min(26vh, 11rem);
+  }
+
+  .ui-re-beams {
+    filter: blur(14px);
+    opacity: 0.65;
+  }
+}

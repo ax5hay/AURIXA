@@ -70,6 +70,13 @@ async function expectJson<T>(response: Response, fallback: string): Promise<T> {
   throw new ClientApiError(body?.error ?? fallback, response.status);
 }
 
+export interface ClientSearchPreferences {
+  budget_max?: number;
+  beds_min?: number;
+  areas?: string[];
+  pets?: boolean;
+}
+
 export interface ClientProfile {
   id: number;
   fullName: string;
@@ -77,6 +84,7 @@ export interface ClientProfile {
   phoneNumber: string;
   tenantId?: number;
   clientType?: string;
+  preferences?: ClientSearchPreferences;
 }
 
 export interface KnowledgeArticle {
@@ -107,6 +115,21 @@ export interface PipelineResponse {
   final_response: string;
 }
 
+export interface SafetyValidationIssue {
+  policy_name: string;
+  risk_category: string;
+  severity: number;
+  details: string;
+}
+
+export interface SafetyValidationResult {
+  is_safe: boolean;
+  validated_text: string;
+  issues: SafetyValidationIssue[];
+  requires_escalation?: boolean;
+  escalation_type?: string | null;
+}
+
 export interface ConversationSummary {
   id: number;
   sessionId: string;
@@ -120,6 +143,29 @@ export async function getConversations(): Promise<ConversationSummary[]> {
     await fetchWithTimeout("conversations", { method: "GET" }),
     "We couldn’t load your saved conversation.",
   );
+}
+
+export interface NotificationSummary {
+  showings: Showing[];
+  listings: Listing[];
+  conversations: ConversationSummary[];
+  preferences: ClientSearchPreferences;
+}
+
+export async function getNotificationSummary(): Promise<NotificationSummary> {
+  return expectJson(
+    await fetchWithTimeout("notifications/summary"),
+    "We couldn’t load your notification summary.",
+  );
+}
+
+export async function validateMessage(text: string): Promise<SafetyValidationResult> {
+  const res = await fetchWithTimeout("safety/validate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  return expectJson(res, "We couldn’t review this message.");
 }
 
 export async function sendMessage(prompt: string): Promise<PipelineResponse> {
