@@ -7,7 +7,8 @@
     "test:smoke": "playwright test smoke --config=playwright.config.ts",
     "test:visual": "playwright test visual --config=playwright.config.ts",
     "update-snapshots": "playwright test visual --config=playwright.config.ts --update-snapshots",
-    "demo-videos": "playwright test demo-videos --config=playwright.demo-videos.config.ts"
+    "demo-videos": "playwright test demo-videos --config=playwright.demo-videos.config.ts",
+    "screenshots": "playwright test screenshots --config=playwright.screenshots.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0"

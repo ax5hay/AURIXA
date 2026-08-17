@@ -24,7 +24,8 @@
     "test:visual": "pnpm --filter @aurixa/e2e test:visual",
     "budget:frontends": "node scripts/frontend-bundle-budget.mjs",
     "check:domain-copy": "bash scripts/check-real-estate-domain-copy.sh",
-    "demo:videos": "bash scripts/record-demo-videos.sh"
+    "demo:videos": "bash scripts/record-demo-videos.sh",
+    "capture:screenshots": "bash scripts/capture-doc-screenshots.sh"
   },
   "devDependencies": {
     "prettier": "^3.5.0",
