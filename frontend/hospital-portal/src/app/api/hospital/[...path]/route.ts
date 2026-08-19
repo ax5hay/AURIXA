@@ -108,7 +108,7 @@ async function proxy(
     if (contentType.includes("application/json")) {
       const payload = (await request.json()) as Record<string, unknown>;
       if (path[0] === "admin" || path[0] === "orchestration") {
-        payload.tenant_id = session.tenantId;
+        payload.tenant_id = String(session.tenantId);
       }
       body = JSON.stringify(payload);
     } else {
