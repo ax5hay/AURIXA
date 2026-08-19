@@ -6,7 +6,7 @@ import os
 
 import httpx
 
-DEFAULT_MODEL = os.getenv("LM_STUDIO_MODEL", "nvidia/nemotron-3-nano-4b")
+DEFAULT_MODEL = os.getenv("LM_STUDIO_MODEL", "google/gemma-4-e2b")
 LIVE_TESTS_ENV = "RUN_LIVE_LLM_TESTS"
 REQUEST_TIMEOUT_SECONDS = float(os.getenv("LM_STUDIO_TEST_TIMEOUT", "120"))
 

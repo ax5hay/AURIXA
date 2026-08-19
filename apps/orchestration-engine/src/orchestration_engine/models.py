@@ -15,6 +15,7 @@ class PipelineRequest(BaseModel):
     user_id: str | None = None
     client_id: int | None = None
     patient_id: int | None = None  # Legacy alias for client_id (voice/portal BFF)
+    channel: str | None = None  # "client" | "agent" — staff workspace uses agent
 
 
 class PipelineStep(BaseModel):

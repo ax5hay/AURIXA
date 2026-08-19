@@ -55,8 +55,17 @@ AGENT_WORTHY_PHRASES = [
     "search", "knowledge", "maintenance", "financing", "pre-approval",
     "refill", "prescription", "insurance",
 ]
+
+
+def _is_unhelpful_agent_output(text: str | None) -> bool:
+    """True when agent-runtime returned its default placeholder (no tool matched)."""
+    normalized = (text or "").strip().lower()
+    return not normalized or normalized == "i'm not sure how to help with that."
+
+
 from .models import PipelineRequest, ConversationState, PipelineStep as PydanticPipelineStep
 from .admin_api import router as admin_router
+from . import agent_helpers
 
 async def _ensure_db_tables():
     """Create tables with retry when Postgres may still be starting."""
@@ -429,6 +438,10 @@ async def run_pipeline(
     """
     logger.info("Received new pipeline request for session: {}", request.session_id)
 
+    channel = (request.channel or "client").lower()
+    if channel not in ("client", "agent"):
+        channel = "client"
+
     # Cache check: skip for agent-worthy (client-specific) prompts
     use_cache = not _is_agent_worthy(request.prompt) and CACHE_TTL_SEC > 0
     cache_key = _cache_key(request.prompt, request.tenant_id, request.user_id) if use_cache else None
@@ -477,6 +490,16 @@ async def run_pipeline(
                 clients.escalation_notice(input_validation)
                 + input_validation.get("validated_text", "[Content Redacted]")
             )
+            await agent_helpers.persist_escalation(
+                db,
+                validation=input_validation,
+                source_text=request.prompt,
+                tenant_id=request.tenant_id,
+                client_id=client_id,
+                conversation_id=conversation.id,
+                session_id=request.session_id,
+                channel=channel,
+            )
         else:
             # 1. Classify intent
             intent_result, _ = await execute_step(
@@ -492,9 +515,14 @@ async def run_pipeline(
                     clients.call_agent_runtime(request.prompt, client_id)
                 )
                 agent_output = agent_result.get("output")
-                if agent_output:
+                if agent_output and not _is_unhelpful_agent_output(agent_output):
                     generated_text = agent_output
                     logger.info("Using agent output for session: {}", request.session_id)
+                elif agent_output:
+                    logger.info(
+                        "Agent returned no actionable result for session {}, falling back to RAG+LLM",
+                        request.session_id,
+                    )
 
             # 3. Standard path: RAG + LLM generate when no agent output
             if not generated_text:
@@ -508,7 +536,8 @@ async def run_pipeline(
                         model=intent_result.get("model"),
                         provider=intent_result.get("provider"),
                         prompt=request.prompt,
-                        context=rag_context
+                        context=rag_context,
+                        channel=channel,
                     )
                 )
                 generated_text = generation_result.get("content", "")
@@ -522,6 +551,16 @@ async def run_pipeline(
             if not validation_result.get("is_safe"):
                 final_response_text = validation_result.get("validated_text", "[Content Redacted]")
                 logger.warning("Pipeline finished with unsafe response for session: {}", request.session_id)
+                await agent_helpers.persist_escalation(
+                    db,
+                    validation=validation_result,
+                    source_text=generated_text,
+                    tenant_id=request.tenant_id,
+                    client_id=client_id,
+                    conversation_id=conversation.id,
+                    session_id=request.session_id,
+                    channel=channel,
+                )
             else:
                 final_response_text = validation_result.get("validated_text")
                 logger.success("Pipeline executed successfully for session: {}", request.session_id)
@@ -530,6 +569,22 @@ async def run_pipeline(
             notice = clients.escalation_notice(validation_result) or clients.escalation_notice(input_validation)
             if notice:
                 final_response_text = notice + final_response_text
+                esc_validation = (
+                    validation_result
+                    if validation_result.get("requires_escalation")
+                    else input_validation
+                )
+                if esc_validation.get("requires_escalation") and validation_result.get("is_safe", True):
+                    await agent_helpers.persist_escalation(
+                        db,
+                        validation=esc_validation,
+                        source_text=request.prompt,
+                        tenant_id=request.tenant_id,
+                        client_id=client_id,
+                        conversation_id=conversation.id,
+                        session_id=request.session_id,
+                        channel=channel,
+                    )
 
         # 6. Cache response for repeated general prompts
         if cache_key and use_cache and final_response_text:
@@ -576,6 +631,10 @@ async def run_pipeline_stream(request: PipelineRequest):
     Used by voice WebSocket for snappy token-by-token streaming; REST /pipelines remains full response.
     """
     logger.info("Stream pipeline request for session: {}", request.session_id)
+    channel = (request.channel or "client").lower()
+    if channel not in ("client", "agent"):
+        channel = "client"
+    client_id = request.client_id if request.client_id is not None else request.patient_id
 
     async def event_stream():
         try:
@@ -596,7 +655,24 @@ async def run_pipeline_stream(request: PipelineRequest):
             if _is_agent_worthy(request.prompt):
                 yield _ndjson_line({"event": "status", "message": "Running agent..."})
                 agent_result = await clients.call_agent_runtime(request.prompt, request.client_id or request.patient_id)
-                generated_text = (agent_result.get("output") or "").strip()
+                agent_text = (agent_result.get("output") or "").strip()
+                if agent_text and not _is_unhelpful_agent_output(agent_text):
+                    generated_text = agent_text
+                else:
+                    yield _ndjson_line({"event": "status", "message": "Searching knowledge base..."})
+                    rag_context = await clients.call_rag_service(request.prompt, intent_result)
+                    yield _ndjson_line({"event": "status", "message": "Generating response..."})
+                    accumulated = []
+                    async for delta in clients.call_llm_generate_stream(
+                        model=intent_result.get("model"),
+                        provider=intent_result.get("provider"),
+                        prompt=request.prompt,
+                        context=rag_context,
+                        channel=channel,
+                    ):
+                        accumulated.append(delta)
+                        yield _ndjson_line({"event": "text_delta", "delta": delta})
+                    generated_text = "".join(accumulated)
             else:
                 yield _ndjson_line({"event": "status", "message": "Searching knowledge base..."})
                 rag_context = await clients.call_rag_service(request.prompt, intent_result)
@@ -607,6 +683,7 @@ async def run_pipeline_stream(request: PipelineRequest):
                     provider=intent_result.get("provider"),
                     prompt=request.prompt,
                     context=rag_context,
+                    channel=channel,
                 ):
                     accumulated.append(delta)
                     yield _ndjson_line({"event": "text_delta", "delta": delta})
@@ -630,6 +707,61 @@ async def run_pipeline_stream(request: PipelineRequest):
 
     return StreamingResponse(
         event_stream(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
+from .admin_api import AgentDraftIn  # noqa: E402 — after app routes to avoid circular import at load
+
+
+@app.post("/api/v1/agent/drafts/stream", summary="Stream agent draft generation as NDJSON")
+async def stream_agent_draft(
+    data: AgentDraftIn, db: AsyncSession = Depends(get_db_session)
+):
+    """Stream draft tokens: status, text_delta, done."""
+
+    async def draft_stream():
+        try:
+            yield _ndjson_line({"event": "status", "message": "Loading client context..."})
+            ctx = await agent_helpers.build_client_context(db, data.client_id)
+            if not ctx:
+                yield _ndjson_line({"event": "error", "message": "Client not found"})
+                return
+            showing_info = None
+            if data.showing_id:
+                showing = await db.get(db_models.Showing, data.showing_id)
+                if showing:
+                    showing_info = {
+                        "start_time": showing.start_time.isoformat() if showing.start_time else None,
+                        "status": showing.status,
+                        "agent": showing.agent_name,
+                    }
+            prompt = agent_helpers.draft_prompt(
+                data.draft_type,
+                ctx,
+                channel=data.channel,
+                extra=data.context or "",
+                showing=showing_info,
+            )
+            yield _ndjson_line({"event": "status", "message": "Generating draft..."})
+            intent = await clients.call_llm_router(prompt)
+            accumulated: list[str] = []
+            async for delta in clients.call_llm_generate_direct_stream(
+                prompt,
+                model=intent.get("model"),
+                provider=intent.get("provider"),
+            ):
+                accumulated.append(delta)
+                yield _ndjson_line({"event": "text_delta", "delta": delta})
+            draft = "".join(accumulated).strip() or "Could not generate a draft."
+            yield _ndjson_line({"event": "done", "draft": draft, "draftType": data.draft_type})
+        except Exception as e:
+            logger.error("Draft stream failed: {}", e)
+            yield _ndjson_line({"event": "error", "message": str(e)})
+
+    return StreamingResponse(
+        draft_stream(),
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )

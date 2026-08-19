@@ -33,6 +33,8 @@ export interface Client {
   tenantId?: number;
   clientType?: string;
   preferences?: ClientSearchPreferences;
+  notes?: string;
+  lastContactAt?: string;
 }
 
 export interface Showing {
@@ -46,6 +48,7 @@ export interface Showing {
   patientId?: number;
   tenantId?: number;
   notes?: string;
+  postShowingNotes?: string;
   listingId?: number;
 }
 
@@ -57,6 +60,38 @@ export interface Lead {
   stage?: string;
   source?: string;
   tenantId?: number;
+  clientId?: number;
+  daysStale?: number;
+  lastContactedAt?: string;
+}
+
+export interface OvernightActivityItem {
+  type: string;
+  id: number;
+  clientId?: number | null;
+  summary: string;
+  at?: string | null;
+}
+
+export interface SafetyEscalation {
+  id: number;
+  clientId?: number | null;
+  clientName?: string | null;
+  escalationType?: string | null;
+  sourceText: string;
+  status: string;
+  createdAt?: string | null;
+}
+
+export interface StaleActivity {
+  staleLeads: Lead[];
+  coldClients: Array<{
+    id: number;
+    fullName: string;
+    daysCold: number;
+    lastShowingAt?: string | null;
+    lastShowingStatus?: string;
+  }>;
 }
 
 export interface Listing {
@@ -168,6 +203,151 @@ export async function getClientShowings(clientId: number): Promise<Showing[]> {
   return res.json();
 }
 
+export async function updateClient(
+  clientId: number,
+  data: { notes?: string; append_note?: string },
+): Promise<Client> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/clients/${clientId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getOvernightActivity(
+  tenantId?: number,
+  hours = 12,
+): Promise<{ since: string; items: OvernightActivityItem[] }> {
+  const params = new URLSearchParams({ hours: String(hours) });
+  if (tenantId != null) params.set("tenant_id", String(tenantId));
+  const res = await fetchWithTimeout(`${API_BASE}/admin/activity/overnight?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch overnight activity");
+  return res.json();
+}
+
+export async function getStaleActivity(tenantId?: number, days = 7): Promise<StaleActivity> {
+  const params = new URLSearchParams({ days: String(days) });
+  if (tenantId != null) params.set("tenant_id", String(tenantId));
+  const res = await fetchWithTimeout(`${API_BASE}/admin/activity/stale?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch stale activity");
+  return res.json();
+}
+
+export async function getEscalations(tenantId?: number): Promise<SafetyEscalation[]> {
+  const params = new URLSearchParams({ status: "pending" });
+  if (tenantId != null) params.set("tenant_id", String(tenantId));
+  const res = await fetchWithTimeout(`${API_BASE}/admin/escalations?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch escalations");
+  return res.json();
+}
+
+export async function reviewEscalation(escalationId: number): Promise<{ id: number; status: string }> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/escalations/${escalationId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "reviewed" }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function generateDraft(data: {
+  draft_type: "follow_up" | "reminder" | "client_update";
+  client_id: number;
+  showing_id?: number;
+  channel?: "sms" | "email";
+  context?: string;
+}): Promise<{ draft: string; draftType: string; channel: string }> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/admin/agent/drafts`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    PIPELINE_TIMEOUT_MS,
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function generateDraftStream(
+  data: {
+    draft_type: "follow_up" | "reminder" | "client_update";
+    client_id: number;
+    showing_id?: number;
+    channel?: "sms" | "email";
+    context?: string;
+  },
+  onDelta: (delta: string) => void,
+  onStatus?: (message: string) => void,
+): Promise<string> {
+  const res = await fetchWithTimeout(
+    `${API_BASE}/admin/agent/drafts/stream`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    },
+    PIPELINE_TIMEOUT_MS,
+  );
+  if (!res.ok) throw new Error(await res.text());
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response stream");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let draft = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as {
+        event: string;
+        delta?: string;
+        draft?: string;
+        message?: string;
+      };
+      if (event.event === "text_delta" && event.delta) {
+        draft += event.delta;
+        onDelta(event.delta);
+      } else if (event.event === "status" && event.message) {
+        onStatus?.(event.message);
+      } else if (event.event === "done" && event.draft) {
+        draft = event.draft;
+      } else if (event.event === "error") {
+        throw new Error(event.message ?? "Draft stream failed");
+      }
+    }
+  }
+  return draft;
+}
+
+export async function updateLeadStage(
+  leadId: number,
+  stage: string,
+): Promise<{ id: number; stage: string }> {
+  const res = await fetchWithTimeout(`${API_BASE}/admin/leads/${leadId}/stage`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getStaleLeads(tenantId?: number, days = 7): Promise<Lead[]> {
+  const params = new URLSearchParams({ stale: "true", stale_days: String(days) });
+  if (tenantId != null) params.set("tenant_id", String(tenantId));
+  const res = await fetchWithTimeout(`${API_BASE}/admin/leads?${params}`);
+  if (!res.ok) throw new Error("Failed to fetch stale leads");
+  return res.json();
+}
 export async function getLeads(tenantId?: number): Promise<Lead[]> {
   const url =
     tenantId != null
@@ -237,24 +417,32 @@ export async function createShowing(data: {
   return res.json();
 }
 
-export async function updateShowingStatus(
+export async function updateShowing(
   showingId: number,
-  status: string,
-): Promise<{ id: number; status: string }> {
+  data: { status?: string; post_showing_notes?: string },
+): Promise<Showing> {
   const res = await fetchWithTimeout(`${API_BASE}/admin/showings/${showingId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
+export async function updateShowingStatus(
+  showingId: number,
+  status: string,
+): Promise<{ id: number; status: string }> {
+  const result = await updateShowing(showingId, { status });
+  return { id: result.id, status: result.status };
+}
+
 export async function sendMessage(
   prompt: string,
-  opts?: { clientId?: number; tenantId?: string },
+  opts?: { clientId?: number; tenantId?: string; channel?: "client" | "agent" },
 ): Promise<PipelineResponse> {
-  const body: Record<string, unknown> = { prompt };
+  const body: Record<string, unknown> = { prompt, channel: opts?.channel ?? "agent" };
   if (opts?.clientId) body.client_id = opts.clientId;
   if (opts?.tenantId) body.tenant_id = opts.tenantId;
   const res = await fetchWithTimeout(
@@ -267,6 +455,59 @@ export async function sendMessage(
     throw new Error(`Pipeline failed: ${text}`);
   }
   return res.json();
+}
+
+export async function sendMessageStream(
+  prompt: string,
+  opts: {
+    clientId?: number;
+    tenantId?: string;
+    channel?: "client" | "agent";
+    onDelta: (delta: string) => void;
+    onStatus?: (message: string) => void;
+  },
+): Promise<string> {
+  const body: Record<string, unknown> = { prompt, channel: opts.channel ?? "agent" };
+  if (opts.clientId) body.client_id = opts.clientId;
+  if (opts.tenantId) body.tenant_id = opts.tenantId;
+  const res = await fetchWithTimeout(
+    `${API_BASE}/orchestration/pipelines/stream`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    PIPELINE_TIMEOUT_MS,
+  );
+  if (!res.ok) throw new Error(await res.text());
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response stream");
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalText = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line) as {
+        event: string;
+        delta?: string;
+        final_response?: string;
+        message?: string;
+      };
+      if (event.event === "text_delta" && event.delta) {
+        finalText += event.delta;
+        opts.onDelta(event.delta);
+      } else if (event.event === "status" && event.message) {
+        opts.onStatus?.(event.message);
+      } else if (event.event === "done" && event.final_response) {
+        finalText = event.final_response;
+      } else if (event.event === "error") {
+        throw new Error(event.message ?? "Stream failed");
+      }
+    }
+  }
+  return finalText;
 }
 
 export async function executeAction(

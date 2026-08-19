@@ -6,12 +6,15 @@ import datetime
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aurixa_db import get_db_session, models as db_models
+
+from . import agent_helpers
+from . import clients as orch_clients
 
 router = APIRouter(prefix="/api/v1", tags=["admin"])
 
@@ -29,6 +32,8 @@ def _client_dict(client: db_models.Client) -> dict[str, Any]:
         "clientType": client.client_type,
         "tenantId": client.tenant_id,
         "preferences": client.preferences or {},
+        "notes": client.notes or "",
+        "lastContactAt": client.last_contact_at.isoformat() if client.last_contact_at else None,
         # Legacy fields for patient-portal BFF (Phase 4 removes these).
         "patientId": client.id,
     }
@@ -42,6 +47,7 @@ def _showing_dict(showing: db_models.Showing) -> dict[str, Any]:
         "agentName": showing.agent_name,
         "staffId": showing.staff_id,
         "notes": showing.notes,
+        "postShowingNotes": showing.post_showing_notes,
         "showingType": showing.showing_type,
         "status": showing.status,
         "clientId": showing.client_id,
@@ -113,7 +119,13 @@ class ShowingCreateIn(BaseModel):
 
 
 class ShowingUpdateIn(BaseModel):
-    status: str
+    status: str | None = None
+    post_showing_notes: str | None = None
+
+
+class ClientUpdateIn(BaseModel):
+    notes: str | None = None
+    append_note: str | None = None
 
 
 class LeadCreateIn(BaseModel):
@@ -189,6 +201,27 @@ async def get_client(client_id: int, db: AsyncSession = Depends(get_db_session))
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    return _client_dict(client)
+
+
+@router.patch("/clients/{client_id}", summary="Update client notes")
+async def update_client(
+    client_id: int, data: ClientUpdateIn, db: AsyncSession = Depends(get_db_session)
+):
+    client = await db.get(db_models.Client, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    now = datetime.datetime.utcnow()
+    if data.notes is not None:
+        client.notes = data.notes
+        client.last_contact_at = now
+    if data.append_note:
+        stamp = now.strftime("%Y-%m-%d %H:%M")
+        entry = f"[{stamp}] {data.append_note.strip()}"
+        client.notes = f"{client.notes}\n{entry}".strip() if client.notes else entry
+        client.last_contact_at = now
+    await db.commit()
+    await db.refresh(client)
     return _client_dict(client)
 
 
@@ -330,26 +363,32 @@ async def create_showing(data: ShowingCreateIn, db: AsyncSession = Depends(get_d
     return _showing_dict(showing)
 
 
-@router.patch("/showings/{showing_id}", summary="Update showing status")
+@router.patch("/showings/{showing_id}", summary="Update showing status or post-tour notes")
 async def update_showing(
     showing_id: int, data: ShowingUpdateIn, db: AsyncSession = Depends(get_db_session)
 ):
-    status = (data.status or "").strip().lower()
-    allowed = ALLOWED_SHOWING_STATUSES | LEGACY_SHOWING_STATUSES
-    if status not in allowed:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported showing status. Allowed: {', '.join(sorted(ALLOWED_SHOWING_STATUSES))}",
-        )
-    if status in LEGACY_SHOWING_STATUSES:
-        status = "confirmed"
     result = await db.execute(
         select(db_models.Showing).where(db_models.Showing.id == showing_id)
     )
     showing = result.scalar_one_or_none()
     if not showing:
         raise HTTPException(status_code=404, detail="Showing not found")
-    showing.status = status
+
+    if data.status is not None:
+        status = (data.status or "").strip().lower()
+        allowed = ALLOWED_SHOWING_STATUSES | LEGACY_SHOWING_STATUSES
+        if status not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported showing status. Allowed: {', '.join(sorted(ALLOWED_SHOWING_STATUSES))}",
+            )
+        if status in LEGACY_SHOWING_STATUSES:
+            status = "confirmed"
+        showing.status = status
+
+    if data.post_showing_notes is not None:
+        showing.post_showing_notes = data.post_showing_notes.strip() or None
+
     await db.commit()
     await db.refresh(showing)
     db.add(
@@ -357,12 +396,12 @@ async def update_showing(
             service="Orchestration Engine",
             action="showing.update",
             user="staff",
-            details=f"Updated showing {showing_id} status to {status}",
+            details=f"Updated showing {showing_id}",
             severity="info",
         )
     )
     await db.commit()
-    return {"id": showing.id, "status": showing.status}
+    return _showing_dict(showing)
 
 
 # --- Listings & properties ---
@@ -439,8 +478,14 @@ async def list_leads(
     db: AsyncSession = Depends(get_db_session),
     tenant_id: int | None = None,
     stage: str | None = None,
+    stale: bool = Query(False),
+    stale_days: int = Query(7),
     limit: int = 100,
 ):
+    if stale:
+        return await agent_helpers.list_stale_leads(
+            db, tenant_id=tenant_id, days=stale_days, limit=limit
+        )
     query = select(db_models.Lead)
     if tenant_id:
         query = query.where(db_models.Lead.tenant_id == tenant_id)
@@ -461,6 +506,7 @@ async def list_leads(
             "clientId": lead.client_id,
             "listingId": lead.listing_id,
             "assignedStaffId": lead.assigned_staff_id,
+            "lastContactedAt": lead.last_contacted_at.isoformat() if lead.last_contacted_at else None,
         }
         for lead in leads
     ]
@@ -494,6 +540,7 @@ async def update_lead_stage(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     lead.stage = data.stage
+    lead.last_contacted_at = datetime.datetime.utcnow()
     await db.commit()
     db.add(
         db_models.AuditLog(
@@ -506,6 +553,144 @@ async def update_lead_stage(
     )
     await db.commit()
     return {"id": lead.id, "stage": lead.stage}
+
+
+# --- Agent workspace activity & escalations ---
+
+
+@router.get("/activity/overnight", summary="Recent client activity feed for agents")
+async def get_overnight_activity(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+    hours: int = 12,
+    limit: int = 30,
+):
+    since = datetime.datetime.utcnow() - datetime.timedelta(hours=max(1, hours))
+    items = await agent_helpers.list_overnight_activity(
+        db, tenant_id=tenant_id, since=since, limit=limit
+    )
+    return {"since": since.isoformat(), "items": items}
+
+
+@router.get("/activity/stale", summary="Stale leads and cold clients")
+async def get_stale_activity(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+    days: int = 7,
+    limit: int = 25,
+):
+    stale_leads = await agent_helpers.list_stale_leads(
+        db, tenant_id=tenant_id, days=days, limit=limit
+    )
+    cold_clients = await agent_helpers.list_cold_clients(
+        db, tenant_id=tenant_id, days=days, limit=limit
+    )
+    return {"staleLeads": stale_leads, "coldClients": cold_clients}
+
+
+@router.get("/escalations", summary="Flagged messages requiring staff review")
+async def list_escalations(
+    db: AsyncSession = Depends(get_db_session),
+    tenant_id: int | None = None,
+    status: str = "pending",
+    limit: int = 50,
+):
+    query = select(db_models.SafetyEscalation)
+    if tenant_id:
+        query = query.where(
+            or_(
+                db_models.SafetyEscalation.tenant_id == tenant_id,
+                db_models.SafetyEscalation.tenant_id.is_(None),
+            )
+        )
+    if status:
+        query = query.where(db_models.SafetyEscalation.status == status)
+    result = await db.execute(
+        query.order_by(db_models.SafetyEscalation.created_at.desc()).limit(limit)
+    )
+    out = []
+    for esc in result.scalars().all():
+        client_name = None
+        if esc.client_id:
+            client = await db.get(db_models.Client, esc.client_id)
+            client_name = client.full_name if client else None
+        out.append(
+            {
+                "id": esc.id,
+                "clientId": esc.client_id,
+                "clientName": client_name,
+                "sessionId": esc.session_id,
+                "channel": esc.channel,
+                "escalationType": esc.escalation_type,
+                "sourceText": esc.source_text[:500],
+                "status": esc.status,
+                "createdAt": esc.created_at.isoformat() if esc.created_at else None,
+            }
+        )
+    return out
+
+
+class EscalationReviewIn(BaseModel):
+    reviewed_by: str = "staff"
+    status: str = "reviewed"
+
+
+@router.patch("/escalations/{escalation_id}", summary="Mark escalation reviewed")
+async def review_escalation(
+    escalation_id: int,
+    data: EscalationReviewIn,
+    db: AsyncSession = Depends(get_db_session),
+):
+    esc = await db.get(db_models.SafetyEscalation, escalation_id)
+    if not esc:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+    esc.status = data.status
+    esc.reviewed_by = data.reviewed_by
+    esc.reviewed_at = datetime.datetime.utcnow()
+    await db.commit()
+    return {"id": esc.id, "status": esc.status}
+
+
+class AgentDraftIn(BaseModel):
+    draft_type: str = Field(..., description="follow_up | reminder | client_update")
+    client_id: int
+    showing_id: int | None = None
+    channel: str = "sms"
+    context: str | None = None
+
+
+@router.post("/agent/drafts", summary="Generate follow-up or reminder copy via LLM")
+async def generate_agent_draft(data: AgentDraftIn, db: AsyncSession = Depends(get_db_session)):
+    ctx = await agent_helpers.build_client_context(db, data.client_id)
+    if not ctx:
+        raise HTTPException(status_code=404, detail="Client not found")
+    showing_info = None
+    if data.showing_id:
+        showing = await db.get(db_models.Showing, data.showing_id)
+        if showing:
+            showing_info = {
+                "start_time": showing.start_time.isoformat() if showing.start_time else None,
+                "status": showing.status,
+                "agent": showing.agent_name,
+                "notes": showing.post_showing_notes or showing.notes,
+            }
+    prompt = agent_helpers.draft_prompt(
+        data.draft_type,
+        ctx,
+        channel=data.channel,
+        extra=data.context or "",
+        showing=showing_info,
+    )
+    intent = await orch_clients.call_llm_router(prompt)
+    result = await orch_clients.call_llm_generate_direct(
+        prompt,
+        model=intent.get("model"),
+        provider=intent.get("provider"),
+    )
+    draft = (result.get("content") or "").strip()
+    if not draft:
+        draft = "Could not generate a draft — please try again or write manually."
+    return {"draft": draft, "draftType": data.draft_type, "channel": data.channel}
 
 
 # --- Staff ---
@@ -643,4 +828,8 @@ class LegacyApptUpdateIn(BaseModel):
 async def update_appointment_legacy(
     appointment_id: int, data: LegacyApptUpdateIn, db: AsyncSession = Depends(get_db_session)
 ):
-    return await update_showing(appointment_id, ShowingUpdateIn(status=data.status), db)
+    return await update_showing(
+        appointment_id,
+        ShowingUpdateIn(status=data.status),
+        db,
+    )

@@ -9,16 +9,19 @@ import {
   Button,
   Card,
   EmptyState,
+  Input,
   PageLoader,
   SectionHeader,
   StatusBadge,
   Tabs,
   Timeline,
+  useToast,
 } from "@aurixa/ui-kit";
-import { getClient, getClientShowings, type Showing, type Client } from "../../api";
+import { getClient, getClientShowings, updateClient, type Showing, type Client } from "../../api";
 import { RealEstateDisclaimer } from "@aurixa/ui-kit";
 import { useStaffContext } from "@/context/StaffContext";
 import { ClientBrief } from "@/components/ClientBrief";
+import { DraftCopyButton } from "@/components/DraftCopyButton";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("en-US", {
@@ -39,6 +42,9 @@ export default function ClientDetailPage() {
   const [appointments, setAppointments] = useState<Showing[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [noteInput, setNoteInput] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -75,6 +81,21 @@ export default function ClientDetailPage() {
       new Date(appointment.startTime) >= new Date(),
   );
   const past = ordered.filter((appointment) => !upcoming.includes(appointment));
+
+  async function saveNote() {
+    if (!noteInput.trim()) return;
+    setSavingNote(true);
+    try {
+      const updated = await updateClient(id, { append_note: noteInput.trim() });
+      setClient(updated);
+      setNoteInput("");
+      toast({ title: "Note saved", tone: "success" });
+    } catch {
+      toast({ title: "Could not save note", tone: "error" });
+    } finally {
+      setSavingNote(false);
+    }
+  }
 
   return (
     <div className="space-y-6 pb-8">
@@ -263,24 +284,51 @@ export default function ClientDetailPage() {
           },
           {
             value: "activity",
-            label: "Activity",
+            label: "Notes & activity",
             content: (
-              <section>
+              <section className="space-y-4">
                 <SectionHeader
-                  title="Audit-friendly activity"
-                  description="Portal actions that touch this record should remain reviewable."
+                  title="Coordinator notes"
+                  description="Quick updates visible to the team on this client record."
                 />
                 <Card>
-                  <ul className="space-y-3 text-sm text-ui-muted">
-                    <li>Record opened in agent workspace for coordination.</li>
-                    <li>
-                      Showing history count: {ordered.length}. Integration feeds remain
-                      disconnected.
-                    </li>
-                    <li>
-                      Assistant access is available with client context disclosure when opened from
-                      this record.
-                    </li>
+                  {client.notes ? (
+                    <pre className="whitespace-pre-wrap text-sm text-ui-muted">{client.notes}</pre>
+                  ) : (
+                    <p className="text-sm text-ui-muted">No notes yet.</p>
+                  )}
+                  {canCoordinate && (
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        value={noteInput}
+                        onChange={(e) => setNoteInput(e.target.value)}
+                        placeholder="Jane toured Oak St — wants Westside only now..."
+                        aria-label="Add client note"
+                      />
+                      <Button loading={savingNote} onClick={() => void saveNote()}>
+                        Add note
+                      </Button>
+                    </div>
+                  )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <DraftCopyButton
+                      clientId={client.id}
+                      draftType="client_update"
+                      label="Draft client update SMS"
+                    />
+                    <DraftCopyButton
+                      clientId={client.id}
+                      draftType="follow_up"
+                      label="Draft follow-up SMS"
+                    />
+                  </div>
+                </Card>
+                <Card variant="compact" padding="md">
+                  <ul className="space-y-2 text-sm text-ui-muted">
+                    <li>Showing history: {ordered.length} on record.</li>
+                    {client.lastContactAt && (
+                      <li>Last contact: {new Date(client.lastContactAt).toLocaleString()}</li>
+                    )}
                   </ul>
                 </Card>
               </section>

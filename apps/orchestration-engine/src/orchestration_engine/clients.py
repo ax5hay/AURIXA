@@ -183,7 +183,14 @@ def _format_rag_context(context: dict) -> str:
     return "\n\n".join(parts)
 
 
-async def call_llm_generate(model: str, provider: str, prompt: str, context: dict) -> dict:
+async def call_llm_generate(
+    model: str,
+    provider: str,
+    prompt: str,
+    context: dict,
+    *,
+    channel: str = "client",
+) -> dict:
     """Call the LLM Router to generate a response."""
     if not LLM_ROUTER_URL:
         logger.warning("LLM_ROUTER_URL not set, skipping call.")
@@ -191,7 +198,9 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
 
     try:
         formatted_context = _format_rag_context(context)
-        system_content = CLIENT_CHANNEL_SYSTEM_PROMPT
+        system_content = (
+            AGENT_CHANNEL_SYSTEM_PROMPT if channel == "agent" else CLIENT_CHANNEL_SYSTEM_PROMPT
+        )
         user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
         messages = [
             {"role": "system", "content": system_content},
@@ -215,15 +224,77 @@ async def call_llm_generate(model: str, provider: str, prompt: str, context: dic
         raise
 
 
+async def call_llm_generate_direct(
+    prompt: str,
+    *,
+    system_prompt: str | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+) -> dict:
+    """Generate text without RAG — used for agent drafts and reminders."""
+    if not LLM_ROUTER_URL:
+        return {"content": "Draft unavailable — LLM router not configured."}
+    messages = [
+        {"role": "system", "content": system_prompt or AGENT_CHANNEL_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    response = await _request_with_retry(
+        "POST",
+        f"{LLM_ROUTER_URL}/api/v1/generate",
+        json={"messages": messages, "model": model, "provider": provider},
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+async def call_llm_generate_direct_stream(
+    prompt: str,
+    *,
+    system_prompt: str | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+) -> AsyncIterator[str]:
+    """Stream draft generation without RAG."""
+    if not LLM_ROUTER_URL:
+        yield "Draft unavailable — LLM router not configured."
+        return
+    messages = [
+        {"role": "system", "content": system_prompt or AGENT_CHANNEL_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    async with _async_client.stream(
+        "POST",
+        f"{LLM_ROUTER_URL}/api/v1/generate/stream",
+        json={"messages": messages, "model": model, "provider": provider},
+        timeout=120.0,
+    ) as response:
+        response.raise_for_status()
+        async for line in response.aiter_lines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                if obj.get("type") == "delta" and "content" in obj:
+                    yield obj["content"]
+                elif obj.get("type") == "error":
+                    raise RuntimeError(obj.get("message", "Stream error"))
+            except json.JSONDecodeError:
+                continue
+
+
 async def call_llm_generate_stream(
-    model: str, provider: str, prompt: str, context: dict
+    model: str, provider: str, prompt: str, context: dict, *, channel: str = "client"
 ) -> AsyncIterator[str]:
     """Call the LLM Router streaming endpoint and yield content deltas."""
     if not LLM_ROUTER_URL:
         logger.warning("LLM_ROUTER_URL not set, skipping stream.")
         return
     formatted_context = _format_rag_context(context)
-    system_content = CLIENT_CHANNEL_SYSTEM_PROMPT
+    system_content = (
+        AGENT_CHANNEL_SYSTEM_PROMPT if channel == "agent" else CLIENT_CHANNEL_SYSTEM_PROMPT
+    )
     user_content = f"Knowledge base context:\n{formatted_context}\n\nUser question: {prompt}"
     messages = [
         {"role": "system", "content": system_content},

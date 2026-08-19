@@ -47,6 +47,12 @@ DEFAULT_PROVIDER = LLMProvider.LOCAL
 DEFAULT_MODEL = None  # Resolved from LM Studio /v1/models when LOCAL
 
 
+def _is_chat_model(model_id: str) -> bool:
+    """Exclude embedding-only models from chat routing and model lists."""
+    lower = model_id.lower()
+    return not any(token in lower for token in ("embed", "embedding", "nomic"))
+
+
 async def fetch_lm_studio_models() -> list[str]:
     """Fetch available models from LM Studio (OpenAI-compatible GET /v1/models)."""
     try:
@@ -58,7 +64,9 @@ async def fetch_lm_studio_models() -> list[str]:
                 return []
         data = r.json()
         models = data.get("data", []) if isinstance(data, dict) else []
-        return [m.get("id", "") for m in models if m.get("id")]
+        ids = [m.get("id", "") for m in models if m.get("id")]
+        chat_models = [m for m in ids if _is_chat_model(m)]
+        return chat_models or ids
     except Exception as e:
         logger.warning("Could not fetch LM Studio models: {}", e)
         return []
@@ -245,8 +253,12 @@ async def generate_stream(request: GenerateRequest, req: Request):
 
     async def ndjson_stream():
         try:
+            got_content = False
             async for chunk in req.app.state.llm_router.generate_stream(llm_request, provider=request.provider):
+                got_content = True
                 yield json.dumps({"type": "delta", "content": chunk}) + "\n"
+            if not got_content:
+                yield json.dumps({"type": "error", "message": "LLM returned no content"}) + "\n"
             yield json.dumps({"type": "done"}) + "\n"
         except Exception as e:
             logger.warning("generate_stream failed: {}", e)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -35,6 +36,7 @@ _OPENAI_PRICING: dict[str, dict[str, float]] = {
 }
 
 DEFAULT_MODEL = "gpt-4o"
+_LOCAL_EMPTY_RETRIES = 6
 
 
 class OpenAIClient(LLMClient):
@@ -94,12 +96,24 @@ class OpenAIClient(LLMClient):
             kwargs["tools"] = self._map_tools(request.tools)
             kwargs["tool_choice"] = "auto"
 
+        max_attempts = _LOCAL_EMPTY_RETRIES if self._provider == LLMProvider.LOCAL else 1
         start = time.perf_counter()
-        try:
-            response = await self._client.chat.completions.create(**kwargs)
-        except Exception as exc:
-            logger.error("OpenAI generate failed for model {}: {}", model, exc)
-            raise
+        response = None
+        for attempt in range(max_attempts):
+            try:
+                response = await self._client.chat.completions.create(**kwargs)
+            except Exception as exc:
+                logger.error("OpenAI generate failed for model {}: {}", model, exc)
+                raise
+            content = response.choices[0].message.content or ""
+            if content.strip() or attempt == max_attempts - 1:
+                break
+            logger.warning(
+                "Empty LLM response for model {} (attempt {}), retrying",
+                model,
+                attempt + 1,
+            )
+            await asyncio.sleep(0.8 * (attempt + 1))
         latency_ms = (time.perf_counter() - start) * 1000
 
         choice = response.choices[0]
@@ -165,14 +179,32 @@ class OpenAIClient(LLMClient):
         if request.tools:
             kwargs["tools"] = self._map_tools(request.tools)
             kwargs["tool_choice"] = "auto"
+        streamed_any = False
         try:
             stream = await self._client.chat.completions.create(**kwargs)
             async for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
+                    streamed_any = True
                     yield chunk.choices[0].delta.content
         except Exception as exc:
             logger.error("OpenAI generate_stream failed for model {}: {}", model, exc)
             raise
+
+        if not streamed_any:
+            logger.warning(
+                "Stream returned no content for model {}, falling back to generate",
+                model,
+            )
+            fallback = LLMRequest(
+                messages=request.messages,
+                model=request.model,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                tools=request.tools,
+            )
+            response = await self.generate(fallback)
+            if response.content:
+                yield response.content
 
     async def health_check(self) -> bool:
         """Verify connectivity by listing models."""

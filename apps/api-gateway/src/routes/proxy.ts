@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { getServiceUrl } from "../config.js";
 
@@ -37,9 +38,17 @@ export async function proxyRoutes(app: FastifyInstance) {
         }
 
         // Orchestration pipelines (LLM generation) need 2+ minutes; LM Studio can be slow
-        const isPipeline = prefix === "orchestration" && (path ?? "").includes("pipeline");
+        const pathStr = path ?? "";
+        const isPipeline = prefix === "orchestration" && pathStr.includes("pipeline");
         const isLlm = prefix === "llm";
-        const timeoutMs = isPipeline ? 180000 : isLlm ? 15000 : 30000;
+        const isStream = pathStr.includes("stream");
+        const timeoutMs = isPipeline
+          ? 180000
+          : isLlm && (pathStr.includes("generate") || isStream)
+            ? 120000
+            : isLlm
+              ? 30000
+              : 30000;
         const response = await fetch(url, {
           method: req.method,
           headers,
@@ -51,6 +60,16 @@ export async function proxyRoutes(app: FastifyInstance) {
         });
 
         const latency = Math.round(performance.now() - start);
+
+        if (isStream && response.body) {
+          reply
+            .status(response.status)
+            .header("x-upstream-latency-ms", latency)
+            .header("x-upstream-service", serviceName)
+            .type(response.headers.get("content-type") || "application/x-ndjson");
+          return reply.send(Readable.fromWeb(response.body as ReadableStream));
+        }
+
         const body = await response.text();
 
         reply

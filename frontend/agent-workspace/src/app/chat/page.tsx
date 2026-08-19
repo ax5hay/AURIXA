@@ -13,7 +13,7 @@ import {
   type ChatPanelMessage,
   useToast,
 } from "@aurixa/ui-kit";
-import { getClient, sendMessage, type Client } from "../api";
+import { getClient, sendMessageStream, type Client } from "../api";
 import { useStaffContext } from "@/context/StaffContext";
 
 const PROMPTS = {
@@ -107,32 +107,54 @@ export default function ChatPage() {
     setMessages((current) => [...current, { id: Date.now(), text: prompt, sender: "user" }]);
     setInputText("");
     setLoading(true);
+    const assistantId = Date.now() + 1;
+    let streamBuffer = "";
+    setMessages((current) => [
+      ...current,
+      { id: assistantId, text: "", sender: "assistant" },
+    ]);
     try {
-      const response = await sendMessage(prompt, {
+      const reply = await sendMessageStream(prompt, {
         clientId,
         tenantId: tenantFilter || undefined,
-      });
-      setLastSessionId(response.session_id);
-      const reply = response.final_response || "The assistant returned no content.";
-      setMessages((current) => [
-        ...current,
-        {
-          id: Date.now() + 1,
-          text: reply,
-          sender: "assistant",
-          actions: suggestWorkspaceActions(prompt, reply, clientId),
+        channel: "agent",
+        onDelta: (delta) => {
+          streamBuffer += delta;
+          const next = streamBuffer;
+          setMessages((msgs) =>
+            msgs.map((msg) => (msg.id === assistantId ? { ...msg, text: next } : msg)),
+          );
         },
-      ]);
+        onStatus: (message) => {
+          setMessages((msgs) =>
+            msgs.map((msg) =>
+              msg.id === assistantId && !msg.text
+                ? { ...msg, text: `${message}…` }
+                : msg,
+            ),
+          );
+        },
+      });
+      setMessages((current) =>
+        current.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                text: reply || "The assistant returned no content.",
+                actions: suggestWorkspaceActions(prompt, reply, clientId),
+              }
+            : msg,
+        ),
+      );
     } catch {
-      setMessages((current) => [
-        ...current,
-        {
+      setMessages((current) =>
+        current.filter((msg) => msg.id !== assistantId).concat({
           id: Date.now() + 1,
           text: "I couldn’t complete that request. Check the service connection or try again.",
           sender: "assistant",
           actions: [{ label: "Today queue", href: "/" }],
-        },
-      ]);
+        }),
+      );
       toast({
         title: "Assistant unavailable",
         description: "No action was taken. Please try again.",

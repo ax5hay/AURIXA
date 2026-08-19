@@ -123,6 +123,8 @@ class Client(Base):
     phone_number: Mapped[str | None] = mapped_column(String, nullable=True)
     client_type: Mapped[str] = mapped_column(String, default="buyer")
     preferences: Mapped[Dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_contact_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
     tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id"), nullable=True)
 
     tenant: Mapped["Tenant | None"] = relationship(back_populates="clients")
@@ -252,6 +254,7 @@ class Lead(Base):
     stage: Mapped[str] = mapped_column(String, default="new")
     segment: Mapped[str] = mapped_column(String, default="residential")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_contacted_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="leads")
     client: Mapped["Client | None"] = relationship(back_populates="leads")
@@ -272,6 +275,7 @@ class Showing(Base):
     agent_name: Mapped[str] = mapped_column(String)
     staff_id: Mapped[int | None] = mapped_column(ForeignKey("staff.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
+    post_showing_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     showing_type: Mapped[str] = mapped_column(String, default="private_tour")
     status: Mapped[str] = mapped_column(String, default="confirmed")
 
@@ -384,6 +388,23 @@ class Document(Base):
     status: Mapped[str] = mapped_column(String, default="pending")
 
     client: Mapped["Client"] = relationship(back_populates="documents")
+
+
+class SafetyEscalation(Base):
+    """Staff review queue for fair-housing, fraud, and other flagged messages."""
+
+    __tablename__ = "safety_escalations"
+
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id"), nullable=True, index=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), nullable=True, index=True)
+    conversation_id: Mapped[int | None] = mapped_column(ForeignKey("conversations.id"), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    channel: Mapped[str] = mapped_column(String, default="client")
+    source_text: Mapped[str] = mapped_column(Text)
+    escalation_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending", index=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    reviewed_at: Mapped[datetime.datetime | None] = mapped_column(nullable=True)
 
 
 class KnowledgeBaseArticle(Base):

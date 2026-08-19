@@ -6,6 +6,7 @@ const GATEWAY_URL = process.env.API_GATEWAY_URL || "http://localhost:3000";
 const ALLOWED_ROOTS = new Set(["admin", "orchestration", "execute", "health"]);
 
 const CLIENT_RESOURCES = new Set(["clients", "patients", "showings", "appointments", "leads", "listings"]);
+const ACTIVITY_RESOURCES = new Set(["activity", "escalations", "agent"]);
 
 function targetUrl(path: string[], requestUrl: string) {
   const root = path[0];
@@ -101,18 +102,19 @@ async function proxy(
     (path[0] === "admin" &&
       ((resourceRoot === "audit" && operations) ||
         (CLIENT_RESOURCES.has(resourceRoot) && (agent || coordination || operations)) ||
+        (ACTIVITY_RESOURCES.has(resourceRoot) && canCoordinate) ||
         (resourceRoot === "staff" && canCoordinate) ||
         (resourceRoot === "knowledge" && (agent || coordination || operations))));
   const isWrite =
     path[0] === "admin" &&
     request.method !== "GET" &&
-    CLIENT_RESOURCES.has(resourceRoot);
+    (CLIENT_RESOURCES.has(resourceRoot) || ACTIVITY_RESOURCES.has(resourceRoot));
   if (!allowed || (isWrite && !canCoordinate)) {
     return NextResponse.json({ error: "Operation is not permitted for this staff role." }, { status: 403 });
   }
 
   if (path[0] === "admin") {
-    if (["clients", "patients", "showings", "appointments", "leads", "listings", "staff", "knowledge"].includes(resourceRoot)) {
+    if (["clients", "patients", "showings", "appointments", "leads", "listings", "staff", "knowledge", "activity", "escalations"].includes(resourceRoot)) {
       target.searchParams.set("tenant_id", String(session.tenantId));
     }
     if (
@@ -138,7 +140,7 @@ async function proxy(
     if (contentType.includes("application/json")) {
       const payload = (await request.json()) as Record<string, unknown>;
       if (path[0] === "admin" || path[0] === "orchestration") {
-        payload.tenant_id = session.tenantId;
+        payload.tenant_id = String(session.tenantId);
       }
       body = JSON.stringify(payload);
     } else {

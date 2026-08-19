@@ -115,6 +115,7 @@ export function WorkQueue({
     id: string | number;
     title: string;
     description?: string;
+    body?: React.ReactNode;
     meta?: React.ReactNode;
     leading?: React.ReactNode;
     action?: React.ReactNode;
@@ -139,6 +140,7 @@ export function WorkQueue({
             {item.description && (
               <p className="mt-0.5 truncate text-xs text-ui-muted">{item.description}</p>
             )}
+            {item.body}
             {item.meta && <div className="mt-1 text-xs text-ui-faint">{item.meta}</div>}
           </div>
           {item.action}
